@@ -245,3 +245,8 @@ Source/Graphics/Effects/Library/StateCache
 Source/Graphics/Effects/Library/PackageCache
 Source/Graphics/Effects/Library/ShaderCache
 Source/Graphics/Effects/Library/ScriptAssemblies
+
+#folders created by Visual Studio and ilspycmd
+.vs/
+temp_decompiled/
+temp_decompiled_publicised
