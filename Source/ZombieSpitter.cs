@@ -83,10 +83,10 @@ namespace ZombieLand
 				CustomDefs.ZombiesRising.PlayOneShotOnCamera(null);
 		}
 
-		public override void Draw()
+		public void DrawSpitter()
 		{
 			mesh ??= MeshMakerPlanes.NewPlaneMesh(3f);
-			var v = new Vector3(0.1f, 0f, 0f) * Mathf.Sin(2 * Mathf.PI * Drawer.tweener.MovedPercent());
+			var v = new Vector3(0.1f, 0f, 0f) * Mathf.Sin(2 * Mathf.PI * ((GenTicks.TicksGame * 0.05f) % 1f));
 			var h = new Vector3(0f, 0.01f, 0f);
 			var materials = aggressive ? Constants.SpitterAggressive : Constants.Spitter;
 			Graphics.DrawMesh(mesh, DrawPos + v, Quaternion.identity, materials[0], 0);

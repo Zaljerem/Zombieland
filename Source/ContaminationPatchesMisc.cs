@@ -367,12 +367,12 @@ namespace ZombieLand
 		}
 	}
 
-	[HarmonyPatch(typeof(Pawn_CarryTracker), nameof(Pawn_CarryTracker.CarryHandsTick))]
+	[HarmonyPatch(typeof(Pawn_CarryTracker), nameof(Pawn_CarryTracker.CarryHandsTickInterval))]
 	static class Pawn_CarryTracker_CarryHandsTick_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
 
-		static void Postfix(Pawn_CarryTracker __instance)
+		static void Postfix(Pawn_CarryTracker __instance, int delta)
 		{
 			var pawn = __instance.pawn;
 
@@ -568,7 +568,7 @@ namespace ZombieLand
 	[HarmonyPatch]
 	static class JobDriver_DisassembleMech_MakeNewToils_Patch
 	{
-		static readonly MethodInfo m_TryPlaceThing = SymbolExtensions.GetMethodInfo(() => GenPlace.TryPlaceThing(default, default, default, default, default, default, default));
+		static readonly MethodInfo m_TryPlaceThing = AccessTools.Method(typeof(GenPlace), nameof(GenPlace.TryPlaceThing), new[] { typeof(Thing), typeof(IntVec3), typeof(Map), typeof(ThingPlaceMode), typeof(Action<Thing, int>), typeof(Predicate<IntVec3>), typeof(Rot4?) });
 
 		static bool Prepare() => Constants.CONTAMINATION;
 

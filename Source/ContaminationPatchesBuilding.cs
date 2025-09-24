@@ -297,17 +297,17 @@ namespace ZombieLand
 
 		static MethodBase TargetMethod()
 		{
-			var m_RepairTick = SymbolExtensions.GetMethodInfo(() => MechRepairUtility.RepairTick(default));
+			var m_RepairTick = SymbolExtensions.GetMethodInfo(() => MechRepairUtility.RepairTick(default, default));
 			return AccessTools.FirstMethod(typeof(JobDriver_RepairMech), method => method.CallsMethod(m_RepairTick));
 		}
 
-		static void RepairTick(Pawn mech, JobDriver_RepairMech jobDriver)
+		static void RepairTick(Pawn mech, int delta, JobDriver_RepairMech jobDriver)
 		{
 			JobDriver_Repair_MakeNewToils_Patch.Equalize(jobDriver.pawn, mech);
-			MechRepairUtility.RepairTick(mech);
+			MechRepairUtility.RepairTick(mech, delta);
 		}
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-			=> instructions.ExtraArgumentsTranspiler(typeof(MechRepairUtility), () => RepairTick(default, default), new[] { Ldarg_0 }, 1);
+			=> instructions.ExtraArgumentsTranspiler(typeof(MechRepairUtility), () => RepairTick(default, default, default), new[] { Ldarg_0 }, 1);
 	}
 }

@@ -567,7 +567,7 @@ namespace ZombieLand
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
 			return Tools.DownedReplacer(instructions, 1).MethodReplacer(
-				SymbolExtensions.GetMethodInfo(() => GenHostility.IsActiveThreatTo(null, null)),
+				AccessTools.Method(typeof(GenHostility), nameof(GenHostility.IsActiveThreatTo), new[] { typeof(IAttackTarget), typeof(Faction) }),
 				SymbolExtensions.GetMethodInfo(() => IsActiveThreatTo(null, null))
 			);
 		}

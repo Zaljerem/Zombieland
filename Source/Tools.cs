@@ -836,8 +836,8 @@ namespace ZombieLand
 			if (terrain.modContentPack.IsCoreMod == false)
 			{
 				if (false
-					|| aff.Contains(TerrainAffordanceDefOf.Diggable)
-					|| aff.Contains(TerrainAffordanceDefOf.GrowSoil)
+					|| aff.Contains(DefDatabase<TerrainAffordanceDef>.GetNamed("Diggable", false))
+					|| aff.Contains(DefDatabase<TerrainAffordanceDef>.GetNamed("GrowSoil", false))
 					)
 					return true;
 				return false;
@@ -1374,7 +1374,7 @@ namespace ZombieLand
 
 		public static void OnGUISimple(this QuickSearchWidget self, Rect rect, Action onFilterChange = null)
 		{
-			if (OriginalEventUtility.EventType == EventType.MouseDown && !rect.Contains(Event.current.mousePosition))
+			if (OriginalEventUtility.EventType == EventType.MouseDown && !rect.Contains(UnityEngine.Event.current.mousePosition))
 				self.Unfocus();
 
 			var color = GUI.color;

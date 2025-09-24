@@ -236,7 +236,7 @@ namespace ZombieLand
 							return false;
 						if (def == ThingDefOf.Apparel_ShieldBelt)
 							return false;
-						if (def == ThingDefOf.Apparel_SmokepopBelt)
+						if (def.thingClass == typeof(SmokepopBelt))
 							return false;
 						if (def.thingClass?.Name.Contains("ApparelHolographic") ?? false)
 							return false; // SoS
@@ -292,7 +292,7 @@ namespace ZombieLand
 		static readonly string[] headShapes = { "Normal", "Pointy", "Wide" };
 		static IEnumerator AssignNewGraphicsIterator(Zombie zombie)
 		{
-			zombie.Drawer.renderer.graphics.ResolveAllGraphics();
+			zombie.Drawer.renderer.SetAllGraphicsDirty();
 			yield return null;
 
 			var headPath = FixGlowingEyeOffset(zombie);
@@ -359,10 +359,11 @@ namespace ZombieLand
 						j++;
 					}
 				}
-				zombie.Drawer.renderer.graphics.nakedGraphic = customBodyGraphic;
+	
 
-				var headRequest = new GraphicRequest(typeof(VariableGraphic), headPath, ShaderDatabase.Cutout, Vector2.one, Color.white, Color.white, null, renderPrecedence, new List<ShaderParameter>(), null);
-				var customHeadGraphic = new VariableGraphic { bodyColor = color };
+				                zombie.customBodyGraphic = customBodyGraphic;
+				
+				                var headRequest = new GraphicRequest(typeof(VariableGraphic), headPath, ShaderDatabase.Cutout, Vector2.one, Color.white, Color.white, null, renderPrecedence, new List<ShaderParameter>(), null);				var customHeadGraphic = new VariableGraphic { bodyColor = color };
 				customHeadGraphic.Init(VariableGraphic.minimal);
 				for (var i = 0; i < 4; i++)
 				{
@@ -374,8 +375,8 @@ namespace ZombieLand
 						j++;
 					}
 				}
-				zombie.Drawer.renderer.graphics.headGraphic = customHeadGraphic;
-				// zombie.Drawer.renderer.graphics.headGraphic = zombie.story.headType.GetGraphic(specialColor ?? color.HexColor(), false, true);
+	
+			zombie.customHeadGraphic = customHeadGraphic;
 			}
 		}
 

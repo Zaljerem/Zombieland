@@ -49,6 +49,8 @@ namespace ZombieLand
 				def.projectile.postExplosionSpawnChance,
 				def.projectile.postExplosionSpawnThingCount,
 				def.projectile.postExplosionGasType,
+				null, // postExplosionGasRadiusOverride
+				255, // postExplosionGasAmount
 				def.projectile.applyDamageToExplosionCellsNeighbors,
 				def.projectile.preExplosionSpawnThingDef,
 				def.projectile.preExplosionSpawnChance,
@@ -56,14 +58,18 @@ namespace ZombieLand
 				def.projectile.explosionChanceToStartFire,
 				def.projectile.explosionDamageFalloff,
 				new float?(origin.AngleToFlat(destination)),
-				null,
-				null,
-				true,
+				null, // ignoredThings
+				null, // affectedAngle
+				true, // doVisualEffects
 				def.projectile.damageDef.expolosionPropagationSpeed,
-				0f,
-				true,
+				0f, // excludeRadius
+				true, // doSoundEffects
 				def.projectile.postExplosionSpawnThingDefWater,
-				0 //def.projectile.screenShakeFactor
+				1f, // screenShakeFactor (default)
+				null, // flammabilityChanceCurve
+				null, // overrideCells
+				null, // postExplosionSpawnSingleThingDef
+				null // preExplosionSpawnSingleThingDef
 			);
 
 			landed = true;

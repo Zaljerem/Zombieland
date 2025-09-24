@@ -146,16 +146,19 @@ namespace ZombieLand
 					}
 					break;
 
-				case SpitterState.Moving:
-					var currentMoveState = Mathf.FloorToInt(spitter.Drawer.tweener.MovedPercent() * 3.999f);
-					if (spitter.moveState != currentMoveState)
-					{
-						spitter.moveState = currentMoveState;
-						CustomDefs.SpitterMove.PlayOneShot(new TargetInfo(spitter.Position, spitter.Map, false));
-					}
-					break;
+                case SpitterState.Moving:
+                    var offset = spitter.Drawer.tweener.TweenedPos - spitter.Position.ToVector3Shifted();
+                    var movePercent = Mathf.Clamp01(offset.magnitude / 0.5f);
+                    var currentMoveState = Mathf.FloorToInt(movePercent * 3.999f);
 
-				case SpitterState.Preparing:
+                    if (spitter.moveState != currentMoveState)
+                    {
+                        spitter.moveState = currentMoveState;
+                        CustomDefs.SpitterMove.PlayOneShot(new TargetInfo(spitter.Position, spitter.Map, false));
+                    }
+                    break;
+
+                case SpitterState.Preparing:
 					if (spitter.tickCounter > 0)
 						spitter.tickCounter--;
 					else

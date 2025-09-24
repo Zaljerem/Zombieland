@@ -129,6 +129,8 @@ namespace ZombieLand
 		public bool isOnFire = false;
 		public bool checkSmashable = true;
 		public float currentDownedAngle = 0f;
+		public VariableGraphic customBodyGraphic;
+		public VariableGraphic customHeadGraphic;
 		bool disposed = false;
 
 		public ZombieStateHandler.TrackMove[] topTrackingMoves = new ZombieStateHandler.TrackMove[Constants.NUMBER_OF_TOP_MOVEMENT_PICKS];
@@ -345,13 +347,13 @@ namespace ZombieLand
 				worldPawns.RemovePawn(this);
 
 			// our graphics
-			var head = Drawer.renderer.graphics.headGraphic as VariableGraphic;
+			var head = Drawer.renderer.renderTree.HeadGraphic as VariableGraphic;
 			head?.Dispose();
-			Drawer.renderer.graphics.headGraphic = null;
+			// Drawer.renderer.renderTree.HeadGraphic = null; // HeadGraphic is a property, not a field, cannot be set to null directly
 
-			var naked = Drawer.renderer.graphics.nakedGraphic as VariableGraphic;
+			var naked = Drawer.renderer.renderTree.BodyGraphic as VariableGraphic; // Assuming BodyGraphic is the equivalent for nakedGraphic
 			naked?.Dispose();
-			Drawer.renderer.graphics.nakedGraphic = null;
+			// Drawer.renderer.renderTree.BodyGraphic = null; // BodyGraphic is a property, not a field, cannot be set to null directly
 
 			// vanilla graphics
 			// Drawer.renderer.graphics.furCoveredGraphic.UnCache();
@@ -387,7 +389,7 @@ namespace ZombieLand
 				bombTickingInterval = -1f;
 				bombWillGoOff = false;
 				hasTankyShield = -1f;
-				_ = Drawer.renderer.graphics.apparelGraphics.RemoveAll(record => record.sourceApparel?.def == CustomDefs.Apparel_BombVest);
+				// _ = Drawer.renderer.graphics.apparelGraphics.RemoveAll(record => record.sourceApparel?.def == CustomDefs.Apparel_BombVest);
 				Map.GetComponent<TickManager>()?.AddExplosion(Position);
 			}
 
@@ -715,7 +717,8 @@ namespace ZombieLand
 			if (progress >= Constants.RUBBLE_EMERGE_DELAY)
 			{
 				var bodyOffset = GenMath.LerpDouble(Constants.RUBBLE_EMERGE_DELAY, 1, -0.45f, 0, progress);
-				renderer.RenderPawnInternal(drawLoc + new Vector3(0, 0, bodyOffset), 0f, true, Rot4.South, renderer.CurRotDrawMode, PawnRenderFlags.DrawNow);
+				var parms = renderer.GetDrawParms(drawLoc + new Vector3(0, 0, bodyOffset), 0f, Rot4.South, renderer.CurRotDrawMode, PawnRenderFlags.DrawNow);
+				renderer.RenderPawnInternal(parms);
 			}
 
 			RenderRubble(drawLoc);
