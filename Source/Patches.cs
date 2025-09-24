@@ -687,34 +687,53 @@ namespace ZombieLand
 
 		// aim chainsaw
 		//
-		[HarmonyPatch(typeof(PawnRenderer))]
-		[HarmonyPatch(nameof(PawnRenderer.DrawEquipment))]
-		static class PawnRenderer_DrawEquipment_Patch
+		// aim chainsaw
+		//
+		[HarmonyPatch(typeof(PawnRenderNode))]
+		[HarmonyPatch(nameof(PawnRenderNode.AppendRequests))]
+		static class PawnRenderNode_AppendRequests_Patch
 		{
-			static bool Prefix(PawnRenderer __instance, Pawn ___pawn, Vector3 rootLoc, Rot4 pawnRotation, PawnRenderFlags flags)
+			static bool Prefix(PawnRenderNode __instance, PawnDrawParms parms, List<PawnGraphicDrawRequest> requests)
 			{
-				if (___pawn.equipment?.Primary is not Chainsaw chainsaw)
+				if (__instance.primaryGraphic?.data?.texPath != "Chainsaw")
 					return true;
 
-				if (___pawn.Dead || ___pawn.Spawned == false)
+				var pawn = __instance.tree.pawn;
+				if (pawn.equipment?.Primary is not Chainsaw chainsaw)
 					return true;
-				if ((flags & PawnRenderFlags.NeverAimWeapon) != PawnRenderFlags.None)
+
+				if (pawn.Dead || pawn.Spawned == false)
+					return true;
+				if ((parms.flags & PawnRenderFlags.NeverAimWeapon) != PawnRenderFlags.None)
 					return true;
 				if (chainsaw.running == false)
 					return true;
-
-				if (chainsaw.swinging == false/* && ___pawn.Drafted && Find.Selector.IsSelected(___pawn) == false*/)
+				if (chainsaw.swinging == false)
 					return true;
 
 				var angle = chainsaw.angle;
+								var rootLocV4 = parms.matrix.GetColumn(3);
+				var rootLoc = new Vector3(rootLocV4.x, rootLocV4.y, rootLocV4.z);
+				var pawnRotation = parms.facing;
+				var equipmentDrawDistanceFactor = pawn.ageTracker.CurLifeStage.equipmentDrawDistanceFactor;
 
 				var vector = new Vector3(0f, (pawnRotation == Rot4.North) ? (-0.0028957527f) : 0.03474903f, 0f);
-				var equipmentDrawDistanceFactor = ___pawn.ageTracker.CurLifeStage.equipmentDrawDistanceFactor;
-				vector += rootLoc + new Vector3(0f, 0f, 0.4f + CustomDefs.Chainsaw.equippedDistanceOffset).RotatedBy(angle) * equipmentDrawDistanceFactor;
+				vector += rootLoc + new Vector3(0f, 0f, 0.4f).RotatedBy(angle) * equipmentDrawDistanceFactor;
 
-				__instance.DrawEquipmentAiming(chainsaw, vector, angle);
+				var matrix = Matrix4x4.TRS(vector, Quaternion.AngleAxis(angle, Vector3.up), Vector3.one);
+				var material = chainsaw.Graphic.MatAt(pawn.Rotation);
+				
+				var mesh = __instance.MeshSetFor(pawn).MeshAt(pawn.Rotation);
+
+				var request = new PawnGraphicDrawRequest(__instance, mesh, material)
+				{
+					preDrawnComputedMatrix = matrix
+				};
+
+				requests.Add(request);
+
 				if (Find.TickManager.Paused)
-					___pawn.rotationTracker.Face(vector);
+					pawn.rotationTracker.Face(vector);
 
 				return false;
 			}
@@ -759,15 +778,7 @@ namespace ZombieLand
 			}
 		}
 
-		[HarmonyPatch(typeof(Gizmo_RefuelableFuelStatus))]
-		[HarmonyPatch(nameof(Gizmo_RefuelableFuelStatus.GizmoOnGUI))]
-		static class Gizmo_RefuelableFuelStatus_GizmoOnGUI_Patch
-		{
-			static bool Prefix(CompRefuelable ___refuelable)
-			{
-				return ___refuelable != null;
-			}
-		}
+ 
 
 		// patch so other zombies do not affect goodwill of other factions
 		//
@@ -854,19 +865,25 @@ namespace ZombieLand
 			}
 		}
 
+ 
+
 		// do not flee from certain zombies
 		//
 		[HarmonyPatch(typeof(SelfDefenseUtility))]
-		[HarmonyPatch(nameof(SelfDefenseUtility.ShouldFleeFrom))]
-		static class SelfDefenseUtility_ShouldFleeFrom_Patch
+		[HarmonyPatch(nameof(SelfDefenseUtility.ShouldStartFleeing))]
+		static class SelfDefenseUtility_ShouldStartFleeing_Patch
 		{
-			static void Postfix(Thing t, Pawn pawn, ref bool __result)
+			static void Postfix(Pawn pawn, ref bool __result)
 			{
 				if (__result == false)
 					return;
-				if (t is not Zombie zombie)
-					return;
-				if (pawn.SeesZombieAsThreat(zombie) == false)
+
+				var nearbyZombies = pawn.Position.GetThingList(pawn.Map)
+					.OfType<Zombie>()
+					.Where(z => pawn.SeesZombieAsThreat(z) == false)
+					.Any();
+
+				if (nearbyZombies)
 					__result = false;
 			}
 		}
@@ -1246,8 +1263,8 @@ namespace ZombieLand
 		}
 
 		[HarmonyPatch(typeof(PathFinder))]
-		[HarmonyPatch(nameof(PathFinder.FindPath))]
-		[HarmonyPatch(new Type[] { typeof(IntVec3), typeof(LocalTargetInfo), typeof(TraverseParms), typeof(PathEndMode), typeof(PathFinderCostTuning) })]
+		[HarmonyPatch(nameof(PathFinder.FindPathNow))]
+		[HarmonyPatch(new Type[] { typeof(IntVec3), typeof(LocalTargetInfo), typeof(TraverseParms), typeof(PathFinderCostTuning), typeof(PathEndMode), typeof(Pawn), typeof(PathRequest.IPathGridCustomizer) })]
 		public static class PathFinder_FindPath_Patch
 		{
 			public static Dictionary<Map, TickManager> tickManagerCache = new();
@@ -1277,7 +1294,7 @@ namespace ZombieLand
 			}
 
 			static readonly MethodInfo m_CellToIndex_int_int = AccessTools.Method(typeof(CellIndices), nameof(CellIndices.CellToIndex), new Type[] { typeof(int), typeof(int) });
-			static readonly FieldInfo f_TraverseParms_pawn = AccessTools.Field(typeof(TraverseParms), nameof(TraverseParms.pawn));
+			 
 			static readonly MethodInfo m_GetExtraCosts = SymbolExtensions.GetMethodInfo(() => GetZombieCosts(null, 0));
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
 			{
@@ -1313,11 +1330,8 @@ namespace ZombieLand
 						break;
 					}
 
-					var traverseParmsIdx = original.GetParameters().FirstIndexOf(info => info.ParameterType == typeof(TraverseParms)) + 1;
-
 					list.Insert(insertLoc++, new CodeInstruction(OpCodes.Add));
-					list.Insert(insertLoc++, new CodeInstruction(OpCodes.Ldarga_S, traverseParmsIdx));
-					list.Insert(insertLoc++, new CodeInstruction(OpCodes.Ldfld, f_TraverseParms_pawn));
+					list.Insert(insertLoc++, new CodeInstruction(OpCodes.Ldarg_S, 5)); // Load the pawn parameter (index 5)
 					list.Insert(insertLoc++, new CodeInstruction(OpCodes.Ldloc_S, gridIdx));
 					list.Insert(insertLoc++, new CodeInstruction(OpCodes.Call, m_GetExtraCosts));
 					break;
@@ -2044,7 +2058,7 @@ namespace ZombieLand
 		// patch for adding zombie faction to new games
 		//
 		[HarmonyPatch(typeof(FactionGenerator))]
-		[HarmonyPatch(nameof(FactionGenerator.GenerateFactionsIntoWorld))]
+		[HarmonyPatch(nameof(FactionGenerator.GenerateFactionsIntoWorldLayer))]
 		static class FactionGenerator_GenerateFactionsIntoWorld_Patch
 		{
 			static void Prefix(List<FactionDef> factions)
@@ -2071,29 +2085,35 @@ namespace ZombieLand
 				var factionDefs = ___allFactions.Select(f => f.def).ToList();
 				if (factionDefs.Contains(ZombieDefOf.Zombies) == false)
 				{
-					var parms = new FactionGeneratorParms(ZombieDefOf.Zombies);
-					var zombies = FactionGenerator.NewGeneratedFaction(parms);
-					foreach (var faction in ___allFactions)
-					{
-						var rel1 = new FactionRelation()
-						{
-							other = faction,
-							baseGoodwill = 0,
-							kind = FactionRelationKind.Hostile
-						};
-						zombies.relations.Add(rel1);
-
-						var rel2 = new FactionRelation()
-						{
-							other = zombies,
-							baseGoodwill = 0,
-							kind = FactionRelationKind.Hostile
-						};
-						faction.relations.Add(rel2);
-
-					}
-					___allFactions.Add(zombies);
-				}
+					FactionGenerator.CreateFactionAndAddToManager(ZombieDefOf.Zombies);
+					
+										// Retrieve the newly created zombie faction. It should be the last one added.
+										// This is a bit fragile, but CreateFactionAndAddToManager doesn't return the Faction.
+										var zombies = Find.World.factionManager.AllFactions.LastOrDefault(f => f.def == ZombieDefOf.Zombies);
+					
+										if (zombies != null)
+										{
+											foreach (var faction in ___allFactions)
+											{
+												// Add relation from new zombie faction to existing faction
+												var rel1 = new FactionRelation()
+												{
+													other = faction,
+													baseGoodwill = 0,
+													kind = FactionRelationKind.Hostile
+												};
+												zombies.relations.Add(rel1);
+					
+												// Add relation from existing faction to new zombie faction
+												var rel2 = new FactionRelation()
+												{
+													other = zombies,
+													baseGoodwill = 0,
+													kind = FactionRelationKind.Hostile
+												};
+												faction.relations.Add(rel2);
+											}
+										}				}
 			}
 		}
 
@@ -2787,43 +2807,58 @@ namespace ZombieLand
 			}
 		}
 
-		// make zombies without head not have a headstump
-		//
-		[HarmonyPatch(typeof(PawnGraphicSet))]
-		[HarmonyPatch(nameof(PawnGraphicSet.HeadMatAt))]
-		static class PawnGraphicSet_HeadMatAt_Patch
+
+
+		static readonly Dictionary<int, Material> headStumpGraphics = new();
+
+		static Material GetHeadStumpMaterialTranspiler(Graphic headGraphic, Rot4 rot, Thing thing, PawnRenderer renderer, PawnDrawParms parms)
 		{
-			static readonly Dictionary<int, Material> headStumpGraphics = new();
+			Pawn pawn = renderer.pawn;
 
-			static void Postfix(Pawn ___pawn, RotDrawMode bodyCondition, bool stump, ref Material __result)
+			Material originalMaterial = headGraphic.MatAt(rot, thing);
+
+			if (pawn is not Zombie zombie || zombie.health.hediffSet.HasHead)
+				return originalMaterial;
+
+			RotDrawMode bodyCondition = parms.rotDrawMode; // Use bodyDrawType from parms
+
+			var id = originalMaterial.GetInstanceID() * (bodyCondition == RotDrawMode.Rotting ? -1 : 1);
+			if (headStumpGraphics.TryGetValue(id, out var mat) == false)
 			{
-				if (stump == false || ___pawn is not Zombie)
-					return;
-
-				var id = __result.GetInstanceID() * (bodyCondition == RotDrawMode.Rotting ? -1 : 1);
-				if (headStumpGraphics.TryGetValue(id, out var mat) == false)
-				{
-					var red = bodyCondition == RotDrawMode.Rotting ? 8f : 110f;
-					mat = new Material(__result) { color = new Color(red / 255f, 0, 0) };
-					headStumpGraphics[id] = mat;
-				}
-				__result = mat;
+				var red = bodyCondition == RotDrawMode.Rotting ? 8f : 110f;
+				mat = new Material(originalMaterial) { color = new Color(red / 255f, 0, 0) };
+				headStumpGraphics[id] = mat;
 			}
+			return mat;
 		}
 
-		// update electrical zombie humming
-		//
-		[HarmonyPatch(typeof(Root_Play))]
-		[HarmonyPatch(nameof(Root_Play.Update))]
-		static class Root_Play_Update_Patch
+		[HarmonyPatch(typeof(PawnRenderer))]
+		[HarmonyPatch(nameof(PawnRenderer.RenderPawnInternal))]
+		static class PawnRenderer_RenderPawnInternal_Transpiler_Patch
 		{
-			static void Postfix()
+			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
 			{
-				var tickManager = Find.CurrentMap?.GetComponent<TickManager>();
-				if (tickManager == null)
-					return;
-				tickManager.UpdateElectricalHumming();
-				tickManager.UpdateTankMovement();
+				var m_MatAt = AccessTools.Method(typeof(Graphic), nameof(Graphic.MatAt), new Type[] { typeof(Rot4), typeof(Thing) });
+				var m_GetHeadStumpMaterialTranspiler = AccessTools.Method(typeof(Patches), nameof(GetHeadStumpMaterialTranspiler));
+
+				var list = instructions.ToList();
+				for (int i = 0; i < list.Count; i++)
+				{
+					// Look for the pattern: ldarg.0 (PawnRenderer), ldfld HeadGraphic, ldarg.s rot, ldnull, callvirt MatAt
+					// This is a simplified pattern, might need adjustment based on actual IL
+					if (list[i].opcode == OpCodes.Callvirt && list[i].operand is MethodInfo method && method == m_MatAt)
+					{
+						// Assuming the Graphic instance (headGraphic) is on the stack before MatAt call
+						// Assuming rot and thing are also on the stack
+						// We need to load PawnRenderer instance (ldarg.0) and PawnDrawParms (ldarg.1) before calling our helper
+						list.Insert(i + 1, new CodeInstruction(OpCodes.Ldarg_0)); // Load PawnRenderer instance
+						list.Insert(i + 2, new CodeInstruction(OpCodes.Ldarg_1)); // Load PawnDrawParms instance
+						list[i].opcode = OpCodes.Call; // Change callvirt to call for static method
+						list[i].operand = m_GetHeadStumpMaterialTranspiler; // Replace with our helper method
+						break; // Only replace the first occurrence
+					}
+				}
+				return list;
 			}
 		}
 
@@ -2865,7 +2900,7 @@ namespace ZombieLand
 			[HarmonyPriority(Priority.First)]
 			static bool Prefix(PawnRenderer __instance, Vector3 drawLoc)
 			{
-				if (__instance.graphics.pawn is not Zombie zombie)
+				if (__instance.pawn is not Zombie zombie)
 					return true;
 
 				if (zombie.needsGraphics)
@@ -2910,7 +2945,7 @@ namespace ZombieLand
 			[HarmonyPriority(Priority.First)]
 			static void Postfix(PawnRenderer __instance, Vector3 drawLoc)
 			{
-				if (__instance.graphics.pawn is not Zombie zombie)
+				if (__instance.pawn is not Zombie zombie)
 					return;
 
 				if (zombie.isAlbino && zombie.scream > 0)
@@ -2964,7 +2999,7 @@ namespace ZombieLand
 			// we don't use a postfix so that someone that patches and skips RenderPawnAt will also skip RenderExtras
 			static void RenderExtras(PawnRenderer renderer, Vector3 drawLoc)
 			{
-				if (renderer.graphics.pawn is not Zombie zombie)
+				if (renderer.pawn is not Zombie zombie)
 					return;
 				if (zombie.state == ZombieState.Emerging || zombie.GetPosture() != PawnPosture.Standing)
 					return;
@@ -2974,32 +3009,36 @@ namespace ZombieLand
 				Verse.TickManager tm = null;
 				var orientation = zombie.Rotation;
 
-				if (zombie.IsSuicideBomber)
-				{
-					tm = Find.TickManager;
-					var currentTick = tm.TicksAbs;
-					var interval = (int)zombie.bombTickingInterval;
-					if (currentTick >= zombie.lastBombTick + interval)
-						zombie.lastBombTick = currentTick;
-					else if (currentTick <= zombie.lastBombTick + interval / 2)
-					{
-						if (zombie.state != ZombieState.Emerging)
-						{
-							var bombLightLoc = drawLoc + new Vector3(0, 0.1f, -0.2f);
-							var scale = 1f;
-							if (orientation == Rot4.South || orientation == Rot4.North)
-								bombLightLoc.z += 0.05f;
-							if (orientation == Rot4.North)
-							{ bombLightLoc.y -= 0.1f; scale = 1.5f; }
-							if (orientation == Rot4.West)
-							{ bombLightLoc.x -= 0.25f; bombLightLoc.z -= 0.05f; }
-							if (orientation == Rot4.East)
-							{ bombLightLoc.x += 0.25f; bombLightLoc.z -= 0.05f; }
-							GraphicToolbox.DrawScaledMesh(MeshPool.plane10, Constants.BOMB_LIGHT, bombLightLoc, Quaternion.identity, scale, scale);
-						}
-					}
-				}
-
+									if (zombie.IsSuicideBomber)
+									{
+										tm = Find.TickManager;
+										var currentTick = tm.TicksAbs;
+										var interval = (int)zombie.bombTickingInterval;
+										if (currentTick >= zombie.lastBombTick + interval)
+											zombie.lastBombTick = currentTick;
+										else if (currentTick <= zombie.lastBombTick + interval / 2)
+										{
+											if (zombie.state != ZombieState.Emerging)
+											{
+												var bombLightLoc = drawLoc + new Vector3(0, 0.1f, -0.2f);
+												var scale = 1f;
+												if (orientation == Rot4.South || orientation == Rot4.North)
+													bombLightLoc.z += 0.05f;
+												if (orientation == Rot4.North)
+												{ bombLightLoc.y -= 0.1f; scale = 1.5f; }
+												if (orientation == Rot4.West)
+												{ bombLightLoc.x -= 0.25f; bombLightLoc.z -= 0.05f; }
+												if (orientation == Rot4.East)
+												{ bombLightLoc.x += 0.25f; bombLightLoc.z -= 0.05f; }
+												GraphicToolbox.DrawScaledMesh(MeshPool.plane10, Constants.BOMB_LIGHT, bombLightLoc, Quaternion.identity, scale, scale);
+											}
+										}
+										// Draw bomb vest
+										var bombVestLoc = drawLoc + new Vector3(0, 0.05f, 0); // Adjust Y offset as needed
+										var bombVestMesh = MeshPool.plane10; // Or a more appropriate mesh
+										var bombVestMaterial = Constants.BOMB_VEST; // Assuming this exists
+										GraphicToolbox.DrawScaledMesh(bombVestMesh, bombVestMaterial, bombVestLoc, Quaternion.identity, 1f, 1f);
+								}
 				if (zombie.isHealer && zombie.state != ZombieState.Emerging && zombie.healInfo.Count > 0)
 				{
 					var i = 0;
@@ -3151,7 +3190,7 @@ namespace ZombieLand
 						var glowLoc = drawLoc;
 						glowLoc.y -= Altitudes.AltInc / 2f;
 
-						var mesh = MeshPool.humanlikeBodySet.MeshAt(orientation);
+						var mesh = MeshPool.GetMeshSetForWidth(MeshPool.HumanlikeBodyWidth).MeshAt(orientation);
 						var glowingMaterials = Constants.ELECTRIC_GLOWING[zombie.story.bodyType];
 						var idx = orientation == Rot4.East || orientation == Rot4.West ? 0 : (orientation == Rot4.North ? 1 : 2);
 						GraphicToolbox.DrawScaledMesh(mesh, glowingMaterials[idx], glowLoc, Quaternion.identity, 1f, 1f);
@@ -3300,7 +3339,7 @@ namespace ZombieLand
 
 			static void Postfix(Map __instance)
 			{
-				if (WorldRendererUtility.WorldRenderedNow)
+				if (RimWorld.Planet.WorldRendererUtility.WorldRendered)
 					return;
 				if (ZombieSettings.Values.floatingZombies == false)
 					return;
@@ -3369,27 +3408,7 @@ namespace ZombieLand
 			}
 		}
 
-		// patch for giving zombies accessories like bomb vests or tanky suits
-		//
-		[HarmonyPatch(typeof(PawnGraphicSet))]
-		[HarmonyPatch(nameof(PawnGraphicSet.ResolveApparelGraphics))]
-		static class PawnGraphicSet_ResolveApparelGraphics_Patch
-		{
-			[HarmonyPriority(Priority.Last)]
-			static void Postfix(PawnGraphicSet __instance)
-			{
-				if (__instance.pawn is not Zombie zombie)
-					return;
 
-				if (zombie.IsSuicideBomber)
-				{
-					var apparel = new Apparel() { def = CustomDefs.Apparel_BombVest };
-					if (__instance.apparelGraphics.Any(a => a.sourceApparel.def == CustomDefs.Apparel_BombVest) == false)
-						if (ApparelGraphicRecordGetter.TryGetGraphicApparel(apparel, BodyTypeDefOf.Hulk, out var record))
-							__instance.apparelGraphics.Add(record);
-				}
-			}
-		}
 
 		// patch to inform zombie generator that apparel texture could not load
 		[HarmonyPatch(typeof(Graphic_Multi))]
@@ -4138,7 +4157,7 @@ namespace ZombieLand
 						var max = GenMath.LerpDoubleClamped(0, 5, min, 90, difficulty);
 						CustomDefs.TarSmoke.graphicData.color = new Color(0, 0, 0, alpha);
 						CustomDefs.TarSmoke.gas.expireSeconds = new FloatRange(min, max);
-						GenExplosion.DoExplosion(pos, map, 1 + difficulty, DamageDefOf.Smoke, null, (int)(50 * difficulty), -1f, CustomDefs.TarSmokePop, null, null, null, CustomDefs.TarSmoke, 1f, 1, GasType.BlindSmoke, false, null, 0f, 1, 0f, false, null, null);
+						GenExplosion.DoExplosion(pos, map, 1 + difficulty, DamageDefOf.Smoke, null, (int)(50 * difficulty), -1f, CustomDefs.TarSmokePop, null, null, null, CustomDefs.TarSmoke, 1f, 1, GasType.BlindSmoke, null, 255, false, null, 0f, 1, 0f, false, null, null, null, true, 1f, 0f, true, null, 1f, null, null, null, null);
 					}
 				}
 
@@ -4610,27 +4629,14 @@ namespace ZombieLand
 
 		// patches to prevent interaction with zombies
 		//
-		[HarmonyPatch(typeof(Pawn_InteractionsTracker))]
-		[HarmonyPatch(nameof(Pawn_InteractionsTracker.TryInteractWith))]
-		static class Pawn_InteractionsTracker_TryInteractWith_Patch
-		{
-			static IEnumerable<CodeInstruction> Transpiler(ILGenerator generator, MethodBase method, IEnumerable<CodeInstruction> instructions)
-			{
-				var conditions = new List<CodeInstruction>();
-				conditions.AddRange(Tools.NotZombieInstructions(generator, method));
-				conditions.AddRange(Tools.NotZombieInstructions(generator, method, "recipient"));
-				var transpiler = Tools.GenerateReplacementCallTranspiler(conditions);
-				return transpiler(generator, instructions);
-			}
-		}
-		[HarmonyPatch(typeof(Pawn_InteractionsTracker))]
-		[HarmonyPatch(nameof(Pawn_InteractionsTracker.InteractionsTrackerTick))]
+		[HarmonyPatch(typeof(RimWorld.Pawn_InteractionsTracker))]
+		[HarmonyPatch(nameof(RimWorld.Pawn_InteractionsTracker.InteractionsTrackerTickInterval))]
 		static class Pawn_InteractionsTracker_InteractionsTrackerTick_Patch
 		{
-			static IEnumerable<CodeInstruction> Transpiler(ILGenerator generator, MethodBase method, IEnumerable<CodeInstruction> instructions)
+			static IEnumerable<CodeInstruction> Transpiler(ILGenerator generator, MethodBase originalMethod, IEnumerable<CodeInstruction> instructions)
 			{
-				var conditions = Tools.NotZombieInstructions(generator, method);
-				var transpiler = Tools.GenerateReplacementCallTranspiler(conditions);
+				var conditions = Tools.NotZombieInstructions(generator, originalMethod);
+				var transpiler = Tools.GenerateReplacementCallTranspiler(conditions, originalMethod);
 				return transpiler(generator, instructions);
 			}
 		}
@@ -4766,7 +4772,7 @@ namespace ZombieLand
 				def.smeltProducts = null;
 				def.drawGUIOverlay = false;
 				def.hasTooltip = false;
-				def.hideAtSnowDepth = 99f;
+				def.hideAtSnowOrSandDepth = 99f;
 				def.inspectorTabs = new List<Type>();
 				def.passability = Traversability.Standable;
 				def.stackLimit = 1;
@@ -5082,7 +5088,7 @@ namespace ZombieLand
 		// patch to remove immunity ticks on zombies
 		//
 		[HarmonyPatch(typeof(ImmunityHandler))]
-		[HarmonyPatch(nameof(ImmunityHandler.ImmunityHandlerTick))]
+		[HarmonyPatch(nameof(ImmunityHandler.ImmunityHandlerTickInterval))]
 		static class ImmunityHandler_ImmunityHandlerTick_Patch
 		{
 			[HarmonyPriority(Priority.First)]
@@ -5120,7 +5126,7 @@ namespace ZombieLand
 		// patch to allow zombies to occupy the same spot without collision
 		//
 		[HarmonyPatch(typeof(Pawn_PathFollower))]
-		[HarmonyPatch(nameof(Pawn_PathFollower.WillCollideWithPawnOnNextPathCell))]
+		[HarmonyPatch(nameof(Pawn_PathFollower.WillCollideNextCell), MethodType.Getter)]
 		static class Pawn_PathFollower_WillCollideWithPawnOnNextPathCell_Patch
 		{
 			[HarmonyPriority(Priority.First)]
@@ -5605,15 +5611,20 @@ namespace ZombieLand
 		// add job to turn on zombie shocker
 		// add roping job
 		//
-		[HarmonyPatch(typeof(FloatMenuMakerMap))]
-		[HarmonyPatch(nameof(FloatMenuMakerMap.AddHumanlikeOrders))]
-		static class FloatMenuMakerMap_AddHumanlikeOrders_Patch
+		[HarmonyPatch(typeof(RimWorld.FloatMenuMakerMap))]
+		[HarmonyPatch(nameof(RimWorld.FloatMenuMakerMap.GetOptions))]
+		static class FloatMenuMakerMap_GetOptions_Patch
 		{
 			public static readonly string zapZombiesLabel = "ZapZombies".Translate();
 			public static readonly string ropeZombieLabel = "RopeZombie".Translate();
 
-			static void Postfix(Vector3 clickPos, Pawn pawn, List<FloatMenuOption> opts)
+			static void Postfix(List<Pawn> selectedPawns, Vector3 clickPos, ref List<FloatMenuOption> __result)
 			{
+				// Assuming only one pawn is selected for these actions
+				var pawn = selectedPawns.FirstOrDefault();
+				if (pawn == null)
+					return;
+
 				var shocker = pawn.Map.thingGrid.ThingAt<ZombieShocker>(IntVec3.FromVector3(clickPos));
 				if (shocker != null)
 				{
@@ -5625,7 +5636,7 @@ namespace ZombieLand
 								var job = JobMaker.MakeJob(CustomDefs.ZapZombies, shocker);
 								_ = pawn.jobs.TryTakeOrderedJob(job, new JobTag?(JobTag.Misc), false);
 							};
-							opts.Add(new FloatMenuOption(zapZombiesLabel, job));
+							__result.Add(new FloatMenuOption(zapZombiesLabel, job));
 						}
 				}
 
@@ -5638,7 +5649,7 @@ namespace ZombieLand
 						pawn.drafter.Drafted = true;
 						_ = pawn.jobs.TryTakeOrderedJob(job, new JobTag?(JobTag.Misc), false);
 					};
-					opts.Add(new FloatMenuOption(ropeZombieLabel, job));
+					__result.Add(new FloatMenuOption(ropeZombieLabel, job));
 				}
 			}
 		}

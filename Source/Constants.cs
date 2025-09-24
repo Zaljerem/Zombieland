@@ -188,6 +188,7 @@ namespace ZombieLand
 
 		public static readonly Material RAGE_EYE = MaterialPool.MatFrom("RageEye", ShaderDatabase.Mote);
 		public static readonly Material BOMB_LIGHT = MaterialPool.MatFrom("BombLight", ShaderDatabase.MoteGlow);
+		public static readonly Material BOMB_VEST = MaterialPool.MatFrom("BombVest", ShaderDatabase.Cutout);
 		public static readonly Material[][] TANKYSHIELDS = Tools.GetDamageableGraphics("TankyShield", 2, 4);
 		public static readonly Material[][] TANKYHELMETS = Tools.GetDamageableGraphics("TankyHelmet", 3, 4);
 		public static readonly Material[][] MINERHELMET = Tools.GetDamageableGraphics("MinerHelmet", 4, 0);
