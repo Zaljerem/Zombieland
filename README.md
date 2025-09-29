@@ -1,10 +1,9 @@
 # Zombieland Mod (RimWorld)
 
-## About
-
 # Updated for RimWorld 1.6!
 # Still in testing so use at your own risk!
 
+## About
 Do you like The Walking Dead? Are you afraid of The Undead? Good. Because this mod will give you the Heebie-jeebies!
 
 This is not your average Zombie mod. In Zombieland, Zombies are everywhere! They crawl out of the ground in masses, hunt you down, bash your doors and eat you alive! At night, their blood lust will steer them towards your base. So better be prepared!
