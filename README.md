@@ -3,6 +3,7 @@
 ## About
 
 # Updated for RimWorld 1.6!
+# Still in testing so use at your own risk!
 
 Do you like The Walking Dead? Are you afraid of The Undead? Good. Because this mod will give you the Heebie-jeebies!
 
