@@ -103,7 +103,7 @@ namespace ZombieLand
 
 		public List<IntVec3> explosions = new();
 		public IncidentInfo incidentInfo = new();
-		public ZombiePathing zombiePathing;
+		
 
 		public List<SoSTools.Floater> floatingSpaceZombiesBack;
 		public List<SoSTools.Floater> floatingSpaceZombiesFore;
@@ -119,9 +119,8 @@ namespace ZombieLand
 
 		public TickManager(Map map) : base(map)
 		{
-			Log.Message("TickManager created");
-			zombiePathing = new ZombiePathing(map);
-			zombiePathing.UpdateRegions();
+			/*Log.Message("TickManager created");*/
+			
 
 			currentColonyPoints = 100;
 			mapSpawnedTicks = 0;
@@ -220,8 +219,7 @@ namespace ZombieLand
 		public void Cleanup()
 		{
 			StopAmbientSound();
-			zombiePathing.running = false;
-			zombiePathing = null;
+			
 		}
 
 		public override void ExposeData()

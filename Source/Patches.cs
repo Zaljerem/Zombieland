@@ -160,7 +160,9 @@ namespace ZombieLand
 
 		// patch for debugging: show zombie avoidance grid
 		//
-		[HarmonyPatch(typeof(MapInterface))]
+
+
+/*[HarmonyPatch(typeof(MapInterface))]
 		[HarmonyPatch(nameof(MapInterface.MapInterfaceUpdate))]
 		[StaticConstructorOnStartup]
 		class MapInterface_MapInterfaceUpdate_Patch
@@ -246,7 +248,7 @@ namespace ZombieLand
 					}
 				}
 			}
-		}
+		}*/
 
 		// patch for debugging: show zombie pathing grid around the mouse
 		//
@@ -266,32 +268,7 @@ namespace ZombieLand
 					return;
 
 				var basePos = UI.MouseCell();
-				var info = ZombieWanderer.GetMapInfo(map);
 
-				void DrawGrid(bool ignoreBuildings, Color color, Vector2 offset)
-				{
-					var noneColor = new Color(1f, 0, 0, 0.5f);
-					Tools.GetCircle(4).Select(vec => vec + basePos).Do(cell =>
-					{
-						var labelVec = GenMapUI.LabelDrawPosFor(cell) + offset;
-						var newPos = info.GetParent(cell, ignoreBuildings);
-						if (newPos.IsValid == false)
-						{
-							GenMapUI.DrawThingLabel(labelVec, "⁜", noneColor);
-							return;
-						}
-
-						var d = newPos - cell;
-						var n = (d.x + 1) + (d.z + 1) * 3;
-						var arrow = "↙↓↘←◌→↖↑↗".Substring(n, 1);
-						GenMapUI.DrawThingLabel(labelVec, arrow, color);
-					});
-				}
-
-				if (Constants.SHOW_NORMAL_PATHING_GRID)
-					DrawGrid(false, Color.white, new Vector2(0, -5));
-				if (Constants.SHOW_DIRECT_PATHING_GRID)
-					DrawGrid(true, Color.yellow, new Vector2(0, 5));
 			}
 		}
 
@@ -1269,159 +1246,18 @@ namespace ZombieLand
 			}
 		}
 
-		[HarmonyPatch(typeof(PathFinder))]
-		[HarmonyPatch(nameof(PathFinder.FindPathNow))]
-		[HarmonyPatch(new Type[] { typeof(IntVec3), typeof(LocalTargetInfo), typeof(TraverseParms), typeof(PathFinderCostTuning), typeof(PathEndMode), typeof(PathRequest.IPathGridCustomizer) })]
-		public static class PathFinder_FindPath_Patch
+
+
+
+		/*[HarmonyPatch(typeof(RegionAndRoomUpdater))]
+		[HarmonyPatch(typeof(RegionAndRoomUpdater), "CreateOrUpdateRooms", MethodType.Normal)]
+		static class RegionAndRoomUpdater_CreateOrUpdateRooms_Patch
 		{
-			public static Dictionary<Map, TickManager> tickManagerCache = new();
-
-			// infected colonists will still path so exclude them from this check
-			// by returning 0 - currently disabled because it does cost too much
-			static int GetZombieCosts(Pawn pawn, int idx)
+			static void Postfix(Map ___map)
 			{
-				if (pawn == null)
-					return 0;
-				if (Tools.ShouldAvoidZombies(pawn) == false)
-					return 0;
-
-				var map = pawn.Map;
-				if (map == null)
-					return 0;
-				if (tickManagerCache.TryGetValue(map, out var tickManager) == false)
-				{
-					tickManager = map.GetComponent<TickManager>();
-					if (tickManager == null)
-						return 0;
-					tickManagerCache[map] = tickManager;
-				}
-				if (tickManager.avoidGrid == null)
-					return 0;
-				return tickManager.avoidGrid.GetCosts()[idx];
+				___map.GetComponent<TickManager>()?.zombiePathing?.UpdateRegions();
 			}
-
-			static readonly MethodInfo m_CellToIndex_int_int = AccessTools.Method(typeof(CellIndices), nameof(CellIndices.CellToIndex), new Type[] { typeof(IntVec3) });
-			 
-			static readonly MethodInfo m_GetExtraCosts = SymbolExtensions.GetMethodInfo(() => GetZombieCosts(null, 0));
-			/*
-			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
-			{
-				var list = instructions.ToList();
-				while (true)
-				{
-					var t_PathFinderNodeFast = AccessTools.Inner(typeof(PathFinderJob), "CalcNode");
-					var f_knownCost = AccessTools.Field(t_PathFinderNodeFast, "gCost");
-					if (f_knownCost == null)
-					{
-						Error($"Cannot find field Verse.AI.PathFinder.CalcNode.gCost");
-						break;
-					}
-
-					var idx = list.FirstIndexOf(ins => ins.Calls(m_CellToIndex_int_int));
-					if (idx < 0 || idx >= list.Count() || list[idx + 1].opcode != OpCodes.Stloc_S)
-					{
-						Error($"Cannot find CellToIndex(n,n)/Stloc_S in {original.FullDescription()}");
-						break;
-					}
-					var gridIdx = list[idx + 1].operand;
-
-					var insertLoc = list.FirstIndexOf(ins => ins.opcode == OpCodes.Ldfld && (FieldInfo)ins.operand == f_knownCost);
-					while (insertLoc >= 0 && insertLoc < list.Count)
-					{
-						if (list[insertLoc].opcode == OpCodes.Add)
-							break;
-						insertLoc++;
-					}
-					if (insertLoc < 0 || insertLoc >= list.Count())
-					{
-						Error($"Cannot find final add in {original.FullDescription()}");
-						break;
-					}
-
-					list.InsertRange(insertLoc + 1, new[]
-					{
-						new CodeInstruction(OpCodes.Ldarg_0),
-						new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(original.DeclaringType, "pawn")),
-						new CodeInstruction(OpCodes.Ldloc, gridIdx),
-						new CodeInstruction(OpCodes.Call, m_GetExtraCosts),
-						new CodeInstruction(OpCodes.Add)
-					});
-
-					return list;
-				}
-				return list;
-			}
-			*/
-		}
-		[HarmonyPatch(typeof(Pawn_PathFollower))]
-		[HarmonyPatch("NeedNewPath")]
-		/*
-		static class Pawn_PathFollower_NeedNewPath_Patch
-		{
-			static readonly MethodInfo m_ShouldCollideWithPawns = AccessTools.Method(typeof(RimWorld.PawnUtility), "ShouldCollideWithPawns", new Type[] { typeof(Pawn) });
-
-			static bool ZombieInPath(Pawn_PathFollower __instance, Pawn pawn)
-			{
-				if (Tools.ShouldAvoidZombies(pawn) == false)
-					return false;
-				if (pawn.RaceProps.Humanlike == false)
-					return false;
-				if (pawn.RaceProps.IsFlesh == false)
-					return false;
-				if (AlienTools.IsFleshPawn(pawn) == false)
-					return false;
-				if (SoSTools.IsHologram(pawn))
-					return false;
-
-				var path = __instance.curPath;
-				if (path.NodesLeftCount < 5)
-					return false;
-				var lookAhead = path.Peek(4);
-				var destination = path.LastNode;
-				if ((lookAhead - destination).LengthHorizontalSquared < 25)
-					return false;
-
-				var map = pawn.Map;
-				var tickManager = map.GetComponent<TickManager>();
-				if (tickManager == null)
-					return false;
-				var costs = tickManager.avoidGrid.GetCosts();
-				var zombieDanger = costs[lookAhead.x + lookAhead.z * map.Size.x];
-				return (zombieDanger > 0);
-			}
-
-			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
-			{
-				var list = instructions.ToList();
-				var idx = list.FirstIndexOf(code => code.operand is MethodInfo minfo && minfo.Name == m_ShouldCollideWithPawns.Name && minfo.DeclaringType == m_ShouldCollideWithPawns.DeclaringType) - 1;
-				if (idx > 0 && idx < list.Count())
-				{
-					if (list[idx].opcode == OpCodes.Ldfld)
-					{
-						var jump = generator.DefineLabel();
-
-						// here we should have a Ldarg_0 but original code has one with a label on it so we reuse it
-						list.Insert(idx++, new CodeInstruction(OpCodes.Ldarg_0));
-						list.Insert(idx++, new CodeInstruction(OpCodes.Ldfld, typeof(Pawn_PathFollower).Field("pawn")));
-						list.Insert(idx++, new CodeInstruction(OpCodes.Call, SymbolExtensions.GetMethodInfo(() => ZombieInPath(null, null))));
-						list.Insert(idx++, new CodeInstruction(OpCodes.Brfalse, jump));
-						list.Insert(idx++, new CodeInstruction(OpCodes.Ldc_I4_1));
-						list.Insert(idx++, new CodeInstruction(OpCodes.Ret));
-						list.Insert(idx++, new CodeInstruction(OpCodes.Ldarg_0) { labels = new List<Label>() { jump } }); // add the missing Ldarg_0 from original code here
-					}
-					else
-						Error("Cannot find Ldfld one instruction before " + m_ShouldCollideWithPawns + " in Pawn_PathFollower.NeedNewPath");
-				}
-				else
-					Error("Cannot find " + m_ShouldCollideWithPawns + " in Pawn_PathFollower.NeedNewPath");
-
-				foreach (var instr in list)
-					yield return instr;
-			}
-		}
-		*/
-
-		// patch to allow the zombieshocker to be placed over walls without them being replaced
+		}*/
 		//
 		[HarmonyPatch(typeof(GenSpawn))]
 		[HarmonyPatch(nameof(GenSpawn.SpawningWipes))]
@@ -1879,7 +1715,9 @@ namespace ZombieLand
 
 		// patch to add a pheromone info section to the rimworld cell inspector
 		//
-		[HarmonyPatch(typeof(EditWindow_DebugInspector))]
+
+
+		/*[HarmonyPatch(typeof(EditWindow_DebugInspector))]
 		[HarmonyPatch("CurrentDebugString")]
 		static class EditWindow_DebugInspector_CurrentDebugString_Patch
 		{
@@ -2069,9 +1907,7 @@ namespace ZombieLand
 
 				return list;
 			}
-		}
-
-		// patch for adding zombie faction to new games
+		}*/
 		//
 		[HarmonyPatch(typeof(FactionGenerator))]
 		[HarmonyPatch(nameof(FactionGenerator.GenerateFactionsIntoWorldLayer))]
@@ -5480,15 +5316,7 @@ namespace ZombieLand
 
 		// update zombie pathing
 		//
-		[HarmonyPatch(typeof(RegionAndRoomUpdater))]
-		[HarmonyPatch(typeof(RegionAndRoomUpdater), "CreateOrUpdateRooms", MethodType.Normal)]
-		static class RegionAndRoomUpdater_CreateOrUpdateRooms_Patch
-		{
-			static void Postfix(Map ___map)
-			{
-				___map.GetComponent<TickManager>()?.zombiePathing?.UpdateRegions();
-			}
-		}
+
 
 		// adds sudden zombies to unfogged rooms
 		//

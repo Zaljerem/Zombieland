@@ -649,7 +649,7 @@ namespace ZombieLand
 			if (RunWithFailureCheck(out var ex13, () =>
 			{
 				zombie.Drawer.leaner = new ZombieLeaner(zombie);
-				zombie.pather ??= new Pawn_PathFollower(zombie);
+				//zombie.pather ??= new Pawn_PathFollower(zombie);
 				if (zombie.Map != null)
 				{
 					zombie.pather.StartPath(IntVec3.Invalid, PathEndMode.OnCell);

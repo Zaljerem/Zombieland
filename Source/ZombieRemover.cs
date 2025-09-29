@@ -121,7 +121,7 @@ namespace ZombieLand
 		{
 			_ = map.components.RemoveAll(component => component.IsZombieType());
 
-			PathFinder_FindPath_Patch.tickManagerCache = new Dictionary<Map, TickManager>();
+			
 
 			var zombies = PawnsOfType<Zombie>(map);
 			foreach (var zombie in zombies)

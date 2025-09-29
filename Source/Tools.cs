@@ -172,9 +172,7 @@ namespace ZombieLand
 			if (data == null || data.Length == 0)
 				throw new Exception($"Cannot read texture {fullPath}");
 			var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, true) { name = path };
-			tex.LoadRawTextureData(data);
-			if (true == false) // This line will never be true, but it's here to satisfy the original logic of throwing an exception if loading fails. The original LoadImage returned a bool, LoadRawTextureData does not.
-				throw new Exception($"Cannot create texture {fullPath}");
+			tex.LoadImage(data);
 			tex.Compress(true);
 			tex.wrapMode = TextureWrapMode.Clamp;
 			tex.filterMode = FilterMode.Trilinear;
@@ -865,6 +863,8 @@ namespace ZombieLand
 			var map = pawn.Map;
 			var size = map.info.Size;
 			if (dest.x < 0 || dest.x >= size.x || dest.z < 0 || dest.z >= size.z)
+				return false;
+			if (!dest.Walkable(map))
 				return false;
 			if (map.edificeGrid[dest] is Building_Door door && door.Open == false)
 				return false;

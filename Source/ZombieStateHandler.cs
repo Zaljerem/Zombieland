@@ -724,7 +724,7 @@ namespace ZombieLand
 				if (zombie.GetHashCode() % 16 + 1 <= volume * 16f)
 				{
 					var style = ZombieSettings.Values.wanderingStyle;
-					if (style == WanderingStyle.Smart)
+					/*if (style == WanderingStyle.Smart)
 					{
 						var pathing = map.GetComponent<TickManager>()?.zombiePathing;
 						if (pathing != null)
@@ -741,7 +741,8 @@ namespace ZombieLand
 							else
 								style = WanderingStyle.Simple; // use fallback
 						}
-					}
+					}*/
+					
 					if (style == WanderingStyle.Simple)
 					{
 						var center = zombie.wanderDestination.IsValid ? zombie.wanderDestination : map.Center;
@@ -763,23 +764,24 @@ namespace ZombieLand
 		//
 		public static void ExecuteMove(this JobDriver_Stumble driver, Zombie zombie, PheromoneGrid grid)
 		{
-			Log.Message($"[Zombieland Debug] ExecuteMove called for {zombie.Name.ToStringFull}. Destination: {driver.destination}");
+			// Log.Message($"[Zombieland Debug] ExecuteMove called for {zombie.Name.ToStringFull()}. Destination: {driver.destination}");
 			if (driver.destination.IsValid)
 			{
 				grid.ChangeZombieCount(zombie.lastGotoPosition, -1);
 				grid.ChangeZombieCount(driver.destination, 1);
-				zombie.lastGotoPosition = driver.destination;
-
-				zombie.pather.StartPath(driver.destination, PathEndMode.OnCell);
-				Log.Message($"[Zombieland Debug] StartPath called for {zombie.Name.ToStringFull}.");
-				if (zombie.pather.curPath != null)
-				{
-					Log.Message($"[Zombieland Debug] Path found: {zombie.pather.curPath.Found}, Nodes left: {zombie.pather.curPath.NodesLeftCount}");
-				}
-				else
-				{
-					Log.Message($"[Zombieland Debug] Path is null after StartPath for {zombie.Name.ToStringFull}.");
-				}
+							if (zombie.pather.Destination != driver.destination || zombie.pather.curPath == null || !zombie.pather.curPath.Found)
+							{
+								zombie.lastGotoPosition = driver.destination;
+								zombie.pather.StartPath(driver.destination, PathEndMode.OnCell);
+							}				// Log.Message($"[Zombieland Debug] StartPath called for {zombie.Name.ToStringFull}.");
+				// if (zombie.pather.curPath != null)
+				// {
+				//     Log.Message($"[Zombieland Debug] Path found: {zombie.pather.curPath.Found}, Nodes left: {zombie.pather.curPath.NodesLeftCount}");
+				// }
+				// else
+				// {
+				//     Log.Message($"[Zombieland Debug] Path is null after StartPath for {zombie.Name.ToStringFull}.");
+				// }
 			}
 		}
 

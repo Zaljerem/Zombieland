@@ -58,11 +58,13 @@ namespace ZombieLand
 		//int ticker = 0;
 		void TickAction()
 		{
-			Log.Message($"[Zombieland Debug] TickAction() called for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] TickAction() called for {pawn.Name.ToStringFull}");
 			var zombie = (Zombie)pawn;
+			if (pawn.pather.Moving && pawn.pather.Destination.IsValid)
+				return;
 			if (zombie.state == ZombieState.Emerging || zombie.state == ZombieState.Floating)
 			{
-				Log.Message($"[Zombieland Debug] {pawn.Name.ToStringFull} is Emerging or Floating, returning.");
+				// Log.Message($"[Zombieland Debug] {pawn.Name.ToStringFull} is Emerging or Floating, returning.");
 				return;
 			}
 
@@ -79,53 +81,53 @@ namespace ZombieLand
 
 			ZombieStateHandler.CheckEndRage(zombie);
 
-			Log.Message($"[Zombieland Debug] Checking ShouldDie for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking ShouldDie for {pawn.Name.ToStringFull}");
 			if (this.ShouldDie(zombie))
 				return;
 
-			Log.Message($"[Zombieland Debug] Checking WallPushing for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking WallPushing for {pawn.Name.ToStringFull}");
 			if (ZombieStateHandler.WallPushing(zombie))
 				return;
 
-			Log.Message($"[Zombieland Debug] Checking Roping for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking Roping for {pawn.Name.ToStringFull}");
 			if (this.Roping(zombie))
 			{
 				this.ExecuteMove(zombie, zombie.Map.GetGrid());
 				return;
 			}
 
-			Log.Message($"[Zombieland Debug] Checking DownedOrUnconsciousness for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking DownedOrUnconsciousness for {pawn.Name.ToStringFull}");
 			if (ZombieStateHandler.DownedOrUnconsciousness(zombie))
 				return;
 
-			Log.Message($"[Zombieland Debug] Checking Attack for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking Attack for {pawn.Name.ToStringFull}");
 			if (this.Attack(zombie))
 				return;
 
 			var grid = zombie.Map.GetGrid();
-			Log.Message($"[Zombieland Debug] Checking CheckWallPushing for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking CheckWallPushing for {pawn.Name.ToStringFull}");
 			if (ZombieStateHandler.CheckWallPushing(zombie, grid))
 				return;
 
-			Log.Message($"[Zombieland Debug] Checking ValidDestination for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking ValidDestination for {pawn.Name.ToStringFull}");
 			if (this.ValidDestination(zombie))
 				return;
 
-			Log.Message($"[Zombieland Debug] Applying Fire for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Applying Fire for {pawn.Name.ToStringFull}");
 			ZombieStateHandler.ApplyFire(zombie);
 
 			var bodyType = zombie.story.bodyType;
-			Log.Message($"[Zombieland Debug] Checking Mine for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking Mine for {pawn.Name.ToStringFull}");
 			if (zombie.isMiner && (bodyType == BodyTypeDefOf.Fat || bodyType == BodyTypeDefOf.Hulk))
 				if (this.Mine(zombie, true))
 					return;
 
-			Log.Message($"[Zombieland Debug] Checking Eat for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking Eat for {pawn.Name.ToStringFull}");
 			if (this.Eat(zombie, grid))
 				return;
 
 			bool smashTime;
-			Log.Message($"[Zombieland Debug] Checking Smash for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking Smash for {pawn.Name.ToStringFull}");
 			if (zombie.IsTanky)
 			{
 				if (this.Smash(zombie, true, false))
@@ -145,7 +147,7 @@ namespace ZombieLand
 					return;
 			}
 
-			Log.Message($"[Zombieland Debug] Checking possibleMoves for {pawn.Name.ToStringFull}");
+			// Log.Message($"[Zombieland Debug] Checking possibleMoves for {pawn.Name.ToStringFull}");
 			var possibleMoves = this.PossibleMoves(zombie);
 			if (possibleMoves.Count > 0)
 			{
@@ -163,7 +165,25 @@ namespace ZombieLand
 				}
 			}
 
-			Log.Message($"[Zombieland Debug] Calling ExecuteMove for {pawn.Name.ToStringFull} with destination {destination}");
+			// Fallback: If no valid destination, try to wander randomly
+			if (!destination.IsValid)
+			{
+				var root = pawn.Position;
+				for (int i = 0; i < 8; i++)
+				{
+					var cell = root + GenRadial.RadialPattern[i];
+					if (cell.InBounds(pawn.Map) && cell.Walkable(pawn.Map))
+					{
+						destination = cell;
+						break;
+					}
+				}
+			}
+			/*if (!destination.IsValid)
+				Log.Warning($"[Zombieland Debug] Zombie {pawn} has no valid destination at tick {Find.TickManager.TicksGame} (pos: {pawn.Position})");
+			else
+				Log.Message($"[Zombieland Debug] Zombie {pawn} moving to {destination} at tick {Find.TickManager.TicksGame}");
+			*/
 			this.ExecuteMove(zombie, grid);
 
 			ZombieStateHandler.BeginRage(zombie, grid);
