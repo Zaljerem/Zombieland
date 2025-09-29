@@ -248,4 +248,4 @@ Source/Graphics/Effects/Library/ScriptAssemblies
 
 #folders created by Visual Studio and ilspycmd
 .vs/
-TempDecompiledAssemmbly/
+TempDecompiledAssembly/
