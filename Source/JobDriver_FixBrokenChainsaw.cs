@@ -17,7 +17,7 @@ namespace ZombieLand
 			return pawn.Reserve(Chainsaw, job, 1, -1, null, errorOnFailed) && pawn.Reserve(Components, job, 1, -1, null, errorOnFailed);
 		}
 
-		public override IEnumerable<Toil> MakeNewToils()
+		protected override IEnumerable<Toil> MakeNewToils()
 		{
 			_ = this.FailOnDespawnedNullOrForbidden(TargetIndex.A);
 			yield return Toils_Goto.GotoThing(TargetIndex.B, PathEndMode.Touch)

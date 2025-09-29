@@ -5,7 +5,7 @@ namespace ZombieLand
 {
 	public class Dialog_SaveThenUninstall : Dialog_SaveFileList
 	{
-		public override bool ShouldDoTypeInField => true;
+		protected override bool ShouldDoTypeInField => true;
 
 		public Dialog_SaveThenUninstall()
 		{
@@ -17,7 +17,7 @@ namespace ZombieLand
 				typingName = SaveGameFilesUtility.UnusedDefaultFileName(Faction.OfPlayer.def.LabelCap);
 		}
 
-		public override void DoFileInteraction(string fileName)
+		protected override void DoFileInteraction(string fileName)
 		{
 			Close(true);
 			ZombieRemover.RemoveZombieland(fileName);

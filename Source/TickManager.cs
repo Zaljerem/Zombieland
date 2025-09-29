@@ -111,12 +111,15 @@ namespace ZombieLand
 		public List<VictimHead> victimHeads = new();
 		public ContaminationEffectManager contaminationEffects = Constants.CONTAMINATION ? new() : null;
 
+		private Mesh headMesh;
+
 		public int lastZombieContact = 0;
 		public int lastZombieSpitter = 0;
 		public bool zombieSpitterInited = false;
 
 		public TickManager(Map map) : base(map)
 		{
+			Log.Message("TickManager created");
 			zombiePathing = new ZombiePathing(map);
 			zombiePathing.UpdateRegions();
 
@@ -137,6 +140,7 @@ namespace ZombieLand
 						new Action<object>(PrepareThreadedTicking),
 						new Action<object>(DoThreadedSingleTick)
 					});
+
 			}
 		}
 
@@ -155,6 +159,7 @@ namespace ZombieLand
 
 		public override void FinalizeInit()
 		{
+			Log.Message("TickManager.FinalizeInit() started");
 			isInitialized = 1;
 			base.FinalizeInit();
 			isInitialized = 2;
@@ -170,10 +175,11 @@ namespace ZombieLand
 			nextVisibleGridUpdate = 0;
 			RecalculateZombieWanderDestination();
 
-			var destinations = map.pawnDestinationReservationManager.reservedDestinations;
-			var zombieFaction = Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies);
+			            var destinations = (Dictionary<Faction, PawnDestinationReservationManager.PawnDestinationSet>)AccessTools.Field(typeof(PawnDestinationReservationManager), "reservedDestinations").GetValue(map.pawnDestinationReservationManager);			var zombieFaction = Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies);
 			if (!destinations.ContainsKey(zombieFaction))
 				_ = map.pawnDestinationReservationManager.GetPawnDestinationSetFor(zombieFaction);
+
+			
 
 			var allZombies = AllZombies();
 			if (Tools.ShouldAvoidZombies())
@@ -252,9 +258,12 @@ namespace ZombieLand
 			}
 		}
 
-		static readonly Mesh headMesh = MeshPool.GetMeshSetForWidth(MeshPool.HumanlikeHeadAverageWidth).MeshAt(Rot4.South);
+
 		public override void MapComponentUpdate()
 		{
+			if (headMesh == null)
+				headMesh = MeshPool.GetMeshSetForWidth(MeshPool.HumanlikeHeadAverageWidth).MeshAt(Rot4.South);
+
 			foreach (var head in victimHeads)
 			{
 				var mat = new Material(head.material);

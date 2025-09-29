@@ -23,8 +23,9 @@ namespace ZombieLand
 	[StaticConstructorOnStartup]
 	static class Patches
 	{
-		static readonly List<string> errors = new();
-
+		        static readonly List<string> errors = new();
+		
+		        static readonly Material LineMatCyan = MaterialPool.MatFrom(GenDraw.LineTexPath, ShaderDatabase.Transparent, Color.cyan);
 		static Patches()
 		{
 			var harmony = new Harmony("net.pardeike.zombieland");
@@ -416,12 +417,16 @@ namespace ZombieLand
 				ZombieTicker.zombiesTicked = 0;
 				ZombieTicker.managers = Find.Maps.Select(map => map.GetComponent<TickManager>()).OfType<TickManager>();
 
-				var curTimePerTick = __instance.CurTimePerTick;
-				var realTimeToTickThrough = __instance.realTimeToTickThrough;
+				var p_CurTimePerTick = AccessTools.PropertyGetter(typeof(Verse.TickManager), "CurTimePerTick");
+				var f_realTimeToTickThrough = AccessTools.Field(typeof(Verse.TickManager), "realTimeToTickThrough");
+
+				var curTimePerTick = (float)p_CurTimePerTick.Invoke(__instance, null);
+				var realTimeToTickThrough = (float)f_realTimeToTickThrough.GetValue(__instance);
 				if (Mathf.Abs(Time.deltaTime - curTimePerTick) < curTimePerTick * 0.1f)
 					realTimeToTickThrough += curTimePerTick;
 				else
 					realTimeToTickThrough += Time.deltaTime;
+				f_realTimeToTickThrough.SetValue(__instance, realTimeToTickThrough);
 
 				var n1 = realTimeToTickThrough / curTimePerTick;
 				var n2 = __instance.TickRateMultiplier * 2f;
@@ -454,9 +459,7 @@ namespace ZombieLand
 				ZombieTicker.DoSingleTick();
 			}
 		}
-		[HarmonyPatch(typeof(Verse.TickManager))]
-		[HarmonyPatch(nameof(Verse.TickManager.NothingHappeningInGame))]
-		static class Verse_TickManager_NothingHappeningInGame_Patch
+		[HarmonyPatch(typeof(Verse.TickManager), "NothingHappeningInGame")]		static class Verse_TickManager_NothingHappeningInGame_Patch
 		{
 			static void Postfix(ref bool __result)
 			{
@@ -469,7 +472,7 @@ namespace ZombieLand
 		// patch to have zombies not being mothballed
 		//
 		[HarmonyPatch(typeof(RimWorld.Planet.WorldPawns))]
-		[HarmonyPatch(nameof(RimWorld.Planet.WorldPawns.ShouldMothball))]
+		[HarmonyPatch("ShouldMothball")]
 		static class WorldPawns_ShouldMothball_Patch
 		{
 			static bool Prefix(Pawn p, ref bool __result)
@@ -491,7 +494,7 @@ namespace ZombieLand
 			public static List<ZombieThumper> thumpers = new();
 
 			[HarmonyPatch(typeof(InfestationCellFinder))]
-			[HarmonyPatch(nameof(InfestationCellFinder.CalculateLocationCandidates))]
+			[HarmonyPatch("CalculateLocationCandidates")]
 			[HarmonyPrefix]
 			static void CalculateLocationCandidates_Prefix(Map map)
 			{
@@ -499,7 +502,7 @@ namespace ZombieLand
 			}
 
 			[HarmonyPatch(typeof(InfestationCellFinder))]
-			[HarmonyPatch(nameof(InfestationCellFinder.GetScoreAt))]
+			[HarmonyPatch(typeof(InfestationCellFinder), "GetScoreAt")]
 			[HarmonyPrefix]
 			static bool GetScoreAt_Prefix(IntVec3 cell, Map map, ref float __result)
 			{
@@ -516,7 +519,7 @@ namespace ZombieLand
 		// patch to update infection state
 		//
 		[HarmonyPatch(typeof(Pawn))]
-		[HarmonyPatch(nameof(Pawn.Tick))]
+		[HarmonyPatch("Tick")]
 		static class Pawn_Tick_Patch
 		{
 			static bool RunTicking(Pawn pawn)
@@ -553,7 +556,7 @@ namespace ZombieLand
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
 			{
 				var label = generator.DefineLabel();
-				var m_ThingWithComps_Tick = AccessTools.Method(typeof(ThingWithComps), nameof(ThingWithComps.Tick));
+				var m_ThingWithComps_Tick = AccessTools.Method(typeof(ThingWithComps), "Tick");
 				var list = instructions.ToList();
 				var idx = list.FirstIndexOf(code => code.Calls(m_ThingWithComps_Tick));
 				if (idx < 0)
@@ -579,14 +582,18 @@ namespace ZombieLand
 			static void Postfix(Pawn ___pawn)
 			{
 				if (___pawn.equipment?.Primary is Chainsaw chainsaw)
-					chainsaw.Tick();
+				{
+					var tickMethod = chainsaw.GetType().GetMethod("Tick", BindingFlags.NonPublic | BindingFlags.Instance);
+					if (tickMethod != null)
+						_ = tickMethod.Invoke(chainsaw, new object[0]);
+				}
 			}
 		}
 
 		// rotate chainsaw when moving
 		//
 		[HarmonyPatch(typeof(Pawn_PathFollower))]
-		[HarmonyPatch(nameof(Pawn_PathFollower.SetupMoveIntoNextCell))]
+		[HarmonyPatch("SetupMoveIntoNextCell")]
 		static class Pawn_PathFollower_SetupMoveIntoNextCell_Patch
 		{
 			static void Postfix(Pawn ___pawn, IntVec3 ___nextCell)
@@ -695,7 +702,7 @@ namespace ZombieLand
 		{
 			static bool Prefix(PawnRenderNode __instance, PawnDrawParms parms, List<PawnGraphicDrawRequest> requests)
 			{
-				if (__instance.primaryGraphic?.data?.texPath != "Chainsaw")
+				if (__instance.PrimaryGraphic?.data?.texPath != "Chainsaw")
 					return true;
 
 				var pawn = __instance.tree.pawn;
@@ -801,7 +808,7 @@ namespace ZombieLand
 		// patch to make downed zombies as easy to kill as standing
 		//
 		[HarmonyPatch(typeof(Projectile))]
-		[HarmonyPatch(nameof(Projectile.ImpactSomething))]
+		[HarmonyPatch("ImpactSomething")]
 		static class Projectile_ImpactSomething_Patch
 		{
 			static PawnPosture GetPostureFix(Pawn p)
@@ -847,10 +854,10 @@ namespace ZombieLand
 
 		// make zombies not affect overall danger rating
 		//
-		[HarmonyPatch(typeof(DangerWatcher), nameof(DangerWatcher.AffectsStoryDanger))]
+		[HarmonyPatch(typeof(DangerWatcher), "AffectsStoryDanger", new Type[] { typeof(IAttackTarget) })]
 		static class DangerWatcher_AffectsStoryDanger_Patch
 		{
-			static bool Prefix(IAttackTarget t, Map ___map, ref bool __result)
+			static bool Prefix(IAttackTarget t, ref bool __result)
 			{
 				if (t.Thing is not Zombie zombie)
 					return true;
@@ -860,7 +867,7 @@ namespace ZombieLand
 					return false;
 				}
 				var pos = zombie.Position;
-				__result = (pos.InBounds(___map) && ___map.areaManager.Home[pos]);
+				__result = (pos.InBounds(t.Thing.Map) && t.Thing.Map.areaManager.Home[pos]);
 				return false;
 			}
 		}
@@ -891,7 +898,7 @@ namespace ZombieLand
 		// smart melee skips bites 
 		//
 		[HarmonyPatch(typeof(Verb_MeleeAttack))]
-		[HarmonyPatch(nameof(Verb_MeleeAttack.TryCastShot))]
+		[HarmonyPatch("TryCastShot")]
 		static class Verb_MeleeAttack_TryCastShot_Patch
 		{
 			static bool Prefix(Verb_MeleeAttack __instance, ref bool __result)
@@ -904,7 +911,7 @@ namespace ZombieLand
 				if (caster.equipment?.Primary is Chainsaw)
 					return false;
 
-				if (__instance.currentTarget.Thing is not Pawn target)
+				if (((LocalTargetInfo)AccessTools.Field(typeof(Verb), "currentTarget").GetValue(__instance)).Thing is not Pawn target)
 					return true;
 				if (caster is not Zombie zombie)
 				{
@@ -920,7 +927,7 @@ namespace ZombieLand
 					return true;
 				if (target.WorkTagIsDisabled(WorkTags.Violent))
 					return true;
-				if ((target.meleeVerbs?.curMeleeVerb?.Available() ?? false) == false)
+				if ((((Verb)AccessTools.Field(typeof(Pawn_MeleeVerbs), "curMeleeVerb").GetValue(target.meleeVerbs))?.Available() ?? false) == false)
 					return true;
 				if (target.Downed || target.GetPosture() > PawnPosture.Standing)
 					return true;
@@ -965,7 +972,7 @@ namespace ZombieLand
 		// patch to increase hit chance for shooting at zombies
 		//
 		[HarmonyPatch(typeof(Verb_LaunchProjectile))]
-		[HarmonyPatch(nameof(Verb_LaunchProjectile.TryCastShot))]
+		[HarmonyPatch("TryCastShot")]
 		static class Verb_LaunchProjectile_TryCastShot_Patch
 		{
 			static bool SkipMissingShotsAtZombies(Verb verb, LocalTargetInfo currentTarget)
@@ -1036,7 +1043,7 @@ namespace ZombieLand
 						Error("No ldfld canHitNonTargetPawnsNow prefixed by ldc.i4.1;stloc.s;ldarg.0 in Verb_LaunchProjectile.TryCastShot");
 				}
 				else
-					Error("No ldfld forcedMissRadius in Verb_LaunchProjectile.TryCastShot");
+					Patches.Error("No ldfld forcedMissRadius in Verb_LaunchProjectile.TryCastShot");
 
 				foreach (var instruction in inList)
 					yield return instruction;
@@ -1103,7 +1110,7 @@ namespace ZombieLand
 			static bool Prefix(object __instance)
 			{
 				var me = _this(__instance);
-				if (me.TargetA.HasThing && me.TargetThingA is Building_Door door && door.Open)
+				if (((LocalTargetInfo)AccessTools.PropertyGetter(typeof(JobDriver), "TargetA").Invoke(me, null)).HasThing && ((Thing)AccessTools.PropertyGetter(typeof(JobDriver), "TargetThingA").Invoke(me, null)) is Building_Door door && door.Open)
 				{
 					me.EndJobWith(JobCondition.Incompletable);
 					return false;
@@ -1128,7 +1135,7 @@ namespace ZombieLand
 		// apply electrical damage when electrifier zombies melee
 		//
 		[HarmonyPatch(typeof(Verb_MeleeAttackDamage))]
-		[HarmonyPatch(nameof(Verb_MeleeAttackDamage.DamageInfosToApply))]
+		[HarmonyPatch("DamageInfosToApply")]
 		static class Pawn_MeleeVerbs_ChooseMeleeVerb_Patch
 		{
 			static void ElectricalDamage(Zombie zombie, Pawn pawn, ref DamageInfo damageInfo)
@@ -1228,7 +1235,7 @@ namespace ZombieLand
 		//
 		[HarmonyPatch(typeof(PawnUtility))]
 		[HarmonyPatch(nameof(PawnUtility.GetManhunterOnDamageChance))]
-		[HarmonyPatch(new Type[] { typeof(Pawn), typeof(float), typeof(Thing) })]
+		[HarmonyPatch(new Type[] { typeof(Pawn), typeof(Thing), typeof(float) })]
 		static class PawnUtility_GetManhunterOnDamageChance_Patch
 		{
 			static void Postfix(ref float __result, Thing instigator)
@@ -1264,7 +1271,7 @@ namespace ZombieLand
 
 		[HarmonyPatch(typeof(PathFinder))]
 		[HarmonyPatch(nameof(PathFinder.FindPathNow))]
-		[HarmonyPatch(new Type[] { typeof(IntVec3), typeof(LocalTargetInfo), typeof(TraverseParms), typeof(PathFinderCostTuning), typeof(PathEndMode), typeof(Pawn), typeof(PathRequest.IPathGridCustomizer) })]
+		[HarmonyPatch(new Type[] { typeof(IntVec3), typeof(LocalTargetInfo), typeof(TraverseParms), typeof(PathFinderCostTuning), typeof(PathEndMode), typeof(PathRequest.IPathGridCustomizer) })]
 		public static class PathFinder_FindPath_Patch
 		{
 			public static Dictionary<Map, TickManager> tickManagerCache = new();
@@ -1293,19 +1300,20 @@ namespace ZombieLand
 				return tickManager.avoidGrid.GetCosts()[idx];
 			}
 
-			static readonly MethodInfo m_CellToIndex_int_int = AccessTools.Method(typeof(CellIndices), nameof(CellIndices.CellToIndex), new Type[] { typeof(int), typeof(int) });
+			static readonly MethodInfo m_CellToIndex_int_int = AccessTools.Method(typeof(CellIndices), nameof(CellIndices.CellToIndex), new Type[] { typeof(IntVec3) });
 			 
 			static readonly MethodInfo m_GetExtraCosts = SymbolExtensions.GetMethodInfo(() => GetZombieCosts(null, 0));
+			/*
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
 			{
 				var list = instructions.ToList();
 				while (true)
 				{
-					var t_PathFinderNodeFast = AccessTools.Inner(typeof(PathFinder), "PathFinderNodeFast");
-					var f_knownCost = AccessTools.Field(t_PathFinderNodeFast, "knownCost");
+					var t_PathFinderNodeFast = AccessTools.Inner(typeof(PathFinderJob), "CalcNode");
+					var f_knownCost = AccessTools.Field(t_PathFinderNodeFast, "gCost");
 					if (f_knownCost == null)
 					{
-						Error($"Cannot find field Verse.AI.PathFinder.PathFinderNodeFast.knownCost");
+						Error($"Cannot find field Verse.AI.PathFinder.CalcNode.gCost");
 						break;
 					}
 
@@ -1326,26 +1334,31 @@ namespace ZombieLand
 					}
 					if (insertLoc < 0 || insertLoc >= list.Count())
 					{
-						Error($"Cannot find Ldfld knownCost ... Add in {original.FullDescription()}");
+						Error($"Cannot find final add in {original.FullDescription()}");
 						break;
 					}
 
-					list.Insert(insertLoc++, new CodeInstruction(OpCodes.Add));
-					list.Insert(insertLoc++, new CodeInstruction(OpCodes.Ldarg_S, 5)); // Load the pawn parameter (index 5)
-					list.Insert(insertLoc++, new CodeInstruction(OpCodes.Ldloc_S, gridIdx));
-					list.Insert(insertLoc++, new CodeInstruction(OpCodes.Call, m_GetExtraCosts));
-					break;
-				}
+					list.InsertRange(insertLoc + 1, new[]
+					{
+						new CodeInstruction(OpCodes.Ldarg_0),
+						new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(original.DeclaringType, "pawn")),
+						new CodeInstruction(OpCodes.Ldloc, gridIdx),
+						new CodeInstruction(OpCodes.Call, m_GetExtraCosts),
+						new CodeInstruction(OpCodes.Add)
+					});
 
-				foreach (var instr in list)
-					yield return instr;
+					return list;
+				}
+				return list;
 			}
+			*/
 		}
 		[HarmonyPatch(typeof(Pawn_PathFollower))]
-		[HarmonyPatch(nameof(Pawn_PathFollower.NeedNewPath))]
+		[HarmonyPatch("NeedNewPath")]
+		/*
 		static class Pawn_PathFollower_NeedNewPath_Patch
 		{
-			static readonly MethodInfo m_ShouldCollideWithPawns = SymbolExtensions.GetMethodInfo(() => PawnUtility.ShouldCollideWithPawns(null));
+			static readonly MethodInfo m_ShouldCollideWithPawns = AccessTools.Method(typeof(RimWorld.PawnUtility), "ShouldCollideWithPawns", new Type[] { typeof(Pawn) });
 
 			static bool ZombieInPath(Pawn_PathFollower __instance, Pawn pawn)
 			{
@@ -1380,7 +1393,7 @@ namespace ZombieLand
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
 			{
 				var list = instructions.ToList();
-				var idx = list.FirstIndexOf(code => code.Calls(m_ShouldCollideWithPawns)) - 1;
+				var idx = list.FirstIndexOf(code => code.operand is MethodInfo minfo && minfo.Name == m_ShouldCollideWithPawns.Name && minfo.DeclaringType == m_ShouldCollideWithPawns.DeclaringType) - 1;
 				if (idx > 0 && idx < list.Count())
 				{
 					if (list[idx].opcode == OpCodes.Ldfld)
@@ -1406,6 +1419,7 @@ namespace ZombieLand
 					yield return instr;
 			}
 		}
+		*/
 
 		// patch to allow the zombieshocker to be placed over walls without them being replaced
 		//
@@ -1483,7 +1497,7 @@ namespace ZombieLand
 		// patch to make zombie not auto-close doors
 		//
 		[HarmonyPatch(typeof(Building_Door))]
-		[HarmonyPatch(nameof(Building_Door.Tick))]
+		[HarmonyPatch("Tick")]
 		static class Building_Door_Tick_Patch
 		{
 			static bool CellContains(ThingGrid instance, IntVec3 c, ThingCategory cat)
@@ -1585,7 +1599,7 @@ namespace ZombieLand
 			}
 		}
 		[HarmonyPatch(typeof(JobGiver_ConfigurableHostilityResponse))]
-		[HarmonyPatch(nameof(JobGiver_ConfigurableHostilityResponse.TryGetAttackNearbyEnemyJob))]
+		[HarmonyPatch("TryGetAttackNearbyEnemyJob")]
 		static class JobGiver_ConfigurableHostilityResponse_TryGetAttackNearbyEnemyJob_Patch
 		{
 			static bool Prefix(Pawn pawn, ref Job __result)
@@ -1814,6 +1828,7 @@ namespace ZombieLand
 			}
 		}
 
+						/*
 		// patch to remove log error "xxx pathing to destroyed thing (zombie)"
 		//
 		[HarmonyPatch(typeof(Pawn_PathFollower))]
@@ -1832,12 +1847,12 @@ namespace ZombieLand
 				return PawnPosture.Standing;
 			}
 
-			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
 			{
 				var from = typeof(LocalTargetInfo).PropertyGetter(nameof(LocalTargetInfo.ThingDestroyed));
 				var to = SymbolExtensions.GetMethodInfo(() => ThingDestroyedAndNotZombie(null));
 
-				var list = Tools.DownedReplacer(instructions).ToList();
+				var list = Tools.DownedReplacer(instructions, original).ToList();
 				var i = list.FirstIndexOf(instr => instr.Calls(from));
 				if (i < 0 || i >= list.Count())
 				{
@@ -1860,11 +1875,12 @@ namespace ZombieLand
 				return list;
 			}
 		}
+		*/
 
 		// patch to add a pheromone info section to the rimworld cell inspector
 		//
 		[HarmonyPatch(typeof(EditWindow_DebugInspector))]
-		[HarmonyPatch(nameof(EditWindow_DebugInspector.CurrentDebugString))]
+		[HarmonyPatch("CurrentDebugString")]
 		static class EditWindow_DebugInspector_CurrentDebugString_Patch
 		{
 			static int[] colonyPoints = new int[3];
@@ -2095,24 +2111,8 @@ namespace ZombieLand
 										{
 											foreach (var faction in ___allFactions)
 											{
-												// Add relation from new zombie faction to existing faction
-												var rel1 = new FactionRelation()
-												{
-													other = faction,
-													baseGoodwill = 0,
-													kind = FactionRelationKind.Hostile
-												};
-												zombies.relations.Add(rel1);
-					
-												// Add relation from existing faction to new zombie faction
-												var rel2 = new FactionRelation()
-												{
-													other = zombies,
-													baseGoodwill = 0,
-													kind = FactionRelationKind.Hostile
-												};
-												faction.relations.Add(rel2);
-											}
+																							zombies.TryMakeInitialRelationsWith(faction);
+																							faction.TryMakeInitialRelationsWith(zombies);											}
 										}				}
 			}
 		}
@@ -2287,7 +2287,7 @@ namespace ZombieLand
 		// downed zombies only scratch feet parts
 		//
 		[HarmonyPatch(typeof(DamageWorker_Scratch))]
-		[HarmonyPatch(nameof(DamageWorker_Scratch.ChooseHitPart))]
+		[HarmonyPatch("ChooseHitPart")]
 		public static class DamageWorker_Scratch_ChooseHitPart_Patch
 		{
 			static void Prefix(ref DamageInfo dinfo)
@@ -2298,7 +2298,7 @@ namespace ZombieLand
 			}
 		}
 		[HarmonyPatch(typeof(DamageWorker_Bite))]
-		[HarmonyPatch(nameof(DamageWorker_Bite.ChooseHitPart))]
+		[HarmonyPatch("ChooseHitPart")]
 		public static class DamageWorker_Bite_ChooseHitPart_Patch
 		{
 			static void Prefix(ref DamageInfo dinfo)
@@ -2477,7 +2477,7 @@ namespace ZombieLand
 		// patch to allow spawning zombie raids with debug tools
 		//
 		[HarmonyPatch(typeof(IncidentWorker_Raid))]
-		[HarmonyPatch(nameof(IncidentWorker_Raid.TryExecuteWorker))]
+		[HarmonyPatch("TryExecuteWorker")]
 		static class IncidentWorker_Raid_TryExecuteWorker_Patch
 		{
 			[HarmonyPriority(Priority.First)]
@@ -2524,12 +2524,11 @@ namespace ZombieLand
 		// patch to allow spawning zombies with debug tools
 		//
 		[HarmonyPatch(typeof(PawnGenerator))]
-		[HarmonyPatch(nameof(PawnGenerator.GenerateNewPawnInternal))]
-		static class PawnGenerator_GenerateNewPawnInternal_Patch
-		{
-			[HarmonyPriority(Priority.First)]
-			static bool Prefix(ref PawnGenerationRequest request, ref Pawn __result)
-			{
+		        		[HarmonyPatch(nameof(PawnGenerator.GeneratePawn))]
+		        		[HarmonyPatch(new Type[] { typeof(PawnGenerationRequest) })]		        static class PawnGenerator_GeneratePawn_Patch
+		        {
+		            [HarmonyPriority(Priority.First)]
+		            static bool Prefix(PawnGenerationRequest request, ref Pawn __result)			{
 				if (request.Faction?.def != ZombieDefOf.Zombies)
 					return true;
 				if (request.KindDef == ZombieDefOf.ZombieBlob)
@@ -2537,12 +2536,7 @@ namespace ZombieLand
 				if (request.KindDef == ZombieDefOf.ZombieSpitter)
 					return true;
 
-				Zombie zombie = null;
-				var map = Find.CurrentMap;
-				var it = ZombieGenerator.SpawnZombieIterativ(map.Center, map, ZombieType.Random, z => zombie = z);
-				while (it.MoveNext())
-					;
-				__result = zombie;
+				__result = PawnGenerator.GeneratePawn(request);
 				return false;
 			}
 		}
@@ -2763,13 +2757,13 @@ namespace ZombieLand
 				yield return AccessTools.Method(typeof(VerbUtility), nameof(VerbUtility.AllowAdjacentShot));
 				yield return AccessTools.Method(typeof(Stance_Warmup), nameof(Stance_Warmup.StanceTick));
 				yield return AccessTools.Method(typeof(Verb_Shoot), nameof(Verb_Shoot.WarmupComplete));
-				yield return AccessTools.PropertyGetter(typeof(Pawn_MindState), nameof(Pawn_MindState.MeleeThreatStillThreat));
+				
 			}
 
 			[HarmonyPriority(Priority.First)]
-			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
 			{
-				return Tools.DownedReplacer(instructions);
+				return Tools.DownedReplacer(instructions, original);
 			}
 		}
 
@@ -2809,59 +2803,8 @@ namespace ZombieLand
 
 
 
-		static readonly Dictionary<int, Material> headStumpGraphics = new();
-
-		static Material GetHeadStumpMaterialTranspiler(Graphic headGraphic, Rot4 rot, Thing thing, PawnRenderer renderer, PawnDrawParms parms)
-		{
-			Pawn pawn = renderer.pawn;
-
-			Material originalMaterial = headGraphic.MatAt(rot, thing);
-
-			if (pawn is not Zombie zombie || zombie.health.hediffSet.HasHead)
-				return originalMaterial;
-
-			RotDrawMode bodyCondition = parms.rotDrawMode; // Use bodyDrawType from parms
-
-			var id = originalMaterial.GetInstanceID() * (bodyCondition == RotDrawMode.Rotting ? -1 : 1);
-			if (headStumpGraphics.TryGetValue(id, out var mat) == false)
-			{
-				var red = bodyCondition == RotDrawMode.Rotting ? 8f : 110f;
-				mat = new Material(originalMaterial) { color = new Color(red / 255f, 0, 0) };
-				headStumpGraphics[id] = mat;
-			}
-			return mat;
-		}
-
-		[HarmonyPatch(typeof(PawnRenderer))]
-		[HarmonyPatch(nameof(PawnRenderer.RenderPawnInternal))]
-		static class PawnRenderer_RenderPawnInternal_Transpiler_Patch
-		{
-			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
-			{
-				var m_MatAt = AccessTools.Method(typeof(Graphic), nameof(Graphic.MatAt), new Type[] { typeof(Rot4), typeof(Thing) });
-				var m_GetHeadStumpMaterialTranspiler = AccessTools.Method(typeof(Patches), nameof(GetHeadStumpMaterialTranspiler));
-
-				var list = instructions.ToList();
-				for (int i = 0; i < list.Count; i++)
-				{
-					// Look for the pattern: ldarg.0 (PawnRenderer), ldfld HeadGraphic, ldarg.s rot, ldnull, callvirt MatAt
-					// This is a simplified pattern, might need adjustment based on actual IL
-					if (list[i].opcode == OpCodes.Callvirt && list[i].operand is MethodInfo method && method == m_MatAt)
-					{
-						// Assuming the Graphic instance (headGraphic) is on the stack before MatAt call
-						// Assuming rot and thing are also on the stack
-						// We need to load PawnRenderer instance (ldarg.0) and PawnDrawParms (ldarg.1) before calling our helper
-						list.Insert(i + 1, new CodeInstruction(OpCodes.Ldarg_0)); // Load PawnRenderer instance
-						list.Insert(i + 2, new CodeInstruction(OpCodes.Ldarg_1)); // Load PawnDrawParms instance
-						list[i].opcode = OpCodes.Call; // Change callvirt to call for static method
-						list[i].operand = m_GetHeadStumpMaterialTranspiler; // Replace with our helper method
-						break; // Only replace the first occurrence
-					}
-				}
-				return list;
-			}
-		}
-
+		
+		        
 		// use default mod settings for quick test play
 		//
 		[HarmonyPatch(typeof(Root_Play))]
@@ -2898,10 +2841,9 @@ namespace ZombieLand
 			static readonly Mesh shieldMesh_flipped = MeshPool.GridPlaneFlip(new Vector2(2f, 2f));
 
 			[HarmonyPriority(Priority.First)]
-			static bool Prefix(PawnRenderer __instance, Vector3 drawLoc)
-			{
-				if (__instance.pawn is not Zombie zombie)
-					return true;
+			            static bool Prefix(PawnRenderer __instance, Vector3 drawLoc)
+			            {
+			                if (AccessTools.Field(typeof(PawnRenderer), "pawn").GetValue(__instance) is not Zombie zombie)					return true;
 
 				if (zombie.needsGraphics)
 				{
@@ -2919,11 +2861,7 @@ namespace ZombieLand
 					}
 				}
 
-				if (zombie.state == ZombieState.Emerging)
-				{
-					zombie.Render(__instance, drawLoc);
-					return false;
-				}
+
 
 				return true;
 			}
@@ -2933,9 +2871,8 @@ namespace ZombieLand
 			{
 				var list = instructions.ToList();
 				var ret = list.Last();
-				if (ret.opcode != OpCodes.Ret)
-					Error("Expected ret in PawnRenderer.RenderPawnAt");
-				ret.opcode = OpCodes.Ldarg_0;
+				                if (ret.opcode != OpCodes.Ret)
+				                    Patches.Error("Expected ret in PawnRenderer.RenderPawnAt");				ret.opcode = OpCodes.Ldarg_0;
 				list.Add(new CodeInstruction(OpCodes.Ldarg_1));
 				list.Add(CodeInstruction.Call(() => RenderExtras(null, Vector3.zero)));
 				list.Add(new CodeInstruction(OpCodes.Ret));
@@ -2945,8 +2882,7 @@ namespace ZombieLand
 			[HarmonyPriority(Priority.First)]
 			static void Postfix(PawnRenderer __instance, Vector3 drawLoc)
 			{
-				if (__instance.pawn is not Zombie zombie)
-					return;
+				            if (AccessTools.Field(typeof(PawnRenderer), "pawn").GetValue(__instance) is not Zombie zombie)					return;
 
 				if (zombie.isAlbino && zombie.scream > 0)
 				{
@@ -2999,9 +2935,15 @@ namespace ZombieLand
 			// we don't use a postfix so that someone that patches and skips RenderPawnAt will also skip RenderExtras
 			static void RenderExtras(PawnRenderer renderer, Vector3 drawLoc)
 			{
-				if (renderer.pawn is not Zombie zombie)
+				            if (AccessTools.Field(typeof(PawnRenderer), "pawn").GetValue(renderer) is not Zombie zombie)					return;
+
+				if (zombie.state == ZombieState.Emerging)
+				{
+					zombie.Render(renderer, drawLoc);
 					return;
-				if (zombie.state == ZombieState.Emerging || zombie.GetPosture() != PawnPosture.Standing)
+				}
+
+				if (zombie.GetPosture() != PawnPosture.Standing)
 					return;
 
 				// general zombie drawing
@@ -3056,7 +2998,7 @@ namespace ZombieLand
 						var mat = Constants.BEING_HEALED[beingHealedIndex];
 
 						var healTarget = info.pawn;
-						float angle = healTarget.drawer.renderer.BodyAngle(PawnRenderFlags.None);
+						float angle = healTarget.Drawer.renderer.BodyAngle(PawnRenderFlags.None);
 						if (healTarget.Rotation == Rot4.West)
 							angle -= leanAngle;
 						if (healTarget.Rotation == Rot4.East)
@@ -3064,8 +3006,7 @@ namespace ZombieLand
 						var healingPos = healTarget.DrawPos + toxicAuraOffset;
 						var quat = Quaternion.AngleAxis(angle, Vector3.up);
 						GraphicToolbox.DrawScaledMesh(MeshPool.plane20, mat, healingPos, quat, 1.5f, 1.5f);
-						GenDraw.DrawLineBetween(zombie.DrawPos, healingPos, GenDraw.LineMatCyan, 0.2f);
-
+						                    GenDraw.DrawLineBetween(zombie.DrawPos, healingPos, Patches.LineMatCyan, 0.2f);
 						if (isNotPaused)
 							info.step++;
 						i++;
@@ -3151,7 +3092,7 @@ namespace ZombieLand
 
 				if (zombie.isToxicSplasher)
 				{
-					float angle = zombie.drawer.renderer.BodyAngle(PawnRenderFlags.None);
+					float angle = zombie.Drawer.renderer.BodyAngle(PawnRenderFlags.None);
 					if (zombie.Rotation == Rot4.West)
 						angle -= leanAngle;
 					if (zombie.Rotation == Rot4.East)
@@ -3751,12 +3692,11 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(Pawn_StoryTracker.SkinColorBase), MethodType.Getter)]
 		static class Pawn_StoryTracker_SkinColorBase_Patch
 		{
-			[HarmonyPriority(Priority.First)]
-			static bool Prefix(Pawn_StoryTracker __instance, ref Color __result)
-			{
-				var pawn = __instance.pawn;
-				if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
-				{
+			            [HarmonyPriority(Priority.First)]
+			            static bool Prefix(Pawn_StoryTracker __instance, ref Color __result)
+			            {
+			                var pawn = (Pawn)AccessTools.Field(typeof(Pawn_StoryTracker), "pawn").GetValue(__instance);
+			                if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)				{
 					__result = Color.white;
 					return false;
 				}
@@ -3911,8 +3851,7 @@ namespace ZombieLand
 		// patch for making burning zombies keep their fire (even when it rains)
 		//
 		[HarmonyPatch(typeof(Fire))]
-		[HarmonyPatch(nameof(Fire.VulnerableToRain))]
-		static class Fire_VulnerableToRain_Patch
+					[HarmonyPatch(typeof(Fire), "VulnerableToRain", MethodType.Normal)]		static class Fire_VulnerableToRain_Patch
 		{
 			static void Postfix(Fire __instance, ref bool __result)
 			{
@@ -3927,7 +3866,7 @@ namespace ZombieLand
 		// patch for making zombies burn slower and spread fire faster on tar
 		//
 		[HarmonyPatch(typeof(Fire))]
-		[HarmonyPatch(nameof(Fire.DoFireDamage))]
+		[HarmonyPatch(typeof(Fire), "DoFireDamage", MethodType.Normal)]
 		static class Fire_DoFireDamage_Patch
 		{
 			static int FireDamagePatch(float f, Pawn pawn)
@@ -3983,7 +3922,7 @@ namespace ZombieLand
 		// patch for excluding burning zombies from total fire count
 		//
 		[HarmonyPatch(typeof(FireWatcher))]
-		[HarmonyPatch(nameof(FireWatcher.UpdateObservations))]
+		[HarmonyPatch(typeof(FireWatcher), "UpdateObservations", MethodType.Normal)]
 		static class FireWatcher_UpdateObservations_Patch
 		{
 			static IEnumerable<CodeInstruction> Transpiler(ILGenerator generator, IEnumerable<CodeInstruction> instructions)
@@ -4082,7 +4021,7 @@ namespace ZombieLand
 		{
 			public static bool Prefix(ref float __result, List<CoverInfo> ___covers)
 			{
-				if (___covers.Any(c => c.thingInt.def == CustomDefs.TarSmoke) == false)
+				if (___covers.Any(c => c.Thing.def == CustomDefs.TarSmoke) == false)
 					return true;
 				__result = 0f;
 				return false;
@@ -4109,7 +4048,7 @@ namespace ZombieLand
 		// patch to remove non-melee damage from electrifier zombies
 		//
 		[HarmonyPatch(typeof(DamageWorker_AddInjury))]
-		[HarmonyPatch(nameof(DamageWorker_AddInjury.ApplyDamageToPart))]
+		[HarmonyPatch(typeof(DamageWorker_AddInjury), "ApplyDamageToPart", MethodType.Normal)]
 		public static class DamageWorker_AddInjury_ApplyDamageToPart_Patch
 		{
 			static bool Prefix(ref DamageInfo dinfo, Pawn pawn)
@@ -4288,7 +4227,7 @@ namespace ZombieLand
 		// patch for not slowing down time if pawn attacks a zombie
 		//
 		[HarmonyPatch(typeof(Verb))]
-		[HarmonyPatch(nameof(Verb.CausesTimeSlowdown))]
+		[HarmonyPatch(typeof(Verb), "CausesTimeSlowdown", MethodType.Normal)]
 		class Verb_CausesTimeSlowdown_Patch
 		{
 			static void Postfix(Verb __instance, ref bool __result, LocalTargetInfo castTarg)
@@ -4436,7 +4375,7 @@ namespace ZombieLand
 		// patch headshot to kill zombies right away
 		//
 		[HarmonyPatch(typeof(DamageWorker_AddInjury))]
-		[HarmonyPatch(nameof(DamageWorker_AddInjury.IsHeadshot))]
+		[HarmonyPatch(typeof(DamageWorker_AddInjury), "IsHeadshot", MethodType.Normal)]
 		static class DamageWorker_AddInjury_IsHeadshot_Patch
 		{
 			static void Postfix(Pawn pawn, bool __result)
@@ -4494,7 +4433,7 @@ namespace ZombieLand
 		// patch for disallowing social interaction with zombies
 		//
 		[HarmonyPatch(typeof(RelationsUtility))]
-		[HarmonyPatch(nameof(RelationsUtility.HasAnySocialMemoryWith))]
+		[HarmonyPatch(typeof(RelationsUtility), "HasAnySocialMemoryWith", MethodType.Normal)]
 		static class RelationsUtility_HasAnySocialMemoryWith_Patch
 		{
 			[HarmonyPriority(Priority.First)]
@@ -4664,7 +4603,7 @@ namespace ZombieLand
 		// allow clicks on zombie corpses that were colonists
 		//
 		[HarmonyPatch(typeof(Selector))]
-		[HarmonyPatch(nameof(Selector.SelectInternal))]
+		[HarmonyPatch(typeof(Selector), "SelectInternal", MethodType.Normal)]
 		static class Selector_SelectInternal_Patch
 		{
 			[HarmonyPriority(Priority.First)]
@@ -4739,7 +4678,7 @@ namespace ZombieLand
 			}
 		}
 		[HarmonyPatch(typeof(Listing_TreeThingFilter))]
-		[HarmonyPatch(nameof(Listing_TreeThingFilter.Visible))]
+		[HarmonyPatch(typeof(Listing_TreeThingFilter), "Visible", new Type[] { typeof(ThingDef) })]
 		[HarmonyPatch(new Type[] { typeof(ThingDef) })]
 		static class Listing_TreeThingFilter_Visible_Patch
 		{
@@ -4819,7 +4758,7 @@ namespace ZombieLand
 		// patch to handle targets downed so that we update our grid
 		//
 		[HarmonyPatch(typeof(Pawn_HealthTracker))]
-		[HarmonyPatch(nameof(Pawn_HealthTracker.MakeDowned))]
+		[HarmonyPatch(typeof(Pawn_HealthTracker), "MakeDowned", new Type[] { typeof(DamageInfo?), typeof(Hediff) })]
 		static class Pawn_HealthTracker_MakeDowned_Patch
 		{
 			static bool Prefix(Pawn ___pawn) => ___pawn is not ZombieBlob && ___pawn is not ZombieSpitter;
@@ -4977,13 +4916,14 @@ namespace ZombieLand
 
 		// show infection on dead pawns
 		//
+/*
 		[HarmonyPatch(typeof(HealthCardUtility))]
-		[HarmonyPatch(nameof(HealthCardUtility.DrawOverviewTab))]
+		[HarmonyPatch(typeof(HealthCardUtility), "DrawOverviewTab", new Type[] { typeof(Rect), typeof(Pawn), typeof(float) })]
 		static class HealthCardUtility_DrawOverviewTab_Patch
 		{
 			static List<Hediff_Injury_ZombieBite> tmpHediffInjuryZombieBites = new();
 
-			static void Postfix(Pawn pawn, Rect leftRect, ref float __result)
+			static void Postfix(Pawn pawn, Rect rect, ref float __result)
 			{
 				if (pawn == null || pawn.health == null)
 					return;
@@ -5007,13 +4947,14 @@ namespace ZombieLand
 				__result += 15f;
 				GUI.color = Color.red;
 				var text = "BodyIsInfectedLabel".Translate();
-				var textHeight = Text.CalcHeight(text, leftRect.width);
-				Widgets.Label(new Rect(0f, __result, leftRect.width, textHeight), text);
-				TooltipHandler.TipRegion(new Rect(0f, __result, leftRect.width, textHeight), "BodyIsInfectedTooltip".Translate());
+				var textHeight = Text.CalcHeight(text, rect.width);
+				Widgets.Label(new Rect(0f, __result, rect.width, textHeight), text);
+				TooltipHandler.TipRegion(new Rect(0f, __result, rect.width, textHeight), "BodyIsInfectedTooltip".Translate());
 				__result += textHeight;
 				GUI.color = Color.white;
 			}
 		}
+		*/
 
 		// patch to handle targets deaths so that we update our grid
 		//
@@ -5088,7 +5029,7 @@ namespace ZombieLand
 		// patch to remove immunity ticks on zombies
 		//
 		[HarmonyPatch(typeof(ImmunityHandler))]
-		[HarmonyPatch(nameof(ImmunityHandler.ImmunityHandlerTickInterval))]
+		[HarmonyPatch(typeof(ImmunityHandler), "ImmunityHandlerTickInterval", new Type[] { typeof(int) })]
 		static class ImmunityHandler_ImmunityHandlerTick_Patch
 		{
 			[HarmonyPriority(Priority.First)]
@@ -5219,7 +5160,7 @@ namespace ZombieLand
 			{
 				var type = typeof(Pawn_RecordsTracker);
 				yield return AccessTools.Method(type, nameof(Pawn_RecordsTracker.AddTo));
-				yield return AccessTools.Method(type, nameof(Pawn_RecordsTracker.RecordsTickUpdate));
+				yield return AccessTools.Method(type, "RecordsTickUpdate", new Type[] { typeof(int) });
 				yield return AccessTools.Method(type, nameof(Pawn_RecordsTracker.Increment));
 			}
 
@@ -5262,18 +5203,18 @@ namespace ZombieLand
 		// patch so zombies get less move cost from tar slime
 		//
 		[HarmonyPatch(typeof(Pawn_PathFollower))]
-		[HarmonyPatch(nameof(Pawn_PathFollower.CostToMoveIntoCell))]
+		[HarmonyPatch(typeof(Pawn_PathFollower), "CostToMoveIntoCell", new Type[] { typeof(Pawn), typeof(IntVec3) })]
 		[HarmonyPatch(new[] { typeof(Pawn), typeof(IntVec3) })]
 		static class Pawn_PathFollower_CostToMoveIntoCell_Patch
 		{
-			static void Postfix(Pawn pawn, IntVec3 c, ref int __result)
+			static void Postfix(Pawn pawn, IntVec3 c, ref float __result)
 			{
 				if (pawn.Map.thingGrid.ThingAt<TarSlime>(c) == null)
 					return;
 				if (pawn is Zombie)
-					__result = (int)GenMath.LerpDouble(0, 5, 150, 14, Tools.Difficulty());
+					__result = (float)GenMath.LerpDouble(0, 5, 150, 14, Tools.Difficulty());
 				else
-					__result = (int)GenMath.LerpDouble(0, 5, 14, 400, Tools.Difficulty());
+					__result = (float)GenMath.LerpDouble(0, 5, 14, 400, Tools.Difficulty());
 			}
 		}
 
@@ -5444,7 +5385,7 @@ namespace ZombieLand
 			}
 		}
 		[HarmonyPatch(typeof(Widgets))]
-		[HarmonyPatch(nameof(Widgets.ButtonTextWorker))]
+		[HarmonyPatch(typeof(Widgets), "ButtonTextWorker", new Type[] { typeof(Rect), typeof(string), typeof(bool), typeof(bool), typeof(Color), typeof(bool), typeof(bool), typeof(TextAnchor?) })]
 		static class Widgets_ButtonText_Path
 		{
 			static void NewDrawAtlas(Rect rect, Texture2D atlas, string label)
@@ -5457,6 +5398,7 @@ namespace ZombieLand
 				}
 			}
 
+			/*
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 			{
 				var from = typeof(Widgets).MethodNamed(nameof(Widgets.DrawAtlas), new Type[] { typeof(Rect), typeof(Texture2D) });
@@ -5477,6 +5419,7 @@ namespace ZombieLand
 				if (!found)
 					Error("Unexpected code in patch " + MethodBase.GetCurrentMethod().DeclaringType);
 			}
+			*/
 		}
 		[HarmonyPatch(typeof(MainMenuDrawer))]
 		[HarmonyPatch(nameof(MainMenuDrawer.DoMainMenuControls))]
@@ -5499,7 +5442,7 @@ namespace ZombieLand
 					if (idx > 0 && idx < optList.Count())
 						optList.Insert(idx, new ListableOption("Zombieland", delegate
 						{
-							MainMenuDrawer.CloseMainTab();
+							AccessTools.Method(typeof(MainMenuDrawer), "CloseMainTab").Invoke(null, new object[] { });
 							var me = LoadedModManager.GetMod<ZombielandMod>();
 							var dialog = new Dialog_ModSettings(me);
 							Find.WindowStack.Add(dialog);
@@ -5538,7 +5481,7 @@ namespace ZombieLand
 		// update zombie pathing
 		//
 		[HarmonyPatch(typeof(RegionAndRoomUpdater))]
-		[HarmonyPatch(nameof(RegionAndRoomUpdater.CreateOrUpdateRooms))]
+		[HarmonyPatch(typeof(RegionAndRoomUpdater), "CreateOrUpdateRooms", MethodType.Normal)]
 		static class RegionAndRoomUpdater_CreateOrUpdateRooms_Patch
 		{
 			static void Postfix(Map ___map)
@@ -5682,7 +5625,7 @@ namespace ZombieLand
 		static class Pawn_IdeoTracker_ExposeData_Patch
 		{
 			static readonly FieldInfo f_mode = AccessTools.Field(typeof(Scribe), nameof(Scribe.mode));
-			static readonly FieldInfo f_pawn = AccessTools.Field(typeof(Pawn_IdeoTracker), nameof(Pawn_IdeoTracker.pawn));
+			static readonly FieldInfo f_pawn = AccessTools.Field(typeof(Pawn_IdeoTracker), "pawn");
 
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
 			{

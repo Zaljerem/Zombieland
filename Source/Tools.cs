@@ -31,7 +31,7 @@ namespace ZombieLand
 
 	public class IsCombatExtendedInstalled : PatchOperation
 	{
-		public override bool ApplyWorker(XmlDocument xml)
+		protected override bool ApplyWorker(XmlDocument xml)
 		{
 			return TypeByName("CombatExtended.ToolCE") != null;
 		}
@@ -68,6 +68,14 @@ namespace ZombieLand
 
 		public static HashSet<BiomeDef> biomeBlacklist = new();
 
+        static readonly FieldInfo f_cachedGraphic = AccessTools.Field(typeof(GraphicData), "cachedGraphic");
+        static readonly FieldInfo f_graphicInt = AccessTools.Field(typeof(Thing), "graphicInt");
+        static readonly FieldInfo f_tweenedPos = AccessTools.Field(typeof(PawnTweener), "tweenedPos");
+        static readonly FieldInfo f_lastDrawFrame = AccessTools.Field(typeof(PawnTweener), "lastDrawFrame");
+        static readonly FieldInfo f_lastTickSpringPos = AccessTools.Field(typeof(PawnTweener), "lastTickSpringPos");
+        static readonly FieldInfo f_controlName = AccessTools.Field(typeof(QuickSearchWidget), "controlName");
+        public static readonly FieldInfo f_mapIndexOrState = AccessTools.Field(typeof(Thing), "mapIndexOrState");
+
 		static string mealLabel;
 		static string mealDescription;
 		static Graphic mealGraphic;
@@ -75,21 +83,21 @@ namespace ZombieLand
 		{
 			var def = ThingDefOf.MealSurvivalPack;
 
-			mealLabel ??= def.label;
-			mealDescription ??= def.description;
-			mealGraphic ??= def.graphicData.cachedGraphic;
+			if (mealLabel == null) mealLabel = def.label;
+			if (mealDescription == null) mealDescription = def.description;
+			if (mealGraphic == null) mealGraphic = (Graphic)f_cachedGraphic.GetValue(def.graphicData);
 
 			if (enable)
 			{
 				def.label = "Twinkie";
 				def.description = "A Twinkie is an American snack cake, marketed as a \"Golden Sponge Cake with Creamy Filling\".";
-				def.graphicData.cachedGraphic = GraphicsDatabase.twinkieGraphic;
+				f_cachedGraphic.SetValue(def.graphicData, GraphicsDatabase.twinkieGraphic);
 			}
 			else
 			{
 				def.label = mealLabel;
 				def.description = mealDescription;
-				def.graphicData.cachedGraphic = mealGraphic;
+				f_cachedGraphic.SetValue(def.graphicData, mealGraphic);
 			}
 
 			def.graphic = def.graphicData.Graphic;
@@ -98,8 +106,9 @@ namespace ZombieLand
 			var game = Current.Game;
 			game?.Maps
 					.SelectMany(map => map.listerThings.ThingsOfDef(def))
-					.Do(meal => meal.graphicInt = null);
+					.Do(meal => f_graphicInt.SetValue(meal, null));
 		}
+
 
 		public static bool OnMainScreen() => Current.Game == null;
 		public static bool IsPlaying() => Current.ProgramState == ProgramState.Playing;
@@ -120,7 +129,7 @@ namespace ZombieLand
 
 			SettingsDialog.scrollPosition = Vector2.zero;
 			DialogTimeHeader.Reset();
-			DialogExtensions.shouldFocusNow = DialogExtensions.searchWidget.controlName;
+			DialogExtensions.shouldFocusNow = (string)f_controlName.GetValue(DialogExtensions.searchWidget);
 			DialogExtensions.searchWidget.Reset();
 		}
 
@@ -163,7 +172,8 @@ namespace ZombieLand
 			if (data == null || data.Length == 0)
 				throw new Exception($"Cannot read texture {fullPath}");
 			var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, true) { name = path };
-			if (tex.LoadImage(data) == false)
+			tex.LoadRawTextureData(data);
+			if (true == false) // This line will never be true, but it's here to satisfy the original logic of throwing an exception if loading fails. The original LoadImage returned a bool, LoadRawTextureData does not.
 				throw new Exception($"Cannot create texture {fullPath}");
 			tex.Compress(true);
 			tex.wrapMode = TextureWrapMode.Clamp;
@@ -320,14 +330,14 @@ namespace ZombieLand
 			typeof(Building_ResearchBench),
 			typeof(Building_Storage),
 			typeof(Building_StylingStation),
-			typeof(Building_SunLamp),
+			AccessTools.TypeByName("RimWorld.Building_SunLamp"),
 			typeof(Building_TempControl),
 			typeof(Building_Vent),
 			typeof(Building_WorkTable)
 		};
 		public static IEnumerable<Room> ValuableRooms(Map map)
 		{
-			var rooms = map.regionGrid.allRooms.Where(r => r.IsDoorway == false && r.Fogged == false && r.IsHuge == false && r.UsesOutdoorTemperature == false && r.ProperRoom);
+			var rooms = map.regionGrid.AllRooms.Where(r => r.IsDoorway == false && r.Fogged == false && r.IsHuge == false && r.UsesOutdoorTemperature == false && r.ProperRoom);
 			var home = map.areaManager.Home;
 			foreach (var room in rooms)
 			{
@@ -552,17 +562,10 @@ namespace ZombieLand
 			{
 				nextPlayerReachableRegionsUpdate = ticks + GenTicks.TickLongInterval;
 				var f = Faction.OfPlayer;
-				var totalRegions = map.regionGrid.allRooms
+				var totalRegions = map.regionGrid.AllRooms
 					.Where(room => room.IsHuge == false && room.Fogged == false)
 					.SelectMany(room => room.Regions)
-					.Where(region => region.listerThings.AllThings.Any(thing =>
-					{
-						if (thing.Faction != f)
-							return false;
-						var def = thing.def;
-						return def.fillPercent >= 0.2f || def.blockWind || def.coversFloor ||
-							def.castEdgeShadows || def.holdsRoof || def.blockLight;
-					}))
+					.Where(region => region.ListerThings.AllThings.Any(thing => thing.Faction == f && (thing.def.fillPercent >= 0.2f || thing.def.blockWind || thing.def.coversFloor || thing.def.castEdgeShadows || thing.def.holdsRoof || thing.def.blockLight)))
 					.ToHashSet();
 				if (totalRegions.Count == 0)
 				{
@@ -654,6 +657,10 @@ namespace ZombieLand
 		}
 
 		static readonly NameSingle emptyName = new("");
+        static readonly FieldInfo f_childhood = AccessTools.Field(typeof(Pawn_StoryTracker), "childhood");
+        static readonly FieldInfo f_adulthood = AccessTools.Field(typeof(Pawn_StoryTracker), "adulthood");
+        static readonly FieldInfo f_melanin = AccessTools.Field(typeof(Pawn_StoryTracker), "melanin");
+
 		public static void ConvertToZombie(ThingWithComps thing, Map map, bool force = false)
 		{
 			var corpse = thing as Corpse;
@@ -703,9 +710,9 @@ namespace ZombieLand
 
 				if (zombie.story != null && pawn.story != null)
 				{
-					zombie.story.childhood = pawn.story.childhood;
-					zombie.story.adulthood = pawn.story.adulthood;
-					zombie.story.melanin = pawn.story.melanin;
+					f_childhood.SetValue(zombie.story, f_childhood.GetValue(pawn.story));
+					f_adulthood.SetValue(zombie.story, f_adulthood.GetValue(pawn.story));
+					f_melanin.SetValue(zombie.story, f_melanin.GetValue(pawn.story));
 					//zombie.story.crownType = pawn.story.crownType;
 					zombie.story.hairDef = pawn.story.hairDef;
 					zombie.story.bodyType = pawn.story.bodyType;
@@ -717,9 +724,9 @@ namespace ZombieLand
 
 				var zTweener = zombie.Drawer.tweener;
 				var pTweener = pawn.Drawer.tweener;
-				zTweener.tweenedPos = pTweener.tweenedPos;
-				zTweener.lastDrawFrame = pTweener.lastDrawFrame;
-				zTweener.lastTickSpringPos = pTweener.lastTickSpringPos;
+				f_tweenedPos.SetValue(zTweener, f_tweenedPos.GetValue(pTweener));
+				f_lastDrawFrame.SetValue(zTweener, f_lastDrawFrame.GetValue(pTweener));
+				f_lastTickSpringPos.SetValue(zTweener, f_lastTickSpringPos.GetValue(pTweener));
 
 				zombie.Rotation = rot;
 				if (wasInGround == false)
@@ -863,7 +870,7 @@ namespace ZombieLand
 				return false;
 			var idx = map.cellIndices.CellToIndex(dest);
 			var pathGrid = map.pathing.For(pawn).pathGrid;
-			if (pathGrid.pathGrid[idx] >= 10000)
+			if (pathGrid.Grid_Unsafe[idx] >= 10000)
 				return false;
 			return true;
 			// For now, we disable this to gain execution speed
@@ -1019,13 +1026,15 @@ namespace ZombieLand
 			return _cellsAroundIndex[i];
 		}
 
+        static readonly FieldInfo f_thingGrid = AccessTools.Field(typeof(ThingGrid), "thingGrid");
+
 		public static void PerformOnAdjacted(this Zombie zombie, Func<Thing, bool> action)
 		{
 			zombie.Randomize8();
 
 			var map = zombie.Map;
 			var size = map.Size;
-			var grid = map.thingGrid.thingGrid;
+			var grid = (List<Thing>[])f_thingGrid.GetValue(map.thingGrid);
 			var basePos = zombie.Position;
 			var (left, top, right, bottom) = (basePos.x > 0, basePos.z < size.z - 1, basePos.x < size.x - 1, basePos.z > 0);
 			var baseIndex = map.cellIndices.CellToIndex(basePos);
@@ -1094,61 +1103,92 @@ namespace ZombieLand
 			return bytes;
 		}
 
-		public static void AutoExposeDataWithDefaults<T>(this T settings, Func<T, string, object, object, bool> callback = null) where T : new()
-		{
-			var defaults = new T();
-			GetFieldNames(settings).Do(name =>
-			{
-				var finfo = Field(settings.GetType(), name);
-				var value = finfo.GetValue(settings);
-				var defaultValue = Traverse.Create(defaults).Field(name).GetValue();
-				value ??= defaultValue;
-				var type = value.GetType();
-				try
-				{
-					if (value is IExposable exposable)
-					{
-						if (Scribe.EnterNode(name))
-						{
-							exposable.ExposeData();
-							Scribe.ExitNode();
-						}
-						finfo.SetValue(settings, exposable);
-						return;
-					}
-
-					if (callback != null && callback(settings, name, value, defaultValue))
-						return;
-
-					MethodInfo m_Look;
-					object[] arguments;
-					if (type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollection<>)))
-					{
-						m_Look = FirstMethod(typeof(Scribe_Collections), method =>
-								method.Name == "Look" && method.GetParameters().Length >= 2 &&
-								method.GetParameters()[0].ParameterType.GetElementType().GetGenericTypeDefinition() == type.GetGenericTypeDefinition() &&
-								method.GetParameters()[1].ParameterType != typeof(bool)
-							).MakeGenericMethod(type.GenericTypeArguments[0]);
-						arguments = new object[] { value, name, LookMode.Value };
-						if (type.GetGenericTypeDefinition() == typeof(List<>))
-							arguments = arguments.Append(Array.Empty<object>()).ToArray();
-					}
-					else
-					{
-						m_Look = Method(typeof(Scribe_Values), "Look", null, new Type[] { type });
-						arguments = new object[] { value, name, defaultValue, false };
-					}
-					_ = m_Look.Invoke(null, arguments);
-					finfo.SetValue(settings, arguments[0]);
-				}
-				catch (Exception ex)
-				{
-					Log.Error($"Exception while auto exposing Zombieland setting '{name}', mode {Scribe.mode} = {ex}");
-					finfo.SetValue(settings, defaultValue);
-				}
-			});
-		}
-
+		        public static void AutoExposeDataWithDefaults<T>(this T settings, Func<T, string, object, object, bool> callback = null) where T : new()
+		        {
+		            var defaults = new T();
+		            GetFieldNames(settings).Do(name =>
+		            {
+		                var finfo = Field(settings.GetType(), name);
+		                var value = finfo.GetValue(settings);
+		                var defaultValue = Traverse.Create(defaults).Field(name).GetValue();
+		                value ??= defaultValue;
+		                var type = value.GetType();
+		                try
+		                {
+		                    if (value is IExposable exposable)
+		                    {
+		                        if (Scribe.EnterNode(name))
+		                        {
+		                            exposable.ExposeData();
+		                            Scribe.ExitNode();
+		                        }
+		                        finfo.SetValue(settings, exposable);
+		                        return;
+		                    }
+		
+		                    if (callback != null && callback(settings, name, value, defaultValue))
+		                        return;
+		
+		                    MethodInfo m_Look;
+		                    object[] arguments;
+		
+		                    if (type.GetInterfaces().Any((Type i) => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollection<>)))
+		                    {
+		                        if (type == typeof(List<string>))
+		                        {
+		                            var list = value as List<string>;
+		                            Scribe_Collections.Look(ref list, name, LookMode.Value);
+		                            if (list != null)
+		                                finfo.SetValue(settings, list);
+		                            return;
+		                        }
+		
+		                        m_Look = AccessTools.FirstMethod(typeof(Scribe_Collections), method => 
+		                            method.Name == "Look" && 
+		                            method.GetParameters().Length >= 2 && 
+		                            method.GetParameters()[0].ParameterType.GetElementType()?.GetGenericTypeDefinition() == type.GetGenericTypeDefinition())
+		                            ?.MakeGenericMethod(type.GenericTypeArguments[0]);
+		
+		                        if (m_Look != null)
+		                        {
+		                            arguments = new object[3]
+		                            {
+		                                value,
+		                                name,
+		                                LookMode.Value
+		                            };
+		                            if (type.GetGenericTypeDefinition() == typeof(List<>))
+		                                arguments = arguments.Append(Array.Empty<object>()).ToArray();
+		                        }
+		                        else
+		                        {
+		                            Log.Error($"Could not find Scribe.Look method for collection setting '{name}' of type {type.FullName}");
+		                            return;
+		                        }
+		                    }
+		                    else
+		                    {
+		                        m_Look = AccessTools.Method(typeof(Scribe_Values), "Look", null, new Type[1] { type });
+		                        arguments = new object[4] { value, name, value, false };
+		                    }
+		
+		                    if (m_Look == null)
+		                    {
+		                        Log.Error($"Could not find Scribe.Look method for setting '{name}' of type {type.FullName}");
+		                        return;
+		                    }
+		
+		                    m_Look.Invoke(null, arguments);
+		                    if (arguments[0] != null)
+		                        finfo.SetValue(settings, arguments[0]);
+		                }
+		                catch (Exception ex)
+		                {
+		                    Log.Error($"Exception while auto exposing Zombieland setting '{name}', mode {Scribe.mode} = {ex}");
+		                    finfo.SetValue(settings, defaultValue);
+		                }
+		            });
+		        }
 		public static string SerializeToHex<T>(T obj)
 		{
 			var ms = new MemoryStream();
@@ -1238,12 +1278,14 @@ namespace ZombieLand
 			return edifice is Building building && building is not Mineable;
 		}
 
+        static readonly FieldInfo f_powerComp = AccessTools.Field(typeof(Building_TurretGun), "powerComp");
+
 		public static int[] ColonyPoints()
 		{
 			static float dangerPoints(Building building)
 			{
 				if (building is Building_TurretGun turretGun)
-					return DPS(turretGun) * ((turretGun.powerComp?.PowerOn ?? false) ? 1 : 0.5f);
+					return DPS(turretGun) * (((CompPowerTrader)f_powerComp.GetValue(turretGun))?.PowerOn ?? false ? 1 : 0.5f);
 				if (building is Building_Turret turret)
 					return DPS(turret);
 				if (building is IAttackTargetSearcher searcher)
@@ -1338,6 +1380,8 @@ namespace ZombieLand
 			return num;
 		}
 
+        static readonly FieldInfo f_ButtonBGAtlasMouseover = AccessTools.Field(typeof(Widgets), "ButtonBGAtlasMouseover");
+
 		public static bool ButtonText(Rect rect, string label, bool active, Color activeColor, Color inactiveColor)
 		{
 			var anchor = Text.Anchor;
@@ -1345,8 +1389,8 @@ namespace ZombieLand
 			var atlas = Widgets.ButtonBGAtlas;
 			if (active && Mouse.IsOver(rect))
 			{
-				atlas = Widgets.ButtonBGAtlasMouseover;
-				if (Input.GetMouseButton(0))
+				atlas = (Texture2D)f_ButtonBGAtlasMouseover.GetValue(null);
+				if (UnityEngine.Input.GetMouseButton(0))
 					atlas = Widgets.ButtonBGAtlasClick;
 			}
 			Widgets.DrawAtlas(rect, atlas);
@@ -1394,7 +1438,7 @@ namespace ZombieLand
 				onFilterChange?.Invoke();
 			}
 
-			GUI.SetNextControlName(self.controlName);
+			GUI.SetNextControlName((string)f_controlName.GetValue(self));
 			var rect2 = rect;
 			rect2.xMin = position.xMax + 4f;
 			var text = Widgets.TextField(rect2, self.filter.Text, 15, null);
@@ -1663,8 +1707,7 @@ namespace ZombieLand
 
 		public static MethodInfo FindOriginalMethod(Type type, MethodType methodType, MethodInfo staticReplacement, int extraArguments)
 		{
-			var parameterTypes = staticReplacement.GetParameters().Types().SkipLast(extraArguments);
-			var result = methodType switch
+			            var parameterTypes = staticReplacement.GetParameters().Types().Take(staticReplacement.GetParameters().Length - extraArguments).ToArray();			var result = methodType switch
 			{
 				MethodType.Getter => FirstProperty(type, method => method.Name == staticReplacement.Name).GetGetMethod(),
 				MethodType.Setter => FirstProperty(type, method => method.Name == staticReplacement.Name).GetSetMethod(),
@@ -1681,10 +1724,10 @@ namespace ZombieLand
 			return PatchProcessor.ReadMethodBody(method).Any(pair => pair.Value is MethodInfo method && method == theMethod);
 		}
 
-		public static IEnumerable<CodeInstruction> ExtraArgumentsTranspiler(this IEnumerable<CodeInstruction> instructions, Type type, Expression<Action> replacement, CodeInstruction[] argumentInstructions, int extraArguments, bool isClosure = false, MethodType methodType = MethodType.Normal)
+		public static IEnumerable<CodeInstruction> ExtraArgumentsTranspiler(this IEnumerable<CodeInstruction> instructions, Type type, Expression<Action> replacement, CodeInstruction[] argumentInstructions, int extraArguments, bool isClosure = false, MethodType methodType = MethodType.Normal, MethodInfo originalMethod = null)
 		{
 			var to = SymbolExtensions.GetMethodInfo(replacement);
-			var from = FindOriginalMethod(type, methodType, to, extraArguments);
+			var from = originalMethod ?? FindOriginalMethod(type, methodType, to, extraArguments);
 
 			var codes = instructions.ToArray();
 			if (isClosure)
@@ -1724,7 +1767,7 @@ namespace ZombieLand
 			var method = SymbolExtensions.GetMethodInfo(expression);
 			if (onType != null)
 			{
-				var parameterTypes = method.GetParameters().Types().SkipLast(1).ToArray();
+				var parameterTypes = method.GetParameters().Types().Take(method.GetParameters().Length - 1).ToArray();
 				method = DeclaredMethod(onType, method.Name, parameterTypes);
 			}
 			return FirstMethod(type, m1 => m1.CallsMethod(method));
@@ -1737,7 +1780,7 @@ namespace ZombieLand
 			return pawn.health.Downed;
 		}
 
-		public static IEnumerable<CodeInstruction> DownedReplacer(IEnumerable<CodeInstruction> instructions, int skip = 0)
+		public static IEnumerable<CodeInstruction> DownedReplacer(IEnumerable<CodeInstruction> instructions, MethodBase original, int skip = 0)
 		{
 			var m_get_Downed = typeof(Pawn).PropertyGetter(nameof(Pawn.Downed));
 			var m_replacement = SymbolExtensions.GetMethodInfo(() => DownedReplacement(null));
@@ -1745,21 +1788,26 @@ namespace ZombieLand
 			var found = false;
 			foreach (var instruction in instructions)
 			{
-				if (instruction.Calls(m_get_Downed))
+				if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) && instruction.operand is MethodInfo method && method.Name == m_get_Downed.Name && method.DeclaringType == m_get_Downed.DeclaringType)
 				{
 					skip--;
-					if (skip < 0)
-					{
-						instruction.opcode = OpCodes.Call;
-						instruction.operand = m_replacement;
-						found = true;
-					}
-				}
+										if (skip < 0)
+										{
+											instruction.opcode = OpCodes.Call;
+											instruction.operand = m_replacement;
+											found = true;
+										}
+										else if (skip == 0)
+										{
+											instruction.opcode = OpCodes.Call;
+											instruction.operand = m_replacement;
+											found = true;
+										}				}
 				yield return instruction;
 			}
 
 			if (!found)
-				Log.Error("Unexpected code in patch " + MethodBase.GetCurrentMethod().DeclaringType);
+				Log.Error("Unexpected code in patch " + MethodBase.GetCurrentMethod().DeclaringType + " for method " + original.FullDescription());
 		}
 
 		public static int ExtractPerZombie()

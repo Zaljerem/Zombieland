@@ -213,13 +213,31 @@ namespace ZombieLand
 		};
 	}
 
-	[StaticConstructorOnStartup]
 	public static class ZombieGenerator
 	{
 		public static int ZombiesSpawning = 0;
 		public static readonly List<BackstoryDef> childBackstories;
 		public static readonly List<BackstoryDef> adultBackstories;
 		public static readonly Dictionary<bool, Dictionary<string, List<ThingStuffPair>>> AllApparel;
+
+		private static void SetMelanin(Pawn_StoryTracker storyTracker, float melanin)
+		{
+			var field = typeof(Pawn_StoryTracker).GetField("melanin", BindingFlags.NonPublic | BindingFlags.Instance);
+			field.SetValue(storyTracker, melanin);
+		}
+
+		public static DefMap<RecordDef, float> GetRecords(Pawn_RecordsTracker recordsTracker)
+		{
+			var field = typeof(Pawn_RecordsTracker).GetField("records", BindingFlags.NonPublic | BindingFlags.Instance);
+			return (DefMap<RecordDef, float>)field.GetValue(recordsTracker);
+		}
+
+		private static void ClearDefMap(DefMap<RecordDef, float> defMap)
+		{
+			var field = typeof(DefMap<RecordDef, float>).GetField("values", BindingFlags.NonPublic | BindingFlags.Instance);
+			var valuesList = (List<float>)field.GetValue(defMap);
+			valuesList.Clear();
+		}
 
 		static ZombieGenerator()
 		{
@@ -377,6 +395,7 @@ namespace ZombieLand
 				}
 	
 			zombie.customHeadGraphic = customHeadGraphic;
+			zombie.Drawer.renderer.EnsureGraphicsInitialized();
 			}
 		}
 
@@ -411,8 +430,7 @@ namespace ZombieLand
 					if (pair == null)
 						continue;
 					var apparel = (Apparel)ThingMaker.MakeThing(pair.thing, pair.stuff);
-					apparel.wornByCorpseInt = difficulty >= 2f;
-					yield return null;
+														apparel.WornByCorpse = difficulty >= 2f;					yield return null;
 					PawnGenerator.PostProcessGeneratedGear(apparel, zombie);
 					yield return null;
 					if (ApparelUtility.HasPartsToWear(zombie, apparel.def) && apparel.PawnCanWear(zombie, true))
@@ -524,7 +542,7 @@ namespace ZombieLand
 				zombie.ageTracker.AgeBiologicalTicks = ageTicks;
 				zombie.ageTracker.AgeChronologicalTicks = (long)(ageTicks * Rand.Range(1f, 3f));
 				zombie.ageTracker.BirthAbsTicks = GenTicks.TicksAbs - ageTicks - Rand.Range(0, 100) * 3600000L;
-				zombie.ageTracker.RecalculateLifeStageIndex();
+				zombie.ageTracker.AgeBiologicalTicks = ageTicks;
 				zombie.ageTracker.ResetAgeReversalDemand(Pawn_AgeTracker.AgeReversalReason.Initial, true);
 			}))
 			{ Abort(ex3); yield break; }
@@ -532,7 +550,7 @@ namespace ZombieLand
 			if (RunWithFailureCheck(out var ex4, () =>
 			{
 				zombie.needs.SetInitialLevels();
-				zombie.records.records.values.Clear();
+				ClearDefMap(ZombieGenerator.GetRecords(zombie.records));
 			}))
 			{ Abort(ex4); yield break; }
 
@@ -559,14 +577,14 @@ namespace ZombieLand
 
 			if (RunWithFailureCheck(out var ex8, () =>
 			{
-				zombie.story.childhood = childBackstories.SafeRandomElement();
+				zombie.story.Childhood = childBackstories.SafeRandomElement();
 			}))
 			{ Abort(ex8); yield break; }
 
 			if (RunWithFailureCheck(out var ex9, () =>
 			{
 				if (zombie.ageTracker.AgeBiologicalYearsFloat >= 20f)
-					zombie.story.adulthood = adultBackstories.SafeRandomElement();
+					zombie.story.Adulthood = adultBackstories.SafeRandomElement();
 			}))
 			{ Abort(ex9); yield break; }
 
@@ -576,11 +594,11 @@ namespace ZombieLand
 					.Where(def => ZombieBaseValues.IsValidHeadPath(def.graphicPath))
 					.RandomElement();
 
-				zombie.story.melanin = zombie.isAlbino || zombie.isHealer ? 1f : (zombie.isDarkSlimer ? 0f : 0.01f * Rand.Range(10, 91));
+				SetMelanin(zombie.story, zombie.isAlbino || zombie.isHealer ? 1f : (zombie.isDarkSlimer ? 0f : 0.01f * Rand.Range(10, 91)));
 				zombie.story.bodyType = bodyType;
 				zombie.story.headType = headType;
 				//zombie.story.crownType = Rand.Bool ? CrownType.Average : CrownType.Narrow;
-				zombie.story.hairColor = ZombieBaseValues.HairColor();
+				zombie.story.HairColor = ZombieBaseValues.HairColor();
 				zombie.story.hairDef = PawnStyleItemChooser.RandomHairFor(zombie);
 				if (XenotypeDefOf.Baseliner != null)
 					zombie.genes.SetXenotype(XenotypeDefOf.Baseliner);
@@ -605,13 +623,7 @@ namespace ZombieLand
 				yield return it.Current;
 			}
 
-			if (RunWithFailureCheck(out var ex13, () =>
-			{
-				zombie.Drawer.leaner = new ZombieLeaner(zombie);
-				zombie.pather ??= new Pawn_PathFollower(zombie);
-				zombie.pather.destination = IntVec3.Invalid;
-			}))
-			{ Abort(ex13); yield break; }
+
 
 			if (zombie.IsTanky == false && ZombieSettings.Values.disableRandomApparel == false)
 			{
@@ -633,6 +645,28 @@ namespace ZombieLand
 					_ = GenPlace.TryPlaceThing(zombie, cell, map, ThingPlaceMode.Direct);
 			}))
 			{ Abort(ex15); yield break; }
+
+			if (RunWithFailureCheck(out var ex13, () =>
+			{
+				zombie.Drawer.leaner = new ZombieLeaner(zombie);
+				zombie.pather ??= new Pawn_PathFollower(zombie);
+				if (zombie.Map != null)
+				{
+					zombie.pather.StartPath(IntVec3.Invalid, PathEndMode.OnCell);
+				}
+				else
+				{
+					Log.Error($"Zombieland: Skipping StartPath for zombie {zombie.Name.ToStringFull} because its map is null. This might indicate an issue with zombie spawning.");
+				}
+			}))
+			{ Abort(ex13); yield break; }
+
+			if (RunWithFailureCheck(out var exJob, () =>
+			{
+				var job = JobMaker.MakeJob(DefDatabase<JobDef>.GetNamed("Stumble"));
+				zombie.jobs.StartJob(job, JobCondition.Succeeded);
+			}))
+			{ Abort(exJob); yield break; }
 
 			try
 			{

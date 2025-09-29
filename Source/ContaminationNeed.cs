@@ -25,7 +25,7 @@ namespace ZombieLand
 		}
 
 		public override int GUIChangeArrow => Find.TickManager.TicksGame < lastGainTick + 10 ? 1 : 0;
-		public override bool IsFrozen => false;
+		protected override bool IsFrozen => false;
 
 		public override void NeedInterval() { }
 		public override void SetInitialLevel() { }

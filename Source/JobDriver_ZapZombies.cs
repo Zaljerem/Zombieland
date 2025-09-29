@@ -1,5 +1,6 @@
 ﻿using RimWorld;
 using System.Collections.Generic;
+using System.Linq;
 using Verse;
 using Verse.AI;
 
@@ -12,7 +13,7 @@ namespace ZombieLand
 			return pawn.Reserve(TargetA, job, 1, -1, null, errorOnFailed);
 		}
 
-		public override IEnumerable<Toil> MakeNewToils()
+		protected override IEnumerable<Toil> MakeNewToils()
 		{
 			_ = this.FailOnDespawnedNullOrForbidden(TargetIndex.A);
 			_ = this.FailOnForbidden(TargetIndex.A);
@@ -46,8 +47,12 @@ namespace ZombieLand
 			{
 				initAction = () =>
 				{
-					if (TargetA.Thing is ZombieShocker shocker)
-						shocker.ReceiveCompSignal("Activate");
+					var shocker = TargetA.Thing as ZombieShocker;
+					var effecter = new Effecter(CustomDefs.ZombieShockerRoom);
+					var subEffecter = effecter.children.OfType<SubEffecter_ZombieShocker>().FirstOrDefault();
+					subEffecter.compPowerTrader = shocker.compPowerTrader;
+					effecter.Trigger(new TargetInfo(shocker), TargetInfo.Invalid);
+					effecter.Cleanup();
 				}
 			};
 		}

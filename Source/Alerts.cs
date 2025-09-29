@@ -152,7 +152,7 @@ namespace ZombieLand
 				var tm = Find.CurrentMap?.GetComponent<TickManager>();
 				if (tm != null)
 				{
-					var ticksDelay = Tools.NewMapZombieTicksDelay() - (GenDate.TicksGame - tm.mapSpawnedTicks);
+					var ticksDelay = Tools.NewMapZombieTicksDelay() - (GenTicks.TicksGame - tm.mapSpawnedTicks);
 					if (ticksDelay > 0)
 						days = ticksDelay / GenDate.TicksPerDay;
 				}

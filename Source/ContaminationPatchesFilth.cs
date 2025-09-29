@@ -12,17 +12,20 @@ namespace ZombieLand
 	[HarmonyPatch(typeof(Pawn_FilthTracker), nameof(Pawn_FilthTracker.Notify_EnteredNewCell))]
 	static class Pawn_FilthTracker_Notify_EnteredNewCell_Patch
 	{
+		static readonly FieldInfo f_pawn = AccessTools.Field(typeof(Pawn_FilthTracker), "pawn");
+		static Pawn GetPawn(Pawn_FilthTracker tracker) => (Pawn)f_pawn.GetValue(tracker);
+
 		static bool Prepare() => Constants.CONTAMINATION;
 
-		static void Prefix(Pawn_FilthTracker __instance) => Filth_MakeThing_Patch.filthSource = __instance.pawn;
+		static void Prefix(Pawn_FilthTracker __instance) => Filth_MakeThing_Patch.filthSource = GetPawn(__instance);
 		static void Postfix(Pawn_FilthTracker __instance)
 		{
-			var pawn = __instance.pawn;
+			var pawn = GetPawn(__instance);
 			var pawnContamination = pawn.GetContamination(includeHoldings: true);
 			var cellContamination = pawn.Map.GetContamination(pawn.Position);
 			var delta = cellContamination * ZombieSettings.Values.contamination.cellFactor - pawnContamination;
 			if (delta > 0)
-				pawn.AddContamination(delta, null, ZombieSettings.Values.contamination.enterCellAdd);
+				pawn.AddContamination(delta, ZombieSettings.Values.contamination.enterCellAdd);
 			else
 				ZombieSettings.Values.contamination.enterCellLoose.Equalize(pawn, pawn.Position);
 			Filth_MakeThing_Patch.filthSource = null;
@@ -77,10 +80,11 @@ namespace ZombieLand
 			if (listOfLeavingsOut.Any())
 			{
 				var leavingsArray = listOfLeavingsOut.ToArray();
-				var savedMapIndex = diedThing.mapIndexOrState;
-				diedThing.mapIndexOrState = (sbyte)map.Index;
+				var mapIndexOrStateField = AccessTools.Field(typeof(Thing), "mapIndexOrState");
+				var savedMapIndex = (sbyte)mapIndexOrStateField.GetValue(diedThing);
+				mapIndexOrStateField.SetValue(diedThing, (sbyte)map.Index);
 				diedThing.TransferContamination(ZombieSettings.Values.contamination.leavingsTransfer, leavingsArray);
-				diedThing.mapIndexOrState = savedMapIndex;
+				mapIndexOrStateField.SetValue(diedThing, savedMapIndex);
 			}
 		}
 	}
@@ -103,7 +107,7 @@ namespace ZombieLand
 		static void Postfix() => Filth_MakeThing_Patch.filthSource = null;
 	}
 
-	[HarmonyPatch(typeof(Projectile_Liquid), nameof(Projectile_Liquid.DoImpact))]
+	[HarmonyPatch(typeof(Projectile_Liquid), "DoImpact")]
 	static class Projectile_Liquid_DoImpact_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
@@ -112,8 +116,9 @@ namespace ZombieLand
 		static void Postfix() => Filth_MakeThing_Patch.filthSource = null;
 	}
 
-	[HarmonyPatch(typeof(TunnelHiveSpawner), nameof(TunnelHiveSpawner.Tick))]
-	static class TunnelHiveSpawner_Tick_Patch
+
+	[HarmonyPatch(typeof(TunnelHiveSpawner), "Spawn")]
+	static class TunnelHiveSpawner_Spawn_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
 
@@ -138,17 +143,20 @@ namespace ZombieLand
 		static void Postfix() => Filth_MakeThing_Patch.filthSource = null;
 	}
 
-	[HarmonyPatch(typeof(Verse.Explosion), nameof(Verse.Explosion.TrySpawnExplosionThing))]
+	[HarmonyPatch(typeof(Verse.Explosion), "TrySpawnExplosionThing")]
 	static class Verse_Explosion_TrySpawnExplosionThing_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
 
 		static void Prefix(Verse.Explosion __instance)
-			=> Filth_MakeThing_Patch.filthSource = __instance.damagedThings.OrderBy(t => t.GetContamination(includeHoldings: true)).LastOrDefault();
+		{
+			var damagedThings = (List<Thing>)AccessTools.Field(typeof(Verse.Explosion), "damagedThings").GetValue(__instance);
+			Filth_MakeThing_Patch.filthSource = damagedThings.OrderBy(t => t.GetContamination(includeHoldings: true)).LastOrDefault();
+		}
 		static void Postfix() => Filth_MakeThing_Patch.filthSource = null;
 	}
 
-	[HarmonyPatch(typeof(RoofCollapserImmediate), nameof(RoofCollapserImmediate.DropRoofInCellPhaseTwo))]
+	[HarmonyPatch(typeof(RoofCollapserImmediate), "DropRoofInCellPhaseTwo")]
 	static class RoofCollapserImmediate_DropRoofInCellPhaseTwo_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
@@ -173,7 +181,7 @@ namespace ZombieLand
 		}
 	}
 
-	[HarmonyPatch(typeof(PregnancyUtility), nameof(PregnancyUtility.SpawnBirthFilth))]
+	[HarmonyPatch(typeof(PregnancyUtility), "SpawnBirthFilth")]
 	static class PregnancyUtility_SpawnBirthFilth_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
@@ -201,9 +209,11 @@ namespace ZombieLand
 	[HarmonyPatch(typeof(Pawn_HealthTracker), nameof(Pawn_HealthTracker.DropBloodFilth))]
 	static class Pawn_HealthTracker_DropBloodFilth_Patch
 	{
+		static readonly FieldInfo f_pawn = AccessTools.Field(typeof(Pawn_HealthTracker), "pawn");
+
 		static bool Prepare() => Constants.CONTAMINATION;
 
-		static void Prefix(Pawn_HealthTracker __instance) => Filth_MakeThing_Patch.filthSource = __instance.pawn;
+		static void Prefix(Pawn_HealthTracker __instance) => Filth_MakeThing_Patch.filthSource = (Pawn)f_pawn.GetValue(__instance);
 		static void Postfix() => Filth_MakeThing_Patch.filthSource = null;
 	}
 
@@ -218,7 +228,7 @@ namespace ZombieLand
 		static IEnumerable<MethodBase> TargetMethods()
 		{
 			yield return SymbolExtensions.GetMethodInfo((Pawn_FilthTracker tracker) => tracker.GainFilth(default, default));
-			yield return SymbolExtensions.GetMethodInfo((Filth outFilth) => FilthMaker.TryMakeFilth(default, default, default, default, default, out outFilth, default));
+			yield return AccessTools.Method(typeof(FilthMaker), "TryMakeFilth", new[] { typeof(IntVec3), typeof(Map), typeof(ThingDef), typeof(IEnumerable<string>), typeof(bool), typeof(Filth).MakeByRefType(), typeof(FilthSourceFlags) });
 		}
 
 		static readonly HashSet<ThingDef> nastyFilths = new()
@@ -230,17 +240,22 @@ namespace ZombieLand
 		{
 			if (Tools.IsPlaying())
 			{
+				var mapIndexOrStateField = AccessTools.Field(typeof(Thing), "mapIndexOrState");
 				if (filthCell.IsValid)
 				{
-					var savedMapIndex = newThing.mapIndexOrState;
-					newThing.mapIndexOrState = (sbyte)filthCell.mapInt.Index;
+					var savedMapIndex = (sbyte)mapIndexOrStateField.GetValue(newThing);
+					mapIndexOrStateField.SetValue(newThing, (sbyte)filthCell.Map.Index);
 					ZombieSettings.Values.contamination.filthEqualize.Equalize((LocalTargetInfo)filthCell, newThing);
-					newThing.mapIndexOrState = savedMapIndex;
+					mapIndexOrStateField.SetValue(newThing, savedMapIndex);
 				}
 				if (filthSource != null)
 				{
 					var factor = nastyFilths.Contains(filthSource.def) ? ZombieSettings.Values.contamination.bloodEqualize : ZombieSettings.Values.contamination.filthEqualize;
-					newThing.AddContamination(filthSource.GetContamination(includeHoldings: true), filthSource.mapIndexOrState, factor);
+					var savedSourceMapIndex = (sbyte)mapIndexOrStateField.GetValue(filthSource);
+					var savedNewThingMapIndex = (sbyte)mapIndexOrStateField.GetValue(newThing);
+					mapIndexOrStateField.SetValue(newThing, savedSourceMapIndex);
+					newThing.AddContamination(filthSource.GetContamination(includeHoldings: true), factor);
+					mapIndexOrStateField.SetValue(newThing, savedNewThingMapIndex);
 				}
 			}
 			return newThing;
@@ -248,14 +263,21 @@ namespace ZombieLand
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
-			var m_MakeThing = SymbolExtensions.GetMethodInfo(() => ThingMaker.MakeThing(default, default));
 			var m_TransferFilth = SymbolExtensions.GetMethodInfo(() => FilthContamination(default));
 
-			return new CodeMatcher(instructions)
-				.MatchEndForward(new CodeMatch(operand: m_MakeThing), new CodeMatch())
-				.ThrowIfInvalid($"Cannot find {m_MakeThing.FullDescription()}")
-				.Insert(Call[m_TransferFilth])
-				.InstructionEnumeration();
+			var codes = new List<CodeInstruction>(instructions);
+			for (int i = 0; i < codes.Count; i++)
+			{
+				// Look for the call to ThingMaker.MakeThing(ThingDef def)
+									if (codes[i].opcode == System.Reflection.Emit.OpCodes.Call && codes[i].operand is MethodInfo method &&
+										method.DeclaringType == typeof(ThingMaker) && method.Name == nameof(ThingMaker.MakeThing) &&
+										method.GetParameters().Length == 1 && method.GetParameters()[0].ParameterType == typeof(ThingDef))
+								{
+									// Insert the call to FilthContamination after ThingMaker.MakeThing
+									codes.Insert(i + 1, new CodeInstruction(System.Reflection.Emit.OpCodes.Call, m_TransferFilth));					break; // Assuming only one such call needs patching
+				}
+			}
+			return codes;
 		}
 	}
 }

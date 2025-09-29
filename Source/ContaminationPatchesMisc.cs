@@ -1,7 +1,8 @@
-﻿using HarmonyLib;
+﻿using System.Reflection.Emit;
+using HarmonyLib;
 using Mono.Security;
 using RimWorld;
-using Steamworks;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +28,7 @@ namespace ZombieLand
 		}
 	}
 
-	[HarmonyPatch(typeof(Fire), nameof(Fire.DoComplexCalcs))]
+	[HarmonyPatch(typeof(Fire), "DoComplexCalcs", MethodType.Normal)]
 	static class Fire_DoComplexCalcs_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
@@ -53,7 +54,10 @@ namespace ZombieLand
 		static bool Prepare() => Constants.CONTAMINATION;
 
 		static IEnumerable<MethodBase> TargetMethods()
-			=> Tools.MethodsImplementing((Verb_MeleeAttack verb) => verb.ApplyMeleeDamageToTarget(default));
+		{
+			yield return AccessTools.Method(typeof(Verb_MeleeApplyHediff), "ApplyMeleeDamageToTarget");
+			yield return AccessTools.Method(typeof(Verb_MeleeAttackDamage), "ApplyMeleeDamageToTarget");
+		}
 
 		static void Postfix(Verb_MeleeAttack __instance, LocalTargetInfo target, DamageWorker.DamageResult __result)
 		{
@@ -99,13 +103,13 @@ namespace ZombieLand
 
 		static void Prefix(ThingOwner __instance, Thing item, ThingOwner otherContainer)
 		{
-			activeThingOwnerMapIndex = (sbyte)(ThingOwnerUtility.GetRootMap(__instance.owner)?.Index ?? -1);
-			if (otherContainer.owner is Frame frame && frame.mapIndexOrState >= 0)
+			activeThingOwnerMapIndex = (sbyte)(ThingOwnerUtility.GetRootMap(__instance.Owner)?.Index ?? -1);
+			if (otherContainer.Owner is Frame frame && (sbyte)Tools.f_mapIndexOrState.GetValue(frame) >= 0)
 			{
-				var savedMapIndex = item.mapIndexOrState;
-				item.mapIndexOrState = frame.mapIndexOrState;
+				var savedMapIndex = (sbyte)Tools.f_mapIndexOrState.GetValue(item);
+				Tools.f_mapIndexOrState.SetValue(item, (sbyte)Tools.f_mapIndexOrState.GetValue(frame));
 				frame.SetContamination(item.GetContamination());
-				item.mapIndexOrState = savedMapIndex;
+				Tools.f_mapIndexOrState.SetValue(item, savedMapIndex);
 			}
 		}
 
@@ -120,6 +124,8 @@ namespace ZombieLand
 	{
 		public static sbyte pawnMapIndex;
 
+
+
 		static bool Prepare() => Constants.CONTAMINATION;
 
 		static IEnumerable<MethodBase> TargetMethods()
@@ -132,7 +138,7 @@ namespace ZombieLand
 
 		static void Prefix(Pawn_CarryTracker __instance)
 		{
-			pawnMapIndex = __instance.pawn.mapIndexOrState;
+			pawnMapIndex = (sbyte)Tools.f_mapIndexOrState.GetValue(__instance.pawn);
 		}
 
 		static void Postfix()
@@ -165,23 +171,22 @@ namespace ZombieLand
 			var newContamination = (otherCount * otherContamination + thisCount * thisContamination) / (thisCount + otherCount);
 			var transfer = newContamination - thisContamination;
 
-			var savedMapIndex = __instance.mapIndexOrState;
-			__instance.mapIndexOrState = Pawn_CarryTracker_TryStartCarry_Patch_Patch.pawnMapIndex;
-			if (transfer > 0)
-				__instance.AddContamination(transfer);
-			if (transfer < 0)
-				__instance.SubtractContamination(-transfer);
-			__instance.mapIndexOrState = savedMapIndex;
-
-			if (__result == false && other != null)
-			{
-				var factor = otherNewStackSize / (float)otherOldStackSize;
-				savedMapIndex = other.mapIndexOrState;
-				other.mapIndexOrState = Pawn_CarryTracker_TryStartCarry_Patch_Patch.pawnMapIndex;
-				other.SubtractContamination(otherContamination * factor);
-				other.mapIndexOrState = savedMapIndex;
-			}
-		}
+						var savedMapIndex = (sbyte)Tools.f_mapIndexOrState.GetValue(__instance);
+						Tools.f_mapIndexOrState.SetValue(__instance, Pawn_CarryTracker_TryStartCarry_Patch_Patch.pawnMapIndex);
+						if (transfer > 0)
+							__instance.AddContamination(transfer);
+						if (transfer < 0)
+							__instance.SubtractContamination(-transfer);
+						Tools.f_mapIndexOrState.SetValue(__instance, savedMapIndex);
+			
+						if (__result == false && other != null)
+						{
+							var factor = otherNewStackSize / (float)otherOldStackSize;
+							savedMapIndex = (sbyte)Tools.f_mapIndexOrState.GetValue(other);
+							Tools.f_mapIndexOrState.SetValue(other, Pawn_CarryTracker_TryStartCarry_Patch_Patch.pawnMapIndex);
+							other.SubtractContamination(otherContamination * factor);
+							Tools.f_mapIndexOrState.SetValue(other, savedMapIndex);
+						}		}
 	}
 
 	[HarmonyPatch(typeof(Thing), nameof(Thing.SplitOff))]
@@ -200,23 +205,23 @@ namespace ZombieLand
 			if (contamination == 0)
 				return;
 
-			var savedMapIndex1 = __instance.mapIndexOrState;
-			var savedMapIndex2 = __result.mapIndexOrState;
+			var savedMapIndex1 = (sbyte)Tools.f_mapIndexOrState.GetValue(__instance);
+			var savedMapIndex2 = (sbyte)Tools.f_mapIndexOrState.GetValue(__result);
 			var ownerMapIndex = ThingOwner_TryTransferToContainer_Patch.activeThingOwnerMapIndex;
-			if (savedMapIndex1 < 0 && ownerMapIndex >= 0)
+			if ((sbyte)Tools.f_mapIndexOrState.GetValue(__instance) < 0 && ownerMapIndex >= 0)
 			{
-				__instance.mapIndexOrState = ownerMapIndex;
-				__result.mapIndexOrState = ownerMapIndex;
+				Tools.f_mapIndexOrState.SetValue(__instance, ownerMapIndex);
+				Tools.f_mapIndexOrState.SetValue(__result, ownerMapIndex);
 				__result.AddContamination(contamination);
-				__instance.mapIndexOrState = savedMapIndex1;
-				__result.mapIndexOrState = savedMapIndex2;
+				Tools.f_mapIndexOrState.SetValue(__instance, savedMapIndex1);
+				Tools.f_mapIndexOrState.SetValue(__result, savedMapIndex2);
 			}
 			else
 			{
-				var savedMapIndex = __result.mapIndexOrState;
-				__result.mapIndexOrState = __instance.mapIndexOrState;
+				var savedMapIndex = (sbyte)Tools.f_mapIndexOrState.GetValue(__result);
+				Tools.f_mapIndexOrState.SetValue(__result, (sbyte)Tools.f_mapIndexOrState.GetValue(__instance));
 				__result.AddContamination(contamination);
-				__result.mapIndexOrState = savedMapIndex;
+				Tools.f_mapIndexOrState.SetValue(__result, savedMapIndex);
 			}
 		}
 	}
@@ -225,6 +230,8 @@ namespace ZombieLand
 	static class Thing_Ingested_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
+
+		static readonly MethodInfo m_IngestedCalculateAmounts = AccessTools.Method(typeof(Thing), "IngestedCalculateAmounts", new[] { typeof(Pawn), typeof(float), typeof(int).MakeByRefType(), typeof(float).MakeByRefType() });
 
 		static void IngestedCalculateAmounts(Thing self, Pawn ingester, float nutritionWanted, out int numTaken, out float nutritionIngested)
 		{
@@ -238,14 +245,18 @@ namespace ZombieLand
 			if (self is Corpse corpse)
 				totalNutrition = FoodUtility.NutritionForEater(corpse.InnerPawn, self);
 
-			self.IngestedCalculateAmounts(ingester, nutritionWanted, out numTaken, out nutritionIngested);
+			var parameters = new object[] { ingester, nutritionWanted, 0, 0f };
+			m_IngestedCalculateAmounts.Invoke(self, parameters);
+			numTaken = (int)parameters[2];
+			nutritionIngested = (float)parameters[3];
+
 			var factor = numTaken == 0 ? (totalNutrition == 0 ? 1 : nutritionIngested / totalNutrition) : (oldStackCount == 0 ? 1 : numTaken / (float)oldStackCount);
 			self.TransferContamination(ZombieSettings.Values.contamination.ingestTransfer * factor, ingester);
 		}
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
-			var from = SymbolExtensions.GetMethodInfo((Thing thing, int numToken, float nutritionIngested) => thing.IngestedCalculateAmounts(default, default, out numToken, out nutritionIngested));
+			var from = AccessTools.Method(typeof(Thing), "IngestedCalculateAmounts", new[] { typeof(Pawn), typeof(float), typeof(int).MakeByRefType(), typeof(float).MakeByRefType() });
 			var to = SymbolExtensions.GetMethodInfo((int numToken, float nutritionIngested) => IngestedCalculateAmounts(default, default, default, out numToken, out nutritionIngested));
 			return instructions.MethodReplacer(from, to);
 		}
@@ -283,9 +294,9 @@ namespace ZombieLand
 			yield return SymbolExtensions.GetMethodInfo((CompHasGatherableBodyResource comp) => comp.Gathered(default));
 			yield return AccessTools.Method(typeof(CompMechCarrier), nameof(CompMechCarrier.PostSpawnSetup));
 			yield return SymbolExtensions.GetMethodInfo((CompPlantable comp) => comp.DoPlant(default, default, default));
-			yield return SymbolExtensions.GetMethodInfo((CompPollutionPump comp) => comp.Pump());
+			yield return AccessTools.Method(typeof(CompPollutionPump), "Pump");
 			yield return AccessTools.Method(typeof(CompRefuelable), nameof(CompRefuelable.PostDestroy));
-			yield return SymbolExtensions.GetMethodInfo((CompSpawnerItems comp) => comp.SpawnItems());
+			yield return AccessTools.Method(typeof(CompSpawnerItems), "SpawnItems");
 			yield return SymbolExtensions.GetMethodInfo((CompSpawner comp) => comp.TryDoSpawn());
 			yield return AccessTools.Method(typeof(CompTreeConnection), nameof(CompTreeConnection.CompTick));
 			yield return SymbolExtensions.GetMethodInfo((CompWasteProducer comp) => comp.ProduceWaste(0));
@@ -302,24 +313,62 @@ namespace ZombieLand
 		}
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-			=> instructions.ExtraArgumentsTranspiler(typeof(ThingMaker), () => MakeThing(default, default, default), new[] { Ldarg_0 }, 1);
+		{
+			var from = SymbolExtensions.GetMethodInfo(() => ThingMaker.MakeThing(default(ThingDef), default(ThingDef)));
+			var to = SymbolExtensions.GetMethodInfo(() => MakeThing(default(ThingDef), default(ThingDef), default));
+
+			var codes = new List<CodeInstruction>(instructions);
+			for (int i = 0; i < codes.Count; i++)
+			{
+				if (codes[i].opcode == System.Reflection.Emit.OpCodes.Call && codes[i].operand is MethodInfo method && method == from)
+				{
+					// The two arguments for ThingMaker.MakeThing (def, stuff) are already on the stack.
+					// We need to insert Ldarg_0 (this, which is the ThingComp) before the call, but after the arguments have been pushed.
+					// So, we insert Ldarg_0 at the current index, and then update the operand of the original call.
+
+					codes.Insert(i, new CodeInstruction(System.Reflection.Emit.OpCodes.Ldarg_0)); // Push 'this' (ThingComp)
+					i++; // Adjust index for the newly inserted instruction
+
+					codes[i].operand = to; // Change the operand of the original call to our MakeThing
+					break; // Assuming only one such call needs patching
+				}
+			}
+			return codes;
+		}
 	}
 
-	[HarmonyPatch(typeof(ExecutionUtility), nameof(ExecutionUtility.ExecutionInt))]
-	[HarmonyPatch(new[] { typeof(Pawn), typeof(Pawn), typeof(bool), typeof(int), typeof(bool) })]
-	static class ExecutionUtility_ExecutionInt_Patch
+
+	[HarmonyPatch(typeof(ExecutionUtility), "ExecutionInt")]
+	static class ExecutionContamination
+	{
+		[ThreadStatic]
+		public static Pawn currentExecutionVictim;
+
+		static bool Prepare() => Constants.CONTAMINATION;
+
+		static void Prefix(Pawn victim)
+		{
+			currentExecutionVictim = victim;
+		}
+
+		static void Postfix()
+		{
+			currentExecutionVictim = null;
+		}
+	}
+
+	[HarmonyPatch(typeof(FilthMaker), "TryMakeFilth", new Type[] { typeof(IntVec3), typeof(Map), typeof(ThingDef), typeof(Filth), typeof(string), typeof(FilthSourceFlags), typeof(bool) }, new ArgumentType[] { ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Out, ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal })]
+	static class FilthMaker_TryMakeFilth_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
 
-		static Thing Spawn(ThingDef def, IntVec3 loc, Map map, WipeMode wipeMode, Pawn victim)
+		static void Postfix(bool __result, Filth outFilth)
 		{
-			var result = GenSpawn.Spawn(def, loc, map, wipeMode);
-			victim.TransferContamination(ZombieSettings.Values.contamination.generalTransfer, result);
-			return result;
+			if (__result && outFilth != null && ExecutionContamination.currentExecutionVictim != null)
+			{
+				ExecutionContamination.currentExecutionVictim.TransferContamination(ZombieSettings.Values.contamination.generalTransfer, outFilth);
+			}
 		}
-
-		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-			=> instructions.ExtraArgumentsTranspiler(typeof(GenSpawn), () => Spawn(default, default, default, default, default), new[] { Ldarg_0 }, 1);
 	}
 
 	[HarmonyPatch(typeof(TendUtility), nameof(TendUtility.DoTend))]
@@ -348,7 +397,7 @@ namespace ZombieLand
 	}
 
 	[HarmonyPatch(typeof(PawnUtility), nameof(PawnUtility.GainComfortFromCellIfPossible))]
-	[HarmonyPatch(new[] { typeof(Pawn), typeof(bool) })]
+	[HarmonyPatch(new[] { typeof(Pawn), typeof(int), typeof(bool) })]
 	static class PawnUtility_GainComfortFromCellIfPossible_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
@@ -398,12 +447,15 @@ namespace ZombieLand
 		}
 	}
 
-	[HarmonyPatch(typeof(JobDriver_Lovin), nameof(JobDriver_Lovin.MakeNewToils))]
+	[HarmonyPatch(typeof(JobDriver_Lovin), "MakeNewToils")]
 	static class JobDriver_Lovin_MakeNewToils_Patch
 	{
 		static readonly string layDownToilName = Toils_LayDown.LayDown(default, default, default).debugName;
 
 		static bool Prepare() => Constants.CONTAMINATION;
+
+		static readonly FieldInfo f_ticksLeft = AccessTools.Field(typeof(JobDriver_Lovin), "ticksLeft");
+		static readonly FieldInfo f_Partner = AccessTools.Field(typeof(JobDriver_Lovin), "Partner");
 
 		static IEnumerable<Toil> Postfix(IEnumerable<Toil> toils, JobDriver_Lovin __instance)
 		{
@@ -414,10 +466,10 @@ namespace ZombieLand
 					var action = toil.initAction;
 					toil.initAction = () =>
 					{
-						if (__instance.ticksLeft <= 25000)
+						if ((int)f_ticksLeft.GetValue(__instance) <= 25000)
 						{
 							var p1 = __instance.pawn;
-							var p2 = __instance.Partner;
+							var p2 = (Pawn)f_Partner.GetValue(__instance);
 							0.1f.Equalize(p1, p2);
 						}
 						action();
@@ -455,7 +507,7 @@ namespace ZombieLand
 		{
 			var thing = GenSpawn.Spawn(def, loc, map, wipeMode);
 			var contamination = map.GetContamination(loc);
-			thing.AddContamination(contamination, null, ZombieSettings.Values.contamination.wastePackAdd);
+			thing.AddContamination(contamination, ZombieSettings.Values.contamination.wastePackAdd);
 			return thing;
 		}
 
@@ -505,7 +557,7 @@ namespace ZombieLand
 			=> instructions.ExtraArgumentsTranspiler(typeof(GenSpawn), () => Spawn(default, default, default, default, default), new[] { Ldarg_0 }, 1);
 	}
 
-	[HarmonyPatch(typeof(CompLifespan), nameof(CompLifespan.Expire))]
+	[HarmonyPatch(typeof(CompLifespan), "Expire")]
 	static class CompLifespan_Expire_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
@@ -521,7 +573,7 @@ namespace ZombieLand
 			=> instructions.ExtraArgumentsTranspiler(typeof(GenSpawn), () => Spawn(default, default, default, default, default), new[] { Ldarg_0 }, 1);
 	}
 
-	[HarmonyPatch(typeof(RoofCollapserImmediate), nameof(RoofCollapserImmediate.DropRoofInCellPhaseOne))]
+	[HarmonyPatch(typeof(RoofCollapserImmediate), "DropRoofInCellPhaseOne")]
 	static class RoofCollapserImmediate_DropRoofInCellPhaseOne_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
@@ -541,7 +593,8 @@ namespace ZombieLand
 	[HarmonyPatch]
 	static class JobDriver_AffectFloor_MakeNewToils_Patch
 	{
-		static readonly MethodInfo m_DoEffect = SymbolExtensions.GetMethodInfo((JobDriver_AffectFloor jobdriver) => jobdriver.DoEffect(default));
+		static readonly MethodInfo m_DoEffect = AccessTools.Method(typeof(JobDriver_AffectFloor), "DoEffect", new[] { typeof(IntVec3) });
+		static readonly FieldInfo f_Map = AccessTools.Field(typeof(JobDriver), "Map");
 
 		static bool Prepare() => Constants.CONTAMINATION;
 
@@ -553,9 +606,10 @@ namespace ZombieLand
 
 		static void DoEffect(JobDriver_AffectFloor self, IntVec3 c)
 		{
-			var contamination = self.Map.GetContamination(c);
-			self.pawn.AddContamination(contamination, null, ZombieSettings.Values.contamination.floorAdd);
-			self.DoEffect(c);
+			var map = (Map)f_Map.GetValue(self);
+			var contamination = map.GetContamination(c);
+			self.pawn.AddContamination(contamination, ZombieSettings.Values.contamination.floorAdd);
+			m_DoEffect.Invoke(self, new object[] { c });
 		}
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
@@ -568,7 +622,8 @@ namespace ZombieLand
 	[HarmonyPatch]
 	static class JobDriver_DisassembleMech_MakeNewToils_Patch
 	{
-		static readonly MethodInfo m_TryPlaceThing = AccessTools.Method(typeof(GenPlace), nameof(GenPlace.TryPlaceThing), new[] { typeof(Thing), typeof(IntVec3), typeof(Map), typeof(ThingPlaceMode), typeof(Action<Thing, int>), typeof(Predicate<IntVec3>), typeof(Rot4?) });
+		static readonly MethodInfo m_TryPlaceThing = AccessTools.Method(typeof(GenPlace), nameof(GenPlace.TryPlaceThing), new[] { typeof(Thing), typeof(IntVec3), typeof(Map), typeof(ThingPlaceMode), typeof(Action<Thing, int>), typeof(Predicate<IntVec3>), typeof(Rot4?), typeof(int) });
+		static readonly FieldInfo f_Mech = AccessTools.Field(typeof(JobDriver_DisassembleMech), "Mech");
 
 		static bool Prepare() => Constants.CONTAMINATION;
 
@@ -577,15 +632,35 @@ namespace ZombieLand
 			return AccessTools.FirstMethod(typeof(JobDriver_DisassembleMech), method => method.CallsMethod(m_TryPlaceThing));
 		}
 
-		static bool TryPlaceThing(Thing thing, IntVec3 center, Map map, ThingPlaceMode mode, Action<Thing, int> placedAction, Predicate<IntVec3> nearPlaceValidator, Rot4 rot, JobDriver_DisassembleMech driver)
+		static bool TryPlaceThing(Thing thing, IntVec3 center, Map map, ThingPlaceMode mode, JobDriver_DisassembleMech driver)
 		{
 			var pawn = driver.pawn;
-			var mech = driver.Mech;
+			var mech = (Pawn)f_Mech.GetValue(driver);
 			mech.TransferContamination(ZombieSettings.Values.contamination.disassembleTransfer, pawn, thing);
-			return GenPlace.TryPlaceThing(thing, center, map, mode, placedAction, nearPlaceValidator, rot);
+			return GenPlace.TryPlaceThing(thing, center, map, mode);
 		}
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-			=> instructions.ExtraArgumentsTranspiler(typeof(GenPlace), () => TryPlaceThing(default, default, default, default, default, default, default, default), new[] { Ldarg_0 }, 1);
+		{
+			var codes = new List<CodeInstruction>(instructions);
+			var findMethod = AccessTools.Method(typeof(GenPlace), nameof(GenPlace.TryPlaceThing), new[] { typeof(Thing), typeof(IntVec3), typeof(Map), typeof(ThingPlaceMode) });
+			var replaceMethod = AccessTools.Method(typeof(JobDriver_DisassembleMech_MakeNewToils_Patch), nameof(TryPlaceThing), new[] { typeof(Thing), typeof(IntVec3), typeof(Map), typeof(ThingPlaceMode), typeof(JobDriver_DisassembleMech) });
+
+			for (int i = 0; i < codes.Count; i++)
+			{
+				if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo method && method == findMethod)
+				{
+					// Found the call to GenPlace.TryPlaceThing
+					// Inject Ldarg_0 (this of the anonymous method's generated class)
+					codes.Insert(i, new CodeInstruction(OpCodes.Ldarg_0));
+					i++; // Move to the next instruction
+
+					// Change the operand to our helper method
+					codes[i].operand = replaceMethod;
+					break; // Assuming only one such call needs patching
+				}
+			}
+			return codes;
+		}
 	}
 }

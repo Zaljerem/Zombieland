@@ -11,7 +11,7 @@ namespace ZombieLand
 		private readonly ZombieThumper thumper;
 
 		public override Vector2 InitialSize => new(300f, 140f);
-		public override float Margin => 10f;
+		protected override float Margin => 10f;
 
 		public Dialog_ThumperSettings(ZombieThumper thumper)
 		{

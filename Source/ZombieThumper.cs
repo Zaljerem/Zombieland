@@ -97,7 +97,7 @@ namespace ZombieLand
 
 			var compRefuelable = this.TryGetComp<CompRefuelable>();
 			if (compRefuelable != null)
-				compRefuelable.configuredTargetFuelLevel = compRefuelable.Props.fuelCapacity;
+				compRefuelable.TargetFuelLevel = compRefuelable.Props.fuelCapacity;
 
 			ClearMapsService.Subscribe(this, Cleanup);
 		}
@@ -140,7 +140,7 @@ namespace ZombieLand
 			Scribe_Values.Look(ref lastImpactTicks, "lastImpactTicks", 0);
 		}
 
-		public override void Tick()
+		protected override void Tick()
 		{
 			base.Tick();
 
@@ -303,7 +303,7 @@ namespace ZombieLand
 			GenDraw.DrawFieldEdges(ringDrawCells.ToList(), Color.white, null);
 		}
 
-		public override void DrawAt(Vector3 drawLoc, bool flip = false)
+		protected override void DrawAt(Vector3 drawLoc, bool flip = false)
 		{
 
 

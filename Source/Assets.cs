@@ -30,7 +30,7 @@ namespace ZombieLand
 
 			var me = LoadedModManager.GetMod<ZombielandMod>();
 			var path = Path.Combine(me.Content.RootDir, "Resources", arch, "zombieland");
-			var assets = AssetBundle.LoadFromFile(path);
+			var assets = UnityEngine.AssetBundle.LoadFromFile(path);
 
 			dust = assets.LoadAsset<GameObject>("Dust");
 			metaballShader = assets.LoadAsset<Shader>("Metaballs");

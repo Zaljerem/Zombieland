@@ -1,4 +1,5 @@
-﻿using RimWorld;
+﻿using HarmonyLib;
+using RimWorld;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -86,7 +87,7 @@ namespace ZombieLand
 			StopMotor();
 		}
 
-		public override void Tick()
+		protected override void Tick()
 		{
 			base.Tick();
 
@@ -101,7 +102,7 @@ namespace ZombieLand
 			if (running)
 			{
 				var f = GenMath.LerpDouble(0f, 5f, 2f, 10f, ZombieSettings.Values.threatScale);
-				refuelable.ConsumeFuel(refuelable.ConsumptionRatePerTick * (workSustainer != null ? f : 1f));
+				refuelable.ConsumeFuel(refuelable.Props.fuelConsumptionRate * (workSustainer != null ? f : 1f));
 				if (refuelable.HasFuel == false)
 					StopMotor();
 			}
@@ -193,8 +194,8 @@ namespace ZombieLand
 			if (pawn == null)
 				foreach (var gizmo in base.GetGizmos())
 					yield return gizmo;
-			else if (comps != null)
-				foreach (var comp in comps)
+			else if (this.AllComps != null)
+				foreach (var comp in this.AllComps)
 				{
 					if (comp is CompForbiddable || comp is CompRefuelable)
 						continue;
@@ -214,10 +215,9 @@ namespace ZombieLand
 				}
 				// if (stalledCounter > 0)
 				// description += $" {"ChainsawStalling".Translate()}";
-				yield return new Command_Action
+				var command = new Command_Action
 				{
 					defaultDesc = description,
-					disabled = Disabled,
 					icon = Constants.Chainsaw[running ? 1 : 0],
 					hotKey = KeyBindingDefOf.Misc6,
 					action = delegate ()
@@ -228,6 +228,8 @@ namespace ZombieLand
 							StartMotor(false);
 					}
 				};
+				AccessTools.Field(typeof(Command), "disabled").SetValue(command, Disabled);
+				yield return command;
 			}
 
 			foreach (var gizmo in refuelable.CompGetGizmosExtra()) yield return gizmo;

@@ -28,11 +28,13 @@
 			</li>
 		</comps>
 		<drawGUIOverlay>true</drawGUIOverlay>
+
 		<race>
 			<fleshType>Normal</fleshType>
 			<needsRest>false</needsRest>
 			<hasGenders>true</hasGenders>
 			<foodType>Corpse</foodType>
+			<renderTree>Humanlike</renderTree>
 			<meatColor>(44,58,44)</meatColor>
 			<canBePredatorPrey>true</canBePredatorPrey>
 			<gestationPeriodDays>0</gestationPeriodDays>

@@ -3,8 +3,10 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
+using Unity.Collections;
 using Verse;
 using static HarmonyLib.Code;
 
@@ -38,6 +40,8 @@ namespace ZombieLand
 			return list;
 		}
 
+		static readonly FieldInfo f_grid = AccessTools.Field(typeof(MapGenFloatGrid), "grid");
+
 		static void AddContamination(Map map)
 		{
 			var minElevationBase = 0.7f; // default in source code
@@ -48,7 +52,7 @@ namespace ZombieLand
 				minElevationBase = (float)codes[idx].Value; // replace it with the real value
 
 			var grid = new ContaminationGrid(map);
-			var elevation = MapGenerator.Elevation.grid;
+			var elevation = ((NativeArray<float>)f_grid.GetValue(MapGenerator.Elevation)).ToArray();
 			var cellCountAboveBase = elevation.Where(elevation => elevation > minElevationBase).Count();
 			if (cellCountAboveBase > 0)
 			{
@@ -60,7 +64,7 @@ namespace ZombieLand
 					var val = elevation[i];
 					if (val > 0)
 					{
-						set.Add((val, i));
+						set.Add(((float)val, i));
 						if (set.Count > n)
 							set.Remove(set.Min);
 					}
@@ -99,7 +103,7 @@ namespace ZombieLand
 		static void Postfix() => Mineable_TrySpawnYield_Patch.mineableMap = null;
 	}
 
-	[HarmonyPatch(typeof(Mineable), nameof(Mineable.TrySpawnYield))]
+	[HarmonyPatch(typeof(Mineable), "TrySpawnYield", new Type[] { typeof(Map), typeof(bool), typeof(Pawn) })]
 	static class Mineable_TrySpawnYield_Patch
 	{
 		public static Map mineableMap;
@@ -112,7 +116,7 @@ namespace ZombieLand
 			if (mineableMap != null)
 			{
 				var contamination = mineableMap.GetContamination(mineable.Position);
-				thing.AddContamination(contamination, thing.mapIndexOrState, ZombieSettings.Values.contamination.destroyMineableAdd);
+				thing.AddContamination(contamination, ZombieSettings.Values.contamination.destroyMineableAdd);
 			}
 			return thing;
 		}
@@ -121,7 +125,7 @@ namespace ZombieLand
 			=> instructions.ExtraArgumentsTranspiler(typeof(ThingMaker), () => MakeThing(default, default, default), new[] { Ldarg_0 }, 1);
 	}
 
-	[HarmonyPatch(typeof(CompDeepDrill), nameof(CompDeepDrill.TryProducePortion))]
+	[HarmonyPatch(typeof(CompDeepDrill), "TryProducePortion")]
 	static class CompDeepDrill_TryProducePortion_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
@@ -130,7 +134,7 @@ namespace ZombieLand
 		{
 			var thing = ThingMaker.MakeThing(def, stuff);
 			_ = comp;
-			thing.AddContamination(ZombieSettings.Values.contamination.deepDrillAdd, comp.parent.mapIndexOrState);
+			thing.AddContamination(ZombieSettings.Values.contamination.deepDrillAdd, (sbyte)Tools.f_mapIndexOrState.GetValue(comp.parent));
 			return thing;
 		}
 

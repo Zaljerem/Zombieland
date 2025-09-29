@@ -1,4 +1,5 @@
-﻿using HarmonyLib;
+﻿using System.Reflection.Emit;
+using HarmonyLib;
 using RimWorld;
 using System;
 using System.Collections.Generic;
@@ -13,7 +14,7 @@ namespace ZombieLand
 	// and to prefer non-downed zombies from downed one as targets
 	//
 	[HarmonyPatch(typeof(AttackTargetFinder))]
-	[HarmonyPatch(nameof(AttackTargetFinder.GetAvailableShootingTargetsByScore))]
+	[HarmonyPatch("GetAvailableShootingTargetsByScore")]
 	static class AttackTargetFinder_GetAvailableShootingTargetsByScore_Patch
 	{
 		static void Prefix(List<IAttackTarget> rawTargets, IAttackTargetSearcher searcher, Verb verb)
@@ -210,6 +211,9 @@ namespace ZombieLand
 			});
 		}
 
+		static readonly FieldInfo f_first = AccessTools.Field(typeof(Pair<IAttackTarget, float>), "first");
+		static readonly FieldInfo f_second = AccessTools.Field(typeof(Pair<IAttackTarget, float>), "second");
+
 		static void Postfix(List<Pair<IAttackTarget, float>> __result, IAttackTargetSearcher searcher, Verb verb)
 		{
 			var attacker = searcher?.Thing;
@@ -219,17 +223,17 @@ namespace ZombieLand
 			const float delta = 1f;
 			var maxDistance = verb.IsMeleeAttack ? 5f : verb.EffectiveRange;
 			maxDistance *= maxDistance; // because we use DistanceToSquared
-			var someoneIsAimingAtMe = __result.Any(pair => pair.first.TargetCurrentlyAimingAt.Thing == searcher);
+			var someoneIsAimingAtMe = __result.Any(pair => ((IAttackTarget)f_first.GetValue(pair)).TargetCurrentlyAimingAt.Thing == searcher);
 			for (var i = 0; i < __result.Count; i++)
 			{
 				var pair = __result[i];
-				if (pair.first is Zombie zombie)
+				if (f_first.GetValue(pair) is Zombie zombie)
 				{
 					var distance = attacker.Position.DistanceToSquared(zombie.Position);
 					if (zombie.Downed || (someoneIsAimingAtMe && distance >= 81))
-						pair.second /= 100f;
+						f_second.SetValue(pair, (float)f_second.GetValue(pair) / 100f);
 					else
-						pair.second += GenMath.LerpDoubleClamped(0, maxDistance, delta, 0, distance);
+						f_second.SetValue(pair, (float)f_second.GetValue(pair) + GenMath.LerpDoubleClamped(0, maxDistance, delta, 0, distance));
 				}
 				__result[i] = pair;
 			}
@@ -411,7 +415,7 @@ namespace ZombieLand
 	}
 	//
 	[HarmonyPatch(typeof(AttackTargetFinder))]
-	[HarmonyPatch(nameof(AttackTargetFinder.GetShootingTargetScore))]
+	[HarmonyPatch("GetShootingTargetScore")]
 	static class AttackTargetFinder_GetShootingTargetScore_Patch
 	{
 		[HarmonyPriority(Priority.First)]
@@ -444,8 +448,8 @@ namespace ZombieLand
 	{
 		static IEnumerable<MethodBase> TargetMethods()
 		{
-			yield return SymbolExtensions.GetMethodInfo(() => AttackTargetFinder.FriendlyFireConeTargetScoreOffset(default, default, default));
-			yield return SymbolExtensions.GetMethodInfo(() => AttackTargetFinder.FriendlyFireBlastRadiusTargetScoreOffset(default, default, default));
+			yield return AccessTools.Method(typeof(AttackTargetFinder), "FriendlyFireConeTargetScoreOffset", new Type[] { typeof(IAttackTarget), typeof(IAttackTargetSearcher), typeof(Verb) });
+			yield return AccessTools.Method(typeof(AttackTargetFinder), "FriendlyFireBlastRadiusTargetScoreOffset", new Type[] { typeof(IAttackTarget), typeof(IAttackTargetSearcher), typeof(Verb) });
 		}
 
 		static List<Thing> RemoveZombies(List<Thing> input) => input.Where(i => i is not Zombie).ToList();
@@ -515,7 +519,7 @@ namespace ZombieLand
 	//
 	[HarmonyPatch(typeof(GenHostility))]
 	[HarmonyPatch(nameof(GenHostility.IsActiveThreatTo))]
-	[HarmonyPatch(new Type[] { typeof(IAttackTarget), typeof(Faction) })]
+	[HarmonyPatch(new Type[] { typeof(IAttackTarget), typeof(Faction), typeof(bool), typeof(bool) })]
 	static class GenHostility_IsActiveThreat_Patch
 	{
 		[HarmonyPriority(Priority.First)]
@@ -552,7 +556,7 @@ namespace ZombieLand
 	// but let drafted pawns attack zombies
 	//
 	[HarmonyPatch(typeof(JobDriver_Wait))]
-	[HarmonyPatch(nameof(JobDriver_Wait.CheckForAutoAttack))]
+	[HarmonyPatch("CheckForAutoAttack")]
 	static class JobDriver_Wait_CheckForAutoAttack_Patch
 	{
 		static bool IsActiveThreatTo(IAttackTarget target, Faction faction)
@@ -566,10 +570,26 @@ namespace ZombieLand
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
-			return Tools.DownedReplacer(instructions, 1).MethodReplacer(
-				AccessTools.Method(typeof(GenHostility), nameof(GenHostility.IsActiveThreatTo), new[] { typeof(IAttackTarget), typeof(Faction) }),
-				SymbolExtensions.GetMethodInfo(() => IsActiveThreatTo(null, null))
-			);
+			var codes = new List<CodeInstruction>(instructions);
+			var findMethod = AccessTools.Method(typeof(GenHostility), nameof(GenHostility.IsActiveThreatTo), new[] { typeof(IAttackTarget), typeof(Faction), typeof(bool), typeof(bool) });
+			var replaceMethod = SymbolExtensions.GetMethodInfo(() => IsActiveThreatTo(null, null));
+
+			for (int i = 0; i < codes.Count; i++)
+			{
+				if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo method && method == findMethod)
+				{
+					// Found the call to GenHostility.IsActiveThreatTo
+					// Inject Pop instructions to remove ignoreHives and canBeFogged
+					codes.Insert(i, new CodeInstruction(OpCodes.Pop)); // Pop canBeFogged
+					codes.Insert(i, new CodeInstruction(OpCodes.Pop)); // Pop ignoreHives
+					i += 2; // Adjust index for the newly inserted instructions
+
+					// Change the operand to our helper method
+					codes[i].operand = replaceMethod;
+					break; // Assuming only one such call needs patching
+				}
+			}
+			return codes;
 		}
 	}
 
@@ -583,7 +603,7 @@ namespace ZombieLand
 		// patch to remove the constant danger music because of the constant thread of zombies
 		//
 		[HarmonyPatch(typeof(AttackTargetsCache))]
-		[HarmonyPatch(nameof(AttackTargetsCache.RegisterTarget))]
+		[HarmonyPatch("RegisterTarget")]
 		static class AttackTargetsCache_RegisterTarget_Patch
 		{
 			static void Postfix(IAttackTarget target)
@@ -603,7 +623,7 @@ namespace ZombieLand
 		}
 
 		[HarmonyPatch(typeof(AttackTargetsCache))]
-		[HarmonyPatch(nameof(AttackTargetsCache.DeregisterTarget))]
+		[HarmonyPatch("DeregisterTarget")]
 		static class AttackTargetsCache_DeregisterTarget_Patch
 		{
 			static void Postfix(IAttackTarget target)

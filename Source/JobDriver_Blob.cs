@@ -32,7 +32,7 @@ namespace ZombieLand
 			return "zombie blob";
 		}
 
-		public override IEnumerable<Toil> MakeNewToils()
+		protected override IEnumerable<Toil> MakeNewToils()
 		{
 			yield return new Toil()
 			{

@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using System.Reflection;
 using RimWorld;
 using RimWorld.Planet;
 using System;
@@ -9,9 +10,14 @@ using static ZombieLand.Patches;
 
 namespace ZombieLand
 {
-	static class ZombieRemover
-	{
-		public static void RemoveZombieland(string filename)
+			static class ZombieRemover
+			{
+				private static HashSet<Pawn> GetConcerns(Battle battle)
+				{
+					var field = typeof(Battle).GetField("concerns", BindingFlags.NonPublic | BindingFlags.Instance);
+					return (HashSet<Pawn>)field.GetValue(battle);
+				}
+			public static void RemoveZombieland(string filename)
 		{
 			// clear caches
 			seenBills.Clear();
@@ -27,7 +33,7 @@ namespace ZombieLand
 				_ = battle.Entries.RemoveAll(entry => entry.GetConcerns().Any(th => th is Zombie));
 				_ = battle.Entries.RemoveAll(entry => entry.GetConcerns().Any(th => th is ZombieBlob));
 				_ = battle.Entries.RemoveAll(entry => entry.GetConcerns().Any(th => th is ZombieSpitter));
-				return battle.concerns.Any(RemoveItem);
+				return GetConcerns(battle).Any(RemoveItem);
 			});
 			_ = Find.TaleManager.AllTalesListForReading.RemoveAll(tale =>
 			{
@@ -155,7 +161,7 @@ namespace ZombieLand
 
 		static IEnumerable<Bill> AllBills(BillStack billStack)
 		{
-			var bills = billStack?.bills;
+			var bills = billStack?.Bills;
 			if (bills == null)
 				yield break;
 			foreach (var bill in bills)
@@ -197,7 +203,7 @@ namespace ZombieLand
 			foreach (var hediff in hediffs3)
 				pawn.health.RemoveHediff(hediff);
 
-			_ = pawn.filth?.carriedFilth?.RemoveAll(filth => filth.IsZombieThing());
+			_ = pawn.filth?.CarriedFilthListForReading?.RemoveAll(filth => filth.IsZombieThing());
 
 			pawn.needs?.AllNeeds?.Do(need =>
 			{
@@ -210,7 +216,7 @@ namespace ZombieLand
 
 		static void RemoveWorldPawns()
 		{
-			var fieldNames = new string[] { nameof(WorldPawns.pawnsAlive), nameof(WorldPawns.pawnsMothballed), nameof(WorldPawns.pawnsDead), nameof(WorldPawns.pawnsForcefullyKeptAsWorldPawns) };
+			var fieldNames = new string[] { "pawnsAlive", "pawnsMothballed", "pawnsDead", "pawnsForcefullyKeptAsWorldPawns" };
 			var trvWorldPawns = Traverse.Create(Current.Game.World.worldPawns);
 			foreach (var fieldName in fieldNames)
 			{
@@ -230,7 +236,7 @@ namespace ZombieLand
 				var zombies = PawnsOfType<Zombie>(map);
 				foreach (var zombie in zombies)
 					map.pawnDestinationReservationManager.ReleaseAllClaimedBy(zombie);
-				_ = map.pawnDestinationReservationManager.reservedDestinations.RemoveAll(pair => pair.Key == zombieFaction);
+				map.pawnDestinationReservationManager.Notify_FactionRemoved(zombieFaction);
 			});
 
 			zombieFaction.RemoveAllRelations();

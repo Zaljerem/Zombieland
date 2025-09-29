@@ -10,7 +10,7 @@ namespace ZombieLand
 			return (JobGiver_Stumble)base.DeepCopy(resolve);
 		}
 
-		public override Job TryGiveJob(Pawn pawn)
+		protected override Job TryGiveJob(Pawn pawn)
 		{
 			if (pawn is not Zombie zombie || zombie.isAlbino)
 				return null;
@@ -33,7 +33,7 @@ namespace ZombieLand
 			return (JobGiver_Sabotage)base.DeepCopy(resolve);
 		}
 
-		public override Job TryGiveJob(Pawn pawn)
+		protected override Job TryGiveJob(Pawn pawn)
 		{
 			if (pawn is not Zombie zombie || zombie.isAlbino == false)
 				return null;
@@ -56,7 +56,7 @@ namespace ZombieLand
 			return (JobGiver_Blob)base.DeepCopy(resolve);
 		}
 
-		public override Job TryGiveJob(Pawn pawn)
+		protected override Job TryGiveJob(Pawn pawn)
 		{
 			if (pawn is not ZombieBlob)
 				return null;
@@ -79,7 +79,7 @@ namespace ZombieLand
 			return (JobGiver_Spitter)base.DeepCopy(resolve);
 		}
 
-		public override Job TryGiveJob(Pawn pawn)
+		protected override Job TryGiveJob(Pawn pawn)
 		{
 			if (pawn is not ZombieSpitter)
 				return null;
@@ -102,7 +102,7 @@ namespace ZombieLand
 			return (JobGiver_ExtractZombieSerum)base.DeepCopy(resolve);
 		}
 
-		public override Job TryGiveJob(Pawn pawn)
+		protected override Job TryGiveJob(Pawn pawn)
 		{
 			return JobMaker.MakeJob(DefDatabase<JobDef>.GetNamed("ExtractZombieSerum"));
 		}
@@ -122,7 +122,7 @@ namespace ZombieLand
 			return (JobGiver_DoubleTap)base.DeepCopy(resolve);
 		}
 
-		public override Job TryGiveJob(Pawn pawn)
+		protected override Job TryGiveJob(Pawn pawn)
 		{
 			return JobMaker.MakeJob(DefDatabase<JobDef>.GetNamed("DoubleTap"));
 		}

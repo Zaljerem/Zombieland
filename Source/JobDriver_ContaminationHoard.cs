@@ -1,7 +1,9 @@
-﻿using RimWorld;
+﻿using HarmonyLib;
+using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using Verse;
 using Verse.AI;
@@ -25,7 +27,7 @@ namespace ZombieLand
 
 		public override bool TryMakePreToilReservations(bool errorOnFailed) => true;
 
-		public override IEnumerable<Toil> MakeNewToils()
+		protected override IEnumerable<Toil> MakeNewToils()
 		{
 			yield return new Toil()
 			{
@@ -40,9 +42,11 @@ namespace ZombieLand
 			base.ExposeData();
 		}
 
+		static readonly FieldInfo f_allRooms = AccessTools.Field(typeof(RegionGrid), "allRooms");
+
 		Thing FindNextThing()
 		{
-			var things = Map.regionGrid.allRooms
+			var things = ((List<Room>)f_allRooms.GetValue(Map.regionGrid))
 				.Where(r => r.IsHuge == false && r != room)
 				.SelectMany(room => room.ContainedAndAdjacentThings)
 				.Where(t => t.def.EverHaulable && pawn.holdingOwner.CanAcceptAnyOf(t, true) && pawn.CanReach(t, PathEndMode.ClosestTouch, Danger.Deadly))

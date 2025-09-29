@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using Verse;
 using Verse.Sound;
@@ -10,18 +11,48 @@ namespace ZombieLand
 {
 	static class DialogExtensions
 	{
+		public static string GetControlName(QuickSearchWidget widget)
+		{
+			var field = typeof(QuickSearchWidget).GetField("controlName", BindingFlags.NonPublic | BindingFlags.Instance);
+			return (string)field.GetValue(widget);
+		}
+
+		private static float GetCurX(Listing_Standard list)
+		{
+			var field = typeof(Listing).GetField("curX", BindingFlags.NonPublic | BindingFlags.Instance);
+			return (float)field.GetValue(list);
+		}
+
+		private static void SetCurX(Listing_Standard list, float value)
+		{
+			var field = typeof(Listing).GetField("curX", BindingFlags.NonPublic | BindingFlags.Instance);
+			field.SetValue(list, value);
+		}
+
+		private static float GetCurY(Listing_Standard list)
+		{
+			var field = typeof(Listing).GetField("curY", BindingFlags.NonPublic | BindingFlags.Instance);
+			return (float)field.GetValue(list);
+		}
+
+		private static void SetCurY(Listing_Standard list, float value)
+		{
+			var field = typeof(Listing).GetField("curY", BindingFlags.NonPublic | BindingFlags.Instance);
+			field.SetValue(list, value);
+		}
+
 		static Color contentColor = new(1f, 1f, 1f, 0.7f);
 		public const float inset = 6f;
 		public static string currentHelpItem = null;
 
 		public static QuickSearchWidget searchWidget = new();
 		public static (int, int) searchWidgetSelectionState = (0, 0);
-		public static string shouldFocusNow = searchWidget.controlName;
+		public static string shouldFocusNow = GetControlName(searchWidget);
 
 		public static void Help(this Listing_Standard list, string helpItem, float height = 0f)
 		{
-			var curX = list.curX;
-			var curY = list.curY;
+			var curX = GetCurX(list);
+			var curY = GetCurY(list);
 			var rect = new Rect(curX, curY, list.ColumnWidth, height > 0f ? height : Text.LineHeight);
 			if (Mouse.IsOver(rect))
 				currentHelpItem = helpItem;
@@ -142,8 +173,8 @@ namespace ZombieLand
 
 			Widgets.Checkbox(new Vector2(rect.x, rect.y - 1f), ref forBool, disabled: disabled);
 
-			var curX = list.curX;
-			list.curX = curX + indent;
+			var curX = GetCurX(list);
+			SetCurX(list, curX + indent);
 
 			var anchor = Text.Anchor;
 			Text.Anchor = TextAnchor.UpperLeft;
@@ -154,7 +185,7 @@ namespace ZombieLand
 			GUI.color = color;
 			Text.Anchor = anchor;
 
-			list.curX = curX;
+			SetCurX(list, curX);
 		}
 
 		public static bool Dialog_RadioButton(this Listing_Standard list, bool active, string labelId)
@@ -170,8 +201,8 @@ namespace ZombieLand
 			var line = new Rect(rect);
 			var result = Widgets.RadioButton(line.xMin, line.yMin, active);
 
-			var curX = list.curX;
-			list.curX = curX + indent;
+			var curX = GetCurX(list);
+			SetCurX(list, curX + indent);
 
 			var anchor = Text.Anchor;
 			Text.Anchor = TextAnchor.UpperLeft;
@@ -182,7 +213,7 @@ namespace ZombieLand
 			GUI.color = color;
 			Text.Anchor = anchor;
 
-			list.curX = curX;
+			SetCurX(list, curX);
 
 			result |= Widgets.ButtonInvisible(rect, false);
 			if (result && !active)
@@ -402,7 +433,7 @@ namespace ZombieLand
 		public static void MiniButton(this Listing_Standard list, Texture2D texture, Action action)
 		{
 			const float size = 11f;
-			var butRect = new Rect(list.curX + 1, list.curY + 2, size, size);
+			var butRect = new Rect(GetCurX(list) + 1, GetCurY(list) + 2, size, size);
 			if (Widgets.ButtonImage(butRect, texture, true))
 				action();
 		}
@@ -417,16 +448,16 @@ namespace ZombieLand
 			var text = "SafeMeleeExample".Translate(exampleMeleeSkill, exampleZombieCount, chance).Resolve();
 			var buttonText = "[_]";
 			var buttonWidth = buttonText.GetWidthCached();
-			list.curX = 7f;
+			SetCurX(list, 7f);
 			for (var i = 0; i <= 4; i++)
 			{
 				var idx = text.IndexOf(buttonText);
 				var part = idx == -1 ? text : text.Substring(0, idx);
 
 				var num = Text.CalcHeight("x", list.ColumnWidth);
-				var rect = new Rect(list.curX, list.curY, list.ColumnWidth, num);
+				var rect = new Rect(GetCurX(list), GetCurY(list), list.ColumnWidth, num);
 				Widgets.Label(rect, part);
-				list.curX += part.GetWidthCached();
+				SetCurX(list, GetCurX(list) + part.GetWidthCached());
 				if (i == 4)
 					break;
 
@@ -450,12 +481,12 @@ namespace ZombieLand
 							break;
 					}
 				});
-				list.curX += buttonWidth;
+				SetCurX(list, GetCurX(list) + buttonWidth);
 
 				text = text.Substring(idx + buttonText.Length);
 			}
 
-			list.curX = 0;
+			SetCurX(list, 0);
 			list.Gap(12);
 			Text.Font = savedFont;
 		}

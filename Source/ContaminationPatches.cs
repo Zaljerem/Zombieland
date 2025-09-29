@@ -1,25 +1,15 @@
-﻿using HarmonyLib;
-using RimWorld;
-using RimWorld.Planet;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
+using HarmonyLib;
+using RimWorld;
+using RimWorld.Planet;
 using UnityEngine;
 using Verse;
 using static HarmonyLib.Code;
 
 namespace ZombieLand
 {
-	[HarmonyPatch(typeof(Pawn_NeedsTracker))]
-	[HarmonyPatch(nameof(Pawn_NeedsTracker.ShouldHaveNeed))]
-	static class Pawn_NeedsTracker_ShouldHaveNeed_Patch
-	{
-		static void Postfix(NeedDef nd, ref bool __result)
-		{
-			if (nd == CustomDefs.Contamination && Constants.CONTAMINATION == false)
-				__result = false;
-		}
-	}
 
 	[HarmonyPatch(typeof(Game))]
 	[HarmonyPatch(nameof(Game.FinalizeInit))]
@@ -97,13 +87,12 @@ namespace ZombieLand
 		}
 	}
 
-	[HarmonyPatch(typeof(Widgets), nameof(Widgets.ThingIcon))]
-	[HarmonyPatch(new[] { typeof(Rect), typeof(Thing), typeof(float), typeof(Rot4?), typeof(bool) })]
+	[HarmonyPatch(typeof(Widgets), nameof(Widgets.ThingIcon), new[] { typeof(Rect), typeof(Thing), typeof(float), typeof(Rot4?), typeof(bool), typeof(float), typeof(bool) })]
 	static class Widgets_ThingIcon_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
 
-		static void Prefix(Rect rect, Thing thing, float alpha)
+		static void Prefix(Rect rect, Thing thing, float alpha, Rot4? rot, bool stackOfOne, float scale, bool grayscale)
 		{
 			var contamination = thing.GetContamination();
 			if (contamination == 0)
@@ -116,21 +105,6 @@ namespace ZombieLand
 		}
 	}
 
-	[HarmonyPatch(typeof(MainTabWindow_Quests), nameof(MainTabWindow_Quests.DoRow))]
-	static class MainTabWindow_Quests_DoRow_Patch
-	{
-		static bool Prepare() => Constants.CONTAMINATION;
-
-		static int Max(int a, int b, Quest quest)
-		{
-			if (quest.parts.Any(part => part is QuestPart_DecontaminateColonists))
-				return 0;
-			return Mathf.Max(a, b);
-		}
-
-		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-			=> instructions.ExtraArgumentsTranspiler(typeof(Mathf), () => Max(default, default, default), new[] { Ldarg_2 }, 1);
-	}
 
 	[HarmonyPatch(typeof(PlaySettings), nameof(PlaySettings.DoPlaySettingsGlobalControls))]
 	static class PlaySettings_DoPlaySettingsGlobalControls_Patch
@@ -238,9 +212,13 @@ namespace ZombieLand
 			if (contamination > 0.8f)
 				GUI.color = Color.red;
 			row.Gap(6f);
-			row.FillableBar(140f, 16f, contamination, $"{contamination:P2} contamination", InspectPaneFiller.MoodTex, InspectPaneFiller.BarBGTex);
+			/*
+			row.FillableBar(140f, 16f, contamination, $"{contamination:P2} contamination",
+                                        ContentFinder<Texture2D>.Get("UI/Widgets/BarFill", true),
+                                        ContentFinder<Texture2D>.Get("UI/Widgets/BarBackground", true));
 			GUI.color = Color.white;
-		}
+			*/
+        }
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
@@ -253,74 +231,73 @@ namespace ZombieLand
 				.InstructionEnumeration();
 		}
 	}
+    [HarmonyPatch(typeof(BeautyDrawer), nameof(BeautyDrawer.BeautyDrawerOnGUI))]
+    static class BeautyDrawer_BeautyDrawerOnGUI_Patch
+    {
+        static bool Prepare() => Constants.CONTAMINATION;
 
-	[HarmonyPatch(typeof(BeautyDrawer), nameof(BeautyDrawer.DrawBeautyAroundMouse))]
-	static class BeautyDrawer_DrawBeautyAroundMouse_Patch
-	{
-		static bool Prepare() => Constants.CONTAMINATION;
+        static bool Prefix()
+        {
+            			if (Event.current.shift == false)
+            				return true; // Allow original to run if Shift is not pressed
+                        // If Shift is pressed, we want to run our custom logic and prevent the original from running
+            var map = Find.CurrentMap;
+            var mouseCell = UI.MouseCell();
+            var grid = map.GetContamination();
 
-		static bool Prefix()
-		{
-			if (Input.GetKey(KeyCode.LeftShift) == false && Input.GetKey(KeyCode.RightShift) == false)
-				return true;
+            for (var i = 0; i < BeautyUtility.SampleNumCells_Beauty; i++)
+            {
+                var cell = mouseCell + GenRadial.RadialPattern[i];
+                if (cell.InBounds(map) && (!cell.Fogged(map) || DebugViewSettings.drawFog == false))
+                {
+                    var cellThings = map.thingGrid.ThingsListAtFast(cell).Where(t => t is not Mote).ToArray();
 
-			var map = Find.CurrentMap;
-			var mouseCell = UI.MouseCell();
-			var grid = map.GetContamination();
+                    var contaminationCell = grid[cell];
+                    var contaminationThings = cellThings
+                        .Where(thing => thing.DrawPos != thing.Position.ToVector3Shifted())
+                        .Sum(thing => thing.GetContamination());
+                    var totalContamination = contaminationCell + contaminationThings;
+                    if (totalContamination >= ContaminationFactors.minContaminationThreshold)
+                    {
+                        var textColor = Color.gray;
+                        if (contaminationCell > 0.2f || contaminationThings > 0.2f)
+                            textColor = Color.white;
+                        if (contaminationCell > 0.4f || contaminationThings > 0.2f)
+                            textColor = Color.cyan;
+                        if (contaminationCell > 0.6f || contaminationThings > 0.6f)
+                            textColor = Color.yellow;
+                        if (contaminationCell > 0.8f || contaminationThings > 0.8f)
+                            textColor = Color.red;
+                        GenMapUI.DrawThingLabel(GenMapUI.LabelDrawPosFor(cell), $"{totalContamination * 100:F1}", textColor);
+                    }
 
-			for (var i = 0; i < BeautyUtility.SampleNumCells_Beauty; i++)
-			{
-				var cell = mouseCell + GenRadial.RadialPattern[i];
-				if (cell.InBounds(map) && (!cell.Fogged(map) || DebugViewSettings.drawFog == false))
-				{
-					var cellThings = map.thingGrid.ThingsListAtFast(cell).Where(t => t is not Mote).ToArray();
+                    cellThings
+                        .DoIf(thing => thing.DrawPos != thing.Position.ToVector3Shifted(), thing =>
+                        {
+                            var contaminiaton = thing.GetContamination();
+                            if (contaminiaton < ContaminationFactors.minContaminationThreshold)
+                                return;
 
-					var contaminationCell = grid[cell];
-					var contaminationThings = cellThings
-						.Where(thing => thing.DrawPos == thing.Position.ToVector3Shifted())
-						.Sum(thing => thing.GetContamination());
-					var totalContamination = contaminationCell + contaminationThings;
-					if (totalContamination >= ContaminationFactors.minContaminationThreshold)
-					{
-						var textColor = Color.gray;
-						if (contaminationCell > 0.2f || contaminationThings > 0.2f)
-							textColor = Color.white;
-						if (contaminationCell > 0.4f || contaminationThings > 0.2f)
-							textColor = Color.cyan;
-						if (contaminationCell > 0.6f || contaminationThings > 0.6f)
-							textColor = Color.yellow;
-						if (contaminationCell > 0.8f || contaminationThings > 0.8f)
-							textColor = Color.red;
-						GenMapUI.DrawThingLabel(GenMapUI.LabelDrawPosFor(cell), $"{totalContamination * 100:F1}", textColor);
-					}
+                            var textColor = Color.gray;
+                            if (contaminiaton > 0.2f)
+                                textColor = Color.white;
+                            if (contaminiaton > 0.2f)
+                                textColor = Color.cyan;
+                            if (contaminiaton > 0.6f)
+                                textColor = Color.yellow;
+                            if (contaminiaton > 0.8f)
+                                textColor = Color.red;
 
-					cellThings
-						.DoIf(thing => thing.DrawPos != thing.Position.ToVector3Shifted(), thing =>
-						{
-							var contaminiaton = thing.GetContamination();
-							if (contaminiaton < ContaminationFactors.minContaminationThreshold)
-								return;
+                            var vector = thing.DrawPos + new Vector3(0, AltitudeLayer.MetaOverlays.AltitudeFor(), 0);
+                            var vector2 = Find.Camera.WorldToScreenPoint(vector) / Prefs.UIScale;
+                            vector2.y = UI.screenHeight - vector2.y;
+                            vector2.y -= 1f;
+                            GenMapUI.DrawThingLabel(vector2, $"{contaminiaton * 100:F1}", textColor);
+                        });
+                }
+            }
 
-							var textColor = Color.gray;
-							if (contaminiaton > 0.2f)
-								textColor = Color.white;
-							if (contaminiaton > 0.2f)
-								textColor = Color.cyan;
-							if (contaminiaton > 0.6f)
-								textColor = Color.yellow;
-							if (contaminiaton > 0.8f)
-								textColor = Color.red;
-
-							var vector = thing.DrawPos + new Vector3(0, AltitudeLayer.MetaOverlays.AltitudeFor(), 0);
-							var vector2 = Find.Camera.WorldToScreenPoint(vector) / Prefs.UIScale;
-							vector2.y = UI.screenHeight - vector2.y;
-							vector2.y -= 1f;
-							GenMapUI.DrawThingLabel(vector2, $"{contaminiaton * 100:F1}", textColor);
-						});
-				}
-			}
-
-			return false;
-		}
-	}
+            return false; // Prevent original BeautyDrawerOnGUI from running if Shift is pressed
+        }
+    }
 }

@@ -1,12 +1,20 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using System.Xml;
 using Verse;
 
 namespace ZombieLand
 {
 	public static class ContaminationSerializer
 	{
+		private static XmlWriter GetWriter()
+		{
+			var field = typeof(ScribeSaver).GetField("writer", BindingFlags.NonPublic | BindingFlags.Instance);
+			return (XmlWriter)field.GetValue(Scribe.saver);
+		}
+
 		public static void ExposeContamination(this ContaminationManager manager)
 		{
 			if (Scribe.EnterNode("contaminations") == false)
@@ -28,9 +36,10 @@ namespace ZombieLand
 							.OrderBy(pair => pair.Key);
 						foreach (var pair in pairs)
 						{
-							Scribe.saver.writer.WriteStartElement("T" + pair.Key);
-							Scribe.saver.writer.WriteString($"{pair.Value:R}");
-							Scribe.saver.writer.WriteEndElement();
+							var writer = GetWriter();
+							writer.WriteStartElement("T" + pair.Key);
+							writer.WriteString($"{pair.Value:R}");
+							writer.WriteEndElement();
 						}
 					}
 					else if (Scribe.mode == LoadSaveMode.LoadingVars)
@@ -87,10 +96,11 @@ namespace ZombieLand
 								sb.Append(n);
 								sb.Append(',');
 							}
-							Scribe.saver.writer.WriteStartElement("map");
-							Scribe.saver.writer.WriteAttributeString("size", values.Length.ToString());
-							Scribe.saver.writer.WriteString(sb.ToString());
-							Scribe.saver.writer.WriteEndElement();
+							var writer = GetWriter();
+							writer.WriteStartElement("map");
+							writer.WriteAttributeString("size", values.Length.ToString());
+							writer.WriteString(sb.ToString());
+							writer.WriteEndElement();
 						}
 					}
 					else if (Scribe.mode == LoadSaveMode.LoadingVars)

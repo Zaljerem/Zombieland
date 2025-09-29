@@ -21,7 +21,7 @@ namespace ZombieLand
 
 		public override Quaternion ExactRotation => Quaternion.Euler(0, GenTicks.TicksGame * rotation, 0);
 
-		public override void Impact(Thing hitThing, bool blockedByShield = false)
+		protected override void Impact(Thing hitThing, bool blockedByShield = false)
 		{
 			var map = Map;
 			Destroy(DestroyMode.Vanish);

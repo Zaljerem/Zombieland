@@ -42,12 +42,12 @@ namespace ZombieLand
 		{
 			if (pawn is Zombie)
 				return ZombieLand.InfectionState.Infected;
-			return (pawn.drawer.leaner as CustomPawnState)?.infectionState ?? ZombieLand.InfectionState.None;
+			return (pawn.Drawer.leaner as CustomPawnState)?.infectionState ?? ZombieLand.InfectionState.None;
 		}
 
 		public static void SetInfectionState(this Pawn pawn, InfectionState state)
 		{
-			var pawnState = pawn.drawer.leaner as CustomPawnState;
+			var pawnState = pawn.Drawer.leaner as CustomPawnState;
 			if (pawnState != null)
 				pawnState.infectionState = state;
 		}

@@ -363,7 +363,7 @@ namespace ZombieLand
 					DialogExtensions.searchWidgetSelectionState = (editor.cursorIndex, editor.selectIndex);
 
 				scrollPosition = Vector2.zero;
-				DialogExtensions.shouldFocusNow = DialogExtensions.searchWidget.controlName;
+				DialogExtensions.shouldFocusNow = DialogExtensions.GetControlName(DialogExtensions.searchWidget);
 			});
 
 			if (DialogExtensions.currentHelpItem != null)

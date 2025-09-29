@@ -24,8 +24,7 @@ namespace ZombieLand
 
 	public class Verb_Shock : Verb
 	{
-		public override bool TryCastShot()
-		{
+		        protected override bool TryCastShot()		{
 			return true;
 		}
 	}
@@ -347,13 +346,16 @@ namespace ZombieLand
 				worldPawns.RemovePawn(this);
 
 			// our graphics
-			var head = Drawer.renderer.renderTree.HeadGraphic as VariableGraphic;
-			head?.Dispose();
-			// Drawer.renderer.renderTree.HeadGraphic = null; // HeadGraphic is a property, not a field, cannot be set to null directly
+			if (Drawer?.renderer?.renderTree != null)
+			{
+				var head = Drawer.renderer.renderTree.HeadGraphic as VariableGraphic;
+				head?.Dispose();
+				// Drawer.renderer.renderTree.HeadGraphic = null; // HeadGraphic is a property, not a field, cannot be set to null directly
 
-			var naked = Drawer.renderer.renderTree.BodyGraphic as VariableGraphic; // Assuming BodyGraphic is the equivalent for nakedGraphic
-			naked?.Dispose();
-			// Drawer.renderer.renderTree.BodyGraphic = null; // BodyGraphic is a property, not a field, cannot be set to null directly
+				var naked = Drawer.renderer.renderTree.BodyGraphic as VariableGraphic; // Assuming BodyGraphic is the equivalent for nakedGraphic
+				naked?.Dispose();
+				// Drawer.renderer.renderTree.BodyGraphic = null; // BodyGraphic is a property, not a field, cannot be set to null directly
+			}
 
 			// vanilla graphics
 			// Drawer.renderer.graphics.furCoveredGraphic.UnCache();
@@ -429,7 +431,7 @@ namespace ZombieLand
 					var sqt = wallPushProgress * wallPushProgress;
 					var f = sqt / (2.0f * (sqt - wallPushProgress) + 1.0f);
 					if (GenTicks.TicksGame % 10 == 0 && Find.TickManager.CurTimeSpeed != TimeSpeed.Paused)
-						Rotation = new Rot4() { rotInt = (byte)((Rotation.AsInt + 1) % 4) };
+						Rotation = new Rot4((Rotation.AsInt + 1) % 4);
 					var vec = wallPushStart + (wallPushDestination - wallPushStart) * f;
 					vec.y = Altitudes.AltitudeFor(AltitudeLayer.MoteOverhead);
 					return vec;
@@ -624,8 +626,7 @@ namespace ZombieLand
 			return false;
 		}
 
-		public override void Tick()
-		{
+		        protected override void Tick()		{
 			var comps = AllComps;
 			for (var i = 0; i < comps.Count; i++)
 				comps[i].CompTick();
@@ -717,8 +718,7 @@ namespace ZombieLand
 			if (progress >= Constants.RUBBLE_EMERGE_DELAY)
 			{
 				var bodyOffset = GenMath.LerpDouble(Constants.RUBBLE_EMERGE_DELAY, 1, -0.45f, 0, progress);
-				var parms = renderer.GetDrawParms(drawLoc + new Vector3(0, 0, bodyOffset), 0f, Rot4.South, renderer.CurRotDrawMode, PawnRenderFlags.DrawNow);
-				renderer.RenderPawnInternal(parms);
+				renderer.RenderPawnAt(drawLoc + new Vector3(0, 0, bodyOffset), Rot4.South, false);
 			}
 
 			RenderRubble(drawLoc);

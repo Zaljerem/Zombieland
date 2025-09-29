@@ -10,6 +10,7 @@ using static HarmonyLib.Code;
 
 namespace ZombieLand
 {
+
 	[HarmonyPatch(typeof(Frame), nameof(Frame.CompleteConstruction))]
 	static class Frame_CompleteConstruction_Patch
 	{
@@ -26,17 +27,16 @@ namespace ZombieLand
 		{
 			var thing = ThingMaker.MakeThing(def, stuff);
 			var factor = ZombieSettings.Values.contamination.constructionAdd;
-			thing.AddContamination(contamination, worker.mapIndexOrState, factor * (1 - ZombieSettings.Values.contamination.constructionTransfer));
-			worker.AddContamination(contamination, null, factor * ZombieSettings.Values.contamination.constructionTransfer);
+			thing.AddContamination(contamination, factor * (1 - ZombieSettings.Values.contamination.constructionTransfer));
+			worker.AddContamination(contamination, factor * ZombieSettings.Values.contamination.constructionTransfer);
 			return thing;
 		}
 
-		static void SetTerrain(TerrainGrid self, IntVec3 c, TerrainDef newTerr, float contamination)
+		static void SetTerrain(TerrainGrid self, IntVec3 c, TerrainDef newTerr, float contamination, Map map)
 		{
 			self.SetTerrain(c, newTerr);
 			if (contamination > 0)
 			{
-				var map = self.map;
 				var grounds = map.GetContamination();
 				grounds.cells[map.cellIndices.CellToIndex(c)] = contamination;
 				grounds.SetDirty();
@@ -54,7 +54,7 @@ namespace ZombieLand
 			var to2 = SymbolExtensions.GetMethodInfo(() => MakeThing(default, default, default, default));
 
 			var from3 = SymbolExtensions.GetMethodInfo((TerrainGrid grid) => grid.SetTerrain(default, default));
-			var to3 = SymbolExtensions.GetMethodInfo(() => SetTerrain(default, default, default, default));
+			var to3 = SymbolExtensions.GetMethodInfo(() => SetTerrain(default, default, default, default, default));
 
 			return new CodeMatcher(instructions)
 				 .MatchStartForward(new CodeMatch(operand: from1))
@@ -63,11 +63,11 @@ namespace ZombieLand
 				 .Insert(Stloc[sumVar])
 				 .MatchStartForward(new CodeMatch(operand: from2))
 				 .ThrowIfInvalid($"Cannot find {from2.FullDescription()}")
-				 .InsertAndAdvance(Ldloc[sumVar], Ldarg_1)
+				 .InsertAndAdvance(Ldloc[sumVar], new CodeInstruction(OpCodes.Ldarg_0), new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(Frame), "Map")))
 				 .SetInstruction(Call[to2])
 				 .MatchStartForward(new CodeMatch(operand: from3))
 				 .ThrowIfInvalid($"Cannot find {from3.FullDescription()}")
-				 .InsertAndAdvance(Ldloc[sumVar])
+				 .InsertAndAdvance(Ldloc[sumVar], new CodeInstruction(OpCodes.Ldarg_0), new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(Frame), "Map")))
 				 .SetInstruction(Call[to3])
 				 .InstructionEnumeration();
 		}
@@ -148,49 +148,110 @@ namespace ZombieLand
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
 
-		static Thing Spawn(Thing newThing, IntVec3 loc, Map map, Rot4 rot, WipeMode wipeMode, bool respawningAfterLoad, Thing t)
-		{
-			var thing = GenSpawn.Spawn(newThing, loc, map, rot, wipeMode, respawningAfterLoad);
-			t.TransferContamination(thing);
-			return thing;
-		}
-
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-			=> instructions.ExtraArgumentsTranspiler(typeof(GenSpawn), () => Spawn(default, default, default, default, default, default, default), new[] { Ldarg_0 }, 1);
-	}
+		{
+			var targetSpawnMethod = AccessTools.Method(typeof(GenSpawn), nameof(GenSpawn.Spawn), new Type[] { typeof(Thing), typeof(IntVec3), typeof(Map), typeof(Rot4) });
+			var transferContaminationMethod = AccessTools.Method(typeof(ContaminationExtension), nameof(ContaminationExtension.TransferContamination), new Type[] { typeof(Thing), typeof(Thing) });
 
-	[HarmonyPatch(typeof(Building_SubcoreScanner), nameof(Building_SubcoreScanner.Tick))]
+			foreach (var instruction in instructions)
+			{
+				yield return instruction;
+
+				if (instruction.opcode == OpCodes.Call && instruction.operand is MethodInfo method && method == targetSpawnMethod)
+				{
+					yield return new CodeInstruction(OpCodes.Dup); // Duplicate the spawned Thing
+					yield return new CodeInstruction(OpCodes.Ldarg_0); // Load 't'
+					yield return new CodeInstruction(OpCodes.Call, transferContaminationMethod); // Call TransferContamination(t, spawnedThing)
+				}
+			}
+		}	}
+
+	[HarmonyPatch]
 	static class Building_SubcoreScanner_Tick_Patch
 	{
+		static MethodBase TargetMethod()
+		{
+			// Return null if the type or method isn't found to avoid crashes
+			var type = AccessTools.TypeByName("RimWorld.Building_SubcoreScanner");
+			if (type == null) return null;
+			return AccessTools.Method(type, "Tick");
+		}
+
 		static bool Prepare() => Constants.CONTAMINATION;
 
-		static Thing MakeThing(ThingDef def, ThingDef stuff, Building_SubcoreScanner scanner)
+		static Thing MakeThing(ThingDef def, ThingDef stuff, Building building)
 		{
 			var result = ThingMaker.MakeThing(def, stuff);
-			scanner.TransferContamination(ZombieSettings.Values.contamination.subcoreScannerTransfer, result);
+			building.TransferContamination(ZombieSettings.Values.contamination.subcoreScannerTransfer, result);
 			return result;
 		}
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-			=> instructions.ExtraArgumentsTranspiler(typeof(ThingMaker), () => MakeThing(default, default, default), new[] { Ldarg_0 }, 1);
+		{
+			try
+			{
+				var from = SymbolExtensions.GetMethodInfo(() => ThingMaker.MakeThing(default(ThingDef), default(ThingDef)));
+				var to = SymbolExtensions.GetMethodInfo(() => MakeThing(default(ThingDef), default(ThingDef), default));
+
+				var codes = new List<CodeInstruction>(instructions);
+				for (int i = 0; i < codes.Count; i++)
+				{
+					if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo method && method == from)
+					{
+						// Found the call to ThingMaker.MakeThing
+						// Insert Ldarg_0 before this call
+						codes.Insert(i, new CodeInstruction(OpCodes.Ldarg_0));
+						i++; // Adjust index for the newly inserted instruction
+
+						// Change the operand of the original call to our MakeThing
+						codes[i].operand = to;
+						break; // Assuming only one such call needs patching
+					}
+				}
+				return codes;
+			}
+			catch (Exception e)
+			{
+				Log.Warning($"[ZombieLand] Failed to patch Building_SubcoreScanner.Tick - skipping patch ({e.Message})");
+				return instructions; // Return unmodified instructions on failure
+			}
+		}
 	}
 
-	[HarmonyPatch(typeof(Building_GeneExtractor), nameof(Building_GeneExtractor.Finish))]
+	[HarmonyPatch(typeof(Building_GeneExtractor), "Finish")]
 	static class Building_GeneExtractor_Finish_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
 
-		static Thing MakeThing(ThingDef def, ThingDef stuff, Building_GeneExtractor extractor)
+		static Thing MakeThing(ThingDef def, ThingDef stuff, Building building)
 		{
 			var result = ThingMaker.MakeThing(def, stuff);
-			var pawn = extractor.ContainedPawn;
-			pawn.TransferContamination(ZombieSettings.Values.contamination.geneExtractorTransfer, result);
+			building.TransferContamination(ZombieSettings.Values.contamination.geneExtractorTransfer, result);
 			return result;
 		}
 
-		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-			=> instructions.ExtraArgumentsTranspiler(typeof(ThingMaker), () => MakeThing(default, default, default), new[] { Ldarg_0 }, 1);
-	}
+	        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+	        {
+	            var from = SymbolExtensions.GetMethodInfo(() => ThingMaker.MakeThing(default(ThingDef), default(ThingDef)));
+	            var to = SymbolExtensions.GetMethodInfo(() => MakeThing(default(ThingDef), default(ThingDef), default));
+
+	            var codes = new List<CodeInstruction>(instructions);
+	            for (int i = 0; i < codes.Count; i++)
+	            {
+	                if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo method && method == from)
+	                {
+	                    // Found the call to ThingMaker.MakeThing
+	                    // Insert Ldarg_0 before this call
+	                    codes.Insert(i, new CodeInstruction(OpCodes.Ldarg_0));
+	                    i++; // Adjust index for the newly inserted instruction
+
+	                    // Change the operand of the original call to our MakeThing
+	                    codes[i].operand = to;
+	                    break; // Assuming only one such call needs patching
+	                }
+	            }
+	            return codes;
+	        }	}
 
 	[HarmonyPatch(typeof(Building_NutrientPasteDispenser), nameof(Building_NutrientPasteDispenser.TryDispenseFood))]
 	static class Building_NutrientPasteDispenser_TryDispenseFood_Patch
@@ -259,8 +320,27 @@ namespace ZombieLand
 		}
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-			=> instructions.ExtraArgumentsTranspiler(typeof(ThingMaker), () => MakeThing(default, default, default), new[] { Ldarg_0 }, 1);
-	}
+		{
+			var from = SymbolExtensions.GetMethodInfo(() => ThingMaker.MakeThing(default(ThingDef), default(ThingDef)));
+			var to = SymbolExtensions.GetMethodInfo(() => MakeThing(default(ThingDef), default(ThingDef), default));
+
+			var codes = new List<CodeInstruction>(instructions);
+			for (int i = 0; i < codes.Count; i++)
+			{
+				if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo method && method == from)
+				{
+					// Found the call to ThingMaker.MakeThing
+					// Insert Ldarg_0 before this call
+					codes.Insert(i, new CodeInstruction(OpCodes.Ldarg_0));
+					i++; // Adjust index for the newly inserted instruction
+
+					// Change the operand of the original call to our MakeThing
+					codes[i].operand = to;
+					break; // Assuming only one such call needs patching
+				}
+			}
+			return codes;
+		}	}
 
 	[HarmonyPatch]
 	static class JobDriver_Repair_MakeNewToils_Patch
@@ -310,4 +390,6 @@ namespace ZombieLand
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 			=> instructions.ExtraArgumentsTranspiler(typeof(MechRepairUtility), () => RepairTick(default, default, default), new[] { Ldarg_0 }, 1);
 	}
+
+
 }

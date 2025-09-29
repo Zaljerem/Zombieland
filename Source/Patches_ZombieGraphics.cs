@@ -1,3 +1,4 @@
+using System;
 using HarmonyLib;
 using Verse;
 using UnityEngine;
@@ -10,11 +11,12 @@ namespace ZombieLand
         [HarmonyPostfix]
         public static void Postfix(PawnRenderer __instance, Vector3 drawLoc)
         {
-            if (__instance.pawn is ZombieBlob zombieBlob)
+            var pawn = (Pawn)AccessTools.Field(typeof(PawnRenderer), "pawn").GetValue(__instance);
+            if (pawn is ZombieBlob zombieBlob)
             {
                 zombieBlob.DrawBlob();
             }
-            else if (__instance.pawn is ZombieSpitter zombieSpitter)
+            else if (pawn is ZombieSpitter zombieSpitter)
             {
                 zombieSpitter.DrawSpitter();
             }
@@ -43,6 +45,21 @@ namespace ZombieLand
             if (pawn is Zombie zombie && zombie.customHeadGraphic != null)
             {
                 __result = zombie.customHeadGraphic;
+            }
+        }
+    }
+
+    	[HarmonyPatch(typeof(PawnRenderer))]
+    	[HarmonyPatch(MethodType.Constructor)]
+    	[HarmonyPatch(new Type[] { typeof(Pawn) })]    public static class PawnRenderer_Constructor_Patch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(PawnRenderer __instance)
+        {
+            var pawn = (Pawn)AccessTools.Field(typeof(PawnRenderer), "pawn").GetValue(__instance);
+            if (__instance.renderTree == null)
+            {
+                __instance.renderTree = new PawnRenderTree(pawn);
             }
         }
     }

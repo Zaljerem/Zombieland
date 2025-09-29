@@ -22,7 +22,7 @@ namespace ZombieLand
 			var doesAttract = Customization.DoesAttractsZombies(pawn);
 			return new Command_Action
 			{
-				disabled = doesAttract == false,
+				Disabled = doesAttract == false,
 				defaultDesc = description.Translate(),
 				icon = autoAvoidZombies && doesAttract ? AvoidingEnabled : AvoidingDisabled,
 				activateSound = autoAvoidZombies ? SoundDefOf.Designate_ZoneAdd : SoundDefOf.Designate_ZoneDelete,
@@ -56,7 +56,7 @@ namespace ZombieLand
 
 			return new Command_Action
 			{
-				disabled = canDoctor == false,
+				Disabled = canDoctor == false,
 				defaultDesc = description.Translate(),
 				icon = icon,
 				activateSound = activateSound,
@@ -90,7 +90,7 @@ namespace ZombieLand
 
 			return new Command_Action
 			{
-				disabled = canHunt == false,
+				Disabled = canHunt == false,
 				defaultDesc = description.Translate(),
 				icon = icon,
 				activateSound = activateSound,

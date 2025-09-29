@@ -52,7 +52,7 @@ namespace ZombieLand
 		}
 	}
 
-	[HarmonyPatch(typeof(TradeDeal), nameof(TradeDeal.AddAllTradeables))]
+	[HarmonyPatch(typeof(TradeDeal), "AddAllTradeables")]
 	static class TradeDeal_AddAllTradeables_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;

@@ -15,10 +15,9 @@ namespace ZombieLand
 
 		public SlateRef<Thing> shuttle;
 		public SlateRef<Pawn> factionToSendTo;
-		public SlateRef<int> returnColonistsInTicks;
-
-		public override void RunInt()
-		{
+		        public SlateRef<int> returnColonistsInTicks;
+		
+		        protected override void RunInt()		{
 			var slate = QuestGen.slate;
 			var text = QuestGenUtility.HardcodedSignalWithQuestID(inSignalEnable.GetValue(slate)) ?? QuestGen.slate.Get<string>("inSignal", null, false);
 			var questPart = new QuestPart_DecontaminateColonists()
@@ -40,7 +39,7 @@ namespace ZombieLand
 			QuestGen.quest.TendPawnsWithMedicine(ThingDefOf.MedicineIndustrial, true, null, shuttle.GetValue(slate), text);
 		}
 
-		public override bool TestRunInt(Slate slate) => factionToSendTo.GetValue(slate) != null;
+		protected override bool TestRunInt(Slate slate) => factionToSendTo.GetValue(slate) != null;
 	}
 
 	public class QuestNode_GetRandomAlliedFactionLeader : QuestNode
@@ -54,13 +53,13 @@ namespace ZombieLand
 			return allies.RandomElementWithFallback()?.leader;
 		}
 
-		public override void RunInt()
+		protected override void RunInt()
 		{
 			var slate = QuestGen.slate;
 			slate.Set(storeAs.GetValue(slate), GetAlliedFactionLeader(), false);
 		}
 
-		public override bool TestRunInt(Slate slate)
+		protected override bool TestRunInt(Slate slate)
 		{
 			var pawn = GetAlliedFactionLeader();
 			slate.Set(storeAs.GetValue(slate), pawn, false);
@@ -81,7 +80,7 @@ namespace ZombieLand
 
 		public int ReturnPawnsInDurationTicks => Mathf.Max(returnColonistsOnTick - GenTicks.TicksGame, 0);
 
-		public override void Enable(SignalArgs receivedArgs)
+		protected override void Enable(SignalArgs receivedArgs)
 		{
 			base.Enable(receivedArgs);
 			var compTransporter = shuttle.TryGetComp<CompTransporter>();
@@ -109,7 +108,7 @@ namespace ZombieLand
 				Complete();
 		}
 
-		public override void Complete(SignalArgs signalArgs)
+		protected override void Complete(SignalArgs signalArgs)
 		{
 			var map = returnMap?.Map ?? Find.AnyPlayerHomeMap;
 			if (map == null)

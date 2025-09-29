@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using System.Reflection;
 using Verse;
 using static HarmonyLib.AccessTools;
 
@@ -6,6 +7,12 @@ namespace ZombieLand
 {
 	public class DubsTools
 	{
+		private static Pawn GetPawn(PawnUIOverlay overlay)
+		{
+			var field = typeof(PawnUIOverlay).GetField("pawn", BindingFlags.NonPublic | BindingFlags.Instance);
+			return (Pawn)field.GetValue(overlay);
+		}
+
 		public static void Init()
 		{
 			var harmony = new Harmony("net.pardeike.zombieland.dubs");
@@ -19,7 +26,7 @@ namespace ZombieLand
 
 		static bool Prefix([HarmonyArgument("__instance")] PawnUIOverlay instance, ref bool __result)
 		{
-			if (instance.pawn is not Zombie)
+			if (GetPawn(instance) is not Zombie)
 				return true;
 
 			__result = true;

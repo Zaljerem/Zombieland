@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using System.Reflection;
 using UnityEngine;
 using Verse;
 
@@ -22,12 +23,18 @@ namespace ZombieLand
 	[HarmonyPatch(nameof(DamageFlasher.GetDamagedMat))]
 	static class DamageFlasher_GetDamagedMat_Patch
 	{
+		private static int GetLastDamageTick(DamageFlasher flasher)
+		{
+			var field = typeof(DamageFlasher).GetField("lastDamageTick", BindingFlags.NonPublic | BindingFlags.Instance);
+			return (int)field.GetValue(flasher);
+		}
+
 		static readonly Color greenDamagedMatStartingColor = new(0f, 0.8f, 0f);
 
 		private static int DamageFlashTicksLeft(DamageFlasher damageFlasher)
 		{
 			// copied from DamageFlasher.DamageFlashTicksLeft
-			return damageFlasher.lastDamageTick + 16 - GenTicks.TicksGame;
+			return GetLastDamageTick(damageFlasher) + 16 - GenTicks.TicksGame;
 		}
 
 		[HarmonyPriority(Priority.Last)]

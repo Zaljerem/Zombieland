@@ -127,7 +127,8 @@ namespace ZombieLand
 					break;
 
 				case SpitterState.Searching:
-					var destination = RCellFinder.FindSiegePositionFrom(spitter.Position, Map, false, false);
+					var destination = IntVec3.Invalid;
+			RCellFinder.TryFindRandomSpotJustOutsideColony(spitter.Position, Map, out destination);
 					if (destination.IsValid)
 						DoMoving(destination);
 					else
@@ -138,7 +139,7 @@ namespace ZombieLand
 							DoMoving(destination);
 						else
 						{
-							if (RCellFinder.TryFindSiegePosition(spitter.Position, 10, spitter.Map, false, out destination))
+							if (RCellFinder.TryFindRandomSpotJustOutsideColony(spitter.Position, spitter.Map, out destination))
 								DoMoving(destination);
 							else
 								DoIdle(120, 120);
@@ -233,7 +234,7 @@ namespace ZombieLand
 			return $"{modeStr}, {waveStr}, {stateStr}{zombieStr}";
 		}
 
-		public override IEnumerable<Toil> MakeNewToils()
+		protected override IEnumerable<Toil> MakeNewToils()
 		{
 			yield return new Toil()
 			{

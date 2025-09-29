@@ -8,6 +8,6 @@ namespace ZombieLand
 		{
 		}
 
-		public override bool CanEndBeforeMaxDurationNow => false;
+		protected override bool CanEndBeforeMaxDurationNow => false;
 	}
 }

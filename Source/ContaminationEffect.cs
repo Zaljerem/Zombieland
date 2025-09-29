@@ -42,7 +42,11 @@ namespace ZombieLand
 	{
 		public Dictionary<Pawn, ContaminationEffect> pawns = new();
 		public void Tick() => pawns.Values.Do(p => p.Tick());
-		public void Add(Pawn pawn) => pawns.TryAdd(pawn, new ContaminationEffect(pawn));
+		public void Add(Pawn pawn)
+		{
+			if (pawns.ContainsKey(pawn) == false)
+				pawns.Add(pawn, new ContaminationEffect(pawn));
+		}
 		public void Remove(Pawn pawn) => pawns.Remove(pawn);
 	}
 
@@ -98,7 +102,7 @@ namespace ZombieLand
 
 		static bool ApplyJob(Pawn pawn, int expiryInterval, MentalStateDef mentalDef, JobDef jobDef, Func<bool> check)
 		{
-			if (pawn?.Map == null || pawn.health.healthState != PawnHealthState.Mobile)
+			if (pawn?.Map == null || pawn.health.State != PawnHealthState.Mobile)
 				return false;
 
 			if (check() == false)

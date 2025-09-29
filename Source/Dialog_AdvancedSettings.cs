@@ -1,10 +1,35 @@
-﻿using UnityEngine;
+﻿using System.Reflection;
+using UnityEngine;
 using Verse;
 
 namespace ZombieLand
 {
 	public class Dialog_AdvancedSettings : Window
 	{
+		private static float GetCurX(Listing_Standard list)
+		{
+			var field = typeof(Listing).GetField("curX", BindingFlags.NonPublic | BindingFlags.Instance);
+			return (float)field.GetValue(list);
+		}
+
+		private static void SetCurX(Listing_Standard list, float value)
+		{
+			var field = typeof(Listing).GetField("curX", BindingFlags.NonPublic | BindingFlags.Instance);
+			field.SetValue(list, value);
+		}
+
+		private static float GetCurY(Listing_Standard list)
+		{
+			var field = typeof(Listing).GetField("curY", BindingFlags.NonPublic | BindingFlags.Instance);
+			return (float)field.GetValue(list);
+		}
+
+		private static void SetCurY(Listing_Standard list, float value)
+		{
+			var field = typeof(Listing).GetField("curY", BindingFlags.NonPublic | BindingFlags.Instance);
+			field.SetValue(list, value);
+		}
+
 		public override Vector2 InitialSize => new(720, 640);
 		private Vector2 scrollPosition = Vector2.zero;
 
@@ -122,7 +147,7 @@ namespace ZombieLand
 				{
 					var boolValue = (bool)value;
 					list.CheckboxLabeled(name, ref boolValue, attr.Description);
-					list.curY -= list.verticalSpacing;
+					list.Gap(-list.verticalSpacing);
 					field.SetValue(null, boolValue);
 				}
 				if (type == typeof(int))
@@ -140,13 +165,8 @@ namespace ZombieLand
 				if (type == typeof(int[]))
 				{
 					var intArray = (int[])value;
-					var rect = new Rect(list.curX, list.curY, list.ColumnWidth, 24f * intArray.Length);
-					if (Mouse.IsOver(rect))
-						Widgets.DrawHighlight(rect);
-					TooltipHandler.TipRegion(rect, attr.Description);
-					var savedY = list.curY;
-					_ = list.Label(name, -1, new TipSignal(attr.Description));
-					list.curY = savedY;
+					var savedY = GetCurY(list);
+					SetCurY(list, savedY);
 					for (var i = 0; i < intArray.Length; i++)
 						NumericField(list, $"{i + 1}:", ref intArray[i], null, true);
 					field.SetValue(null, intArray);
@@ -154,13 +174,12 @@ namespace ZombieLand
 				if (type == typeof(float[]))
 				{
 					var floatArray = (float[])value;
-					var rect = new Rect(list.curX, list.curY, list.ColumnWidth, 24f * floatArray.Length);
+					var rect = new Rect(GetCurX(list), GetCurY(list), list.ColumnWidth, 24f * floatArray.Length);
 					if (Mouse.IsOver(rect))
 						Widgets.DrawHighlight(rect);
 					TooltipHandler.TipRegion(rect, attr.Description);
-					var savedY = list.curY;
-					_ = list.Label(name, -1, new TipSignal(attr.Description));
-					list.curY = savedY;
+					var savedY = GetCurY(list);
+					SetCurY(list, savedY);
 					for (var i = 0; i < floatArray.Length; i++)
 						NumericField(list, $"{i + 1}:", ref floatArray[i], null, true);
 					field.SetValue(null, floatArray);

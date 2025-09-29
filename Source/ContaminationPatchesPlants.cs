@@ -17,7 +17,7 @@ namespace ZombieLand
 		static IEnumerable<MethodBase> TargetMethods()
 		{
 			yield return SymbolExtensions.GetMethodInfo((WildPlantSpawner spawner) => spawner.CheckSpawnWildPlantAt(IntVec3.Zero, 0f, 0f, false));
-			yield return SymbolExtensions.GetMethodInfo((TunnelJellySpawner spawner) => spawner.Spawn(null, IntVec3.Zero));
+			yield return AccessTools.Method(typeof(TunnelJellySpawner), "Spawn", new Type[] { typeof(Map), typeof(IntVec3) });
 		}
 
 		static Thing Spawn(Thing newThing, IntVec3 loc, Map map, WipeMode wipeMode)
@@ -27,7 +27,7 @@ namespace ZombieLand
 			{
 				var contamination = map.GetContamination(loc);
 				var factor = thing.def.IsPlant ? ZombieSettings.Values.contamination.plantAdd : ZombieSettings.Values.contamination.jellyAdd;
-				thing.AddContamination(contamination, null, factor);
+				thing.AddContamination(contamination, factor);
 			}
 			return thing;
 		}
@@ -82,7 +82,7 @@ namespace ZombieLand
 		}
 	}
 
-	[HarmonyPatch(typeof(IncidentWorker_AmbrosiaSprout), nameof(IncidentWorker_AmbrosiaSprout.TryExecuteWorker))]
+	[HarmonyPatch(typeof(IncidentWorker_AmbrosiaSprout), "TryExecuteWorker")]
 	static class IncidentWorker_AmbrosiaSprout_TryExecuteWorker_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;
@@ -91,7 +91,7 @@ namespace ZombieLand
 		{
 			var thing = GenSpawn.Spawn(def, loc, map, wipeMode);
 			var contamination = map.GetContamination(loc);
-			thing.AddContamination(contamination, null, ZombieSettings.Values.contamination.ambrosiaAdd);
+			thing.AddContamination(contamination, ZombieSettings.Values.contamination.ambrosiaAdd);
 			return thing;
 		}
 
@@ -133,7 +133,7 @@ namespace ZombieLand
 			var thing = GenSpawn.Spawn(def, loc, map, wipeMode);
 			var pawn = driver.pawn;
 			var contamination = map.GetContamination(loc);
-			thing.AddContamination(contamination, null, ZombieSettings.Values.contamination.sowedPlantAdd);
+			thing.AddContamination(contamination, ZombieSettings.Values.contamination.sowedPlantAdd);
 			ZombieSettings.Values.contamination.sowingPawnEqualize.Equalize(pawn, thing);
 			return thing;
 		}

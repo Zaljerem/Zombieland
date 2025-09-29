@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
+using Verse;
 
 namespace ZombieLand
 {
@@ -41,6 +42,7 @@ namespace ZombieLand
 	}
 
 	// uses https://github.com/witnessmonolith/atlased_documentation
+	[StaticConstructorOnStartup]
 	public static class TextureAtlas
 	{
 		public static readonly string textureRoot = Tools.GetModRootDirectory() + Path.DirectorySeparatorChar + "Textures" + Path.DirectorySeparatorChar;
@@ -49,9 +51,10 @@ namespace ZombieLand
 
 		static TextureAtlas()
 		{
-			var atlas = new Texture2D(1, 1, TextureFormat.ARGB32, false) { name = "PartsNew.png" };
-			if (atlas.LoadImage(File.ReadAllBytes(textureRoot + "PartsNew.png")) == false)
-				return;
+			var atlas = new Texture2D(2, 2, TextureFormat.ARGB32, false) { name = "PartsNew.png" };
+			byte[] fileData = File.ReadAllBytes(textureRoot + "PartsNew.png");
+			atlas.LoadImage(fileData);   // Correct for PNG/JPG files
+			atlas.Apply(true, false);    // Keep texture readable
 
 			using var reader = new StreamReader(textureRoot + "PartsNew.json");
 			var jsonReader = new JsonTextReader(reader);

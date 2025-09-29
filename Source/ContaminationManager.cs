@@ -125,7 +125,7 @@ namespace ZombieLand
 
 			var grid = (ContaminationGrid)null;
 			var id = -1;
-			var thing = info.thingInt;
+			            var thing = info.Thing;
 
 			IntVec3 cell;
 			if (thing is Mineable)
@@ -135,7 +135,7 @@ namespace ZombieLand
 				thing = null;
 			}
 			else
-				cell = info.cellInt;
+				cell = info.Cell;
 
 			if (thing != null)
 			{
@@ -278,12 +278,12 @@ namespace ZombieLand
 				return _grid;
 			}
 
-			var isT1 = t1.thingInt != null;
-			var isT2 = t2.thingInt != null;
+			var isT1 = t1.Thing != null;
+			var isT2 = t2.Thing != null;
 			if (isT1 == false && isT2 == false)
 				throw new Exception($"cannot equalize cells only ({t1} to {t2}, weight {weight})");
-			var c1 = isT1 ? Get(t1.thingInt, includeHoldings1) : cachedGrid()[t1.cellInt];
-			var c2 = isT2 ? Get(t2.thingInt, includeHoldings2) : cachedGrid()[t2.cellInt];
+			var c1 = isT1 ? Get(t1.Thing, includeHoldings1) : cachedGrid()[t1.Cell];
+			var c2 = isT2 ? Get(t2.Thing, includeHoldings2) : cachedGrid()[t2.Cell];
 			if (c1 < c2)
 				(c1, c2, t1, t2) = (c2, c1, t2, t1);
 			var transfer = c1 * (1 - weight) + c2 * weight - c1;
@@ -300,7 +300,7 @@ namespace ZombieLand
 		{
 			if (currentDrawerMap == null || (DebugViewSettings.drawFog && currentDrawerMap.fogGrid.IsFogged(index)))
 				return false;
-			return currentDrawerMap.thingGrid.thingGrid[index]
+			return currentDrawerMap.thingGrid.ThingsListAtFast(index)
 				.Where(t => t is not Mineable)
 				.Sum(t => contaminations.TryGetValue(t.thingIDNumber, 0)) > 0;
 		}
@@ -439,16 +439,11 @@ namespace ZombieLand
 		public static float Equalize(this float factor, LocalTargetInfo info1, LocalTargetInfo info2, bool includeHoldings1 = true, bool includeHoldings2 = true)
 			=> ContaminationManager.Instance.Equalize(info1, info2, factor, includeHoldings1, includeHoldings2);
 
-		public static void AddContamination(this Thing thing, float val, sbyte? tempMapIndex = null, float factor = 1f)
+		public static void AddContamination(this Thing thing, float val, float factor = 1f)
 		{
 			if (val <= 0)
 				return;
-			var savedMapIndex = thing.mapIndexOrState;
-			if (tempMapIndex.HasValue)
-				thing.mapIndexOrState = tempMapIndex.Value;
 			ContaminationManager.Instance.Add(thing, val * factor);
-			if (tempMapIndex.HasValue)
-				thing.mapIndexOrState = savedMapIndex;
 		}
 
 		public static float SubtractContamination(this Thing thing, float val)

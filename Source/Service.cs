@@ -16,7 +16,7 @@ namespace ZombieLand
 
 		static void Postfix()
 		{
-			var actualTimeSpeed = Find.TickManager.curTimeSpeed;
+			var actualTimeSpeed = Find.TickManager.CurTimeSpeed;
 			if (curTimeSpeed != actualTimeSpeed)
 				foreach (var subscriber in subscribers)
 					subscriber.Value(actualTimeSpeed);

@@ -19,10 +19,10 @@ namespace ZombieLand
 		{
 			base.TickRare();
 			if (compPowerTrader.PowerOn)
-				compPowerTrader.PowerOutput = -compPowerTrader.Props.basePowerConsumption;
+				compPowerTrader.PowerOutput = -compPowerTrader.Props.PowerConsumption;
 		}
 
-		public override void Tick()
+		protected override void Tick()
 		{
 			base.Tick();
 			if (OnWall())
@@ -31,7 +31,7 @@ namespace ZombieLand
 				Destroy();
 		}
 
-		public override void ReceiveCompSignal(string signal)
+		protected override void ReceiveCompSignal(string signal)
 		{
 			if (signal == "Activate")
 			{

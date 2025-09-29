@@ -78,7 +78,7 @@ namespace ZombieLand
 				finalRegionIndices[aRegion.region] = finalRegions.Count - 1;
 			}
 
-			map.regionGrid.allRooms
+			map.regionGrid.AllRooms
 				.Where(r => r.IsDoorway == false && r.Fogged == false && r.IsHuge == false && r.ProperRoom)
 				.SelectMany(r => r.Regions)
 				.Where(r => r != null && r.valid && r.Cells.Any(cell => pathGrid.WalkableFast(cell)))

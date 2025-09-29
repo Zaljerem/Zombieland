@@ -17,7 +17,7 @@ namespace ZombieLand
 		private float factor = 0.5f;
 
 		public override Vector2 InitialSize => new(300f, 200f);
-		public override float Margin => 10f;
+		protected override float Margin => 10f;
 
 		public Dialog_ContaminationDebugSettings(Pawn pawn)
 		{

@@ -175,7 +175,7 @@ namespace ZombieLand
 			var harmony = new Harmony("net.pardeike.zombieland");
 
 			// patch to customize the blueprint of a zombieshocker so it ticks and vanishes if the wall below is destroyed
-			var method = AccessTools.Method(typeof(ThingDefGenerator_Buildings), nameof(ThingDefGenerator_Buildings.NewBlueprintDef_Thing));
+			var method = AccessTools.Method(typeof(ThingDefGenerator_Buildings), "NewBlueprintDef_Thing");
 			var postfix = AccessTools.Method(typeof(ZombielandMod), "NewBlueprintDef_Thing_Postfix");
 			_ = harmony.Patch(method, postfix: new HarmonyMethod(postfix));
 		}

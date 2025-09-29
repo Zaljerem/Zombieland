@@ -58,9 +58,13 @@ namespace ZombieLand
 		//int ticker = 0;
 		void TickAction()
 		{
+			Log.Message($"[Zombieland Debug] TickAction() called for {pawn.Name.ToStringFull}");
 			var zombie = (Zombie)pawn;
 			if (zombie.state == ZombieState.Emerging || zombie.state == ZombieState.Floating)
+			{
+				Log.Message($"[Zombieland Debug] {pawn.Name.ToStringFull} is Emerging or Floating, returning.");
 				return;
+			}
 
 			/*
 			// for debugging - let zombies only live for 600 ticks
@@ -75,42 +79,53 @@ namespace ZombieLand
 
 			ZombieStateHandler.CheckEndRage(zombie);
 
+			Log.Message($"[Zombieland Debug] Checking ShouldDie for {pawn.Name.ToStringFull}");
 			if (this.ShouldDie(zombie))
 				return;
 
+			Log.Message($"[Zombieland Debug] Checking WallPushing for {pawn.Name.ToStringFull}");
 			if (ZombieStateHandler.WallPushing(zombie))
 				return;
 
+			Log.Message($"[Zombieland Debug] Checking Roping for {pawn.Name.ToStringFull}");
 			if (this.Roping(zombie))
 			{
 				this.ExecuteMove(zombie, zombie.Map.GetGrid());
 				return;
 			}
 
+			Log.Message($"[Zombieland Debug] Checking DownedOrUnconsciousness for {pawn.Name.ToStringFull}");
 			if (ZombieStateHandler.DownedOrUnconsciousness(zombie))
 				return;
 
+			Log.Message($"[Zombieland Debug] Checking Attack for {pawn.Name.ToStringFull}");
 			if (this.Attack(zombie))
 				return;
 
 			var grid = zombie.Map.GetGrid();
+			Log.Message($"[Zombieland Debug] Checking CheckWallPushing for {pawn.Name.ToStringFull}");
 			if (ZombieStateHandler.CheckWallPushing(zombie, grid))
 				return;
 
+			Log.Message($"[Zombieland Debug] Checking ValidDestination for {pawn.Name.ToStringFull}");
 			if (this.ValidDestination(zombie))
 				return;
 
+			Log.Message($"[Zombieland Debug] Applying Fire for {pawn.Name.ToStringFull}");
 			ZombieStateHandler.ApplyFire(zombie);
 
 			var bodyType = zombie.story.bodyType;
+			Log.Message($"[Zombieland Debug] Checking Mine for {pawn.Name.ToStringFull}");
 			if (zombie.isMiner && (bodyType == BodyTypeDefOf.Fat || bodyType == BodyTypeDefOf.Hulk))
 				if (this.Mine(zombie, true))
 					return;
 
+			Log.Message($"[Zombieland Debug] Checking Eat for {pawn.Name.ToStringFull}");
 			if (this.Eat(zombie, grid))
 				return;
 
 			bool smashTime;
+			Log.Message($"[Zombieland Debug] Checking Smash for {pawn.Name.ToStringFull}");
 			if (zombie.IsTanky)
 			{
 				if (this.Smash(zombie, true, false))
@@ -130,6 +145,7 @@ namespace ZombieLand
 					return;
 			}
 
+			Log.Message($"[Zombieland Debug] Checking possibleMoves for {pawn.Name.ToStringFull}");
 			var possibleMoves = this.PossibleMoves(zombie);
 			if (possibleMoves.Count > 0)
 			{
@@ -147,6 +163,7 @@ namespace ZombieLand
 				}
 			}
 
+			Log.Message($"[Zombieland Debug] Calling ExecuteMove for {pawn.Name.ToStringFull} with destination {destination}");
 			this.ExecuteMove(zombie, grid);
 
 			ZombieStateHandler.BeginRage(zombie, grid);
@@ -169,7 +186,7 @@ namespace ZombieLand
 			return "Stumbling";
 		}
 
-		public override IEnumerable<Toil> MakeNewToils()
+		protected override IEnumerable<Toil> MakeNewToils()
 		{
 			yield return new Toil()
 			{

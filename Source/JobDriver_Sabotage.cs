@@ -3,6 +3,7 @@ using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Verse;
 using Verse.AI;
 using Verse.Sound;
@@ -80,7 +81,7 @@ namespace ZombieLand
 			return "Sabotaging";
 		}
 
-		public override IEnumerable<Toil> MakeNewToils()
+		protected override IEnumerable<Toil> MakeNewToils()
 		{
 			yield return new Toil()
 			{
@@ -189,6 +190,8 @@ namespace ZombieLand
 			return false;
 		}
 
+		static readonly FieldInfo f_ticksUntilClose = AccessTools.Field(typeof(Building_Door), "ticksUntilClose");
+
 		static bool Hack(this JobDriver_Sabotage driver, Thing thing, Action action)
 		{
 			if (driver.hackCounter == 0)
@@ -221,7 +224,7 @@ namespace ZombieLand
 				{
 					driver.pawn.rotationTracker.FaceTarget(door);
 					door.StartManualOpenBy(driver.pawn);
-					door.ticksUntilClose *= 4;
+					f_ticksUntilClose.SetValue(door, (int)f_ticksUntilClose.GetValue(door) * 4);
 					driver.door = null;
 					driver.waitCounter = 90;
 

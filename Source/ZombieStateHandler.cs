@@ -328,7 +328,7 @@ namespace ZombieLand
 
 						if (powerNet.batteryComps.Any((CompPowerBattery x) => x.StoredEnergy > 20f))
 						{
-							ShortCircuitUtility.DrainBatteriesAndCauseExplosion(powerNet, building, out var _1, out var _2);
+							ShortCircuitUtility.DoShortCircuit(building);
 							zombie.DisableElectric(GenDate.TicksPerHour / 2);
 						}
 						else
@@ -557,7 +557,7 @@ namespace ZombieLand
 					return false;
 			}
 
-			if (driver.Map.Biome == SoSTools.sosOuterSpaceBiomeDef)
+			if (zombie.Map.Biome == SoSTools.sosOuterSpaceBiomeDef)
 				return false;
 
 			var building = CanSmash(zombie);
@@ -763,6 +763,7 @@ namespace ZombieLand
 		//
 		public static void ExecuteMove(this JobDriver_Stumble driver, Zombie zombie, PheromoneGrid grid)
 		{
+			Log.Message($"[Zombieland Debug] ExecuteMove called for {zombie.Name.ToStringFull}. Destination: {driver.destination}");
 			if (driver.destination.IsValid)
 			{
 				grid.ChangeZombieCount(zombie.lastGotoPosition, -1);
@@ -770,6 +771,15 @@ namespace ZombieLand
 				zombie.lastGotoPosition = driver.destination;
 
 				zombie.pather.StartPath(driver.destination, PathEndMode.OnCell);
+				Log.Message($"[Zombieland Debug] StartPath called for {zombie.Name.ToStringFull}.");
+				if (zombie.pather.curPath != null)
+				{
+					Log.Message($"[Zombieland Debug] Path found: {zombie.pather.curPath.Found}, Nodes left: {zombie.pather.curPath.NodesLeftCount}");
+				}
+				else
+				{
+					Log.Message($"[Zombieland Debug] Path is null after StartPath for {zombie.Name.ToStringFull}.");
+				}
 			}
 		}
 
@@ -852,7 +862,7 @@ namespace ZombieLand
 		{
 			var map = zombie.Map;
 			var size = map.Size;
-			var grid = map.thingGrid.thingGrid;
+			var thingGrid = map.thingGrid;
 			var basePos = zombie.Position;
 			var (left, top, right, bottom) = (basePos.x > 0, basePos.z < size.z - 1, basePos.x < size.x - 1, basePos.z > 0);
 			var baseIndex = map.cellIndices.CellToIndex(basePos);
@@ -867,7 +877,7 @@ namespace ZombieLand
 					case 0:
 						if (left)
 						{
-							items = grid[baseIndex - 1];
+							items = thingGrid.ThingsListAtFast(baseIndex - 1);
 							for (var i = 0; i < items.Count; i++)
 							{
 								var item = items[i];
@@ -879,7 +889,7 @@ namespace ZombieLand
 					case 1:
 						if (left && top)
 						{
-							items = grid[baseIndex - 1 + rowOffset];
+							items = thingGrid.ThingsListAtFast(baseIndex - 1 + rowOffset);
 							for (var i = 0; i < items.Count; i++)
 							{
 								var item = items[i];
@@ -891,7 +901,7 @@ namespace ZombieLand
 					case 2:
 						if (left && bottom)
 						{
-							items = grid[baseIndex - 1 - rowOffset];
+							items = thingGrid.ThingsListAtFast(baseIndex - 1 - rowOffset);
 							for (var i = 0; i < items.Count; i++)
 							{
 								var item = items[i];
@@ -903,7 +913,7 @@ namespace ZombieLand
 					case 3:
 						if (top)
 						{
-							items = grid[baseIndex + rowOffset];
+							items = thingGrid.ThingsListAtFast(baseIndex + rowOffset);
 							for (var i = 0; i < items.Count; i++)
 							{
 								var item = items[i];
@@ -915,7 +925,7 @@ namespace ZombieLand
 					case 4:
 						if (right)
 						{
-							items = grid[baseIndex + 1];
+							items = thingGrid.ThingsListAtFast(baseIndex + 1);
 							for (var i = 0; i < items.Count; i++)
 							{
 								var item = items[i];
@@ -927,7 +937,7 @@ namespace ZombieLand
 					case 5:
 						if (right && bottom)
 						{
-							items = grid[baseIndex + 1 - rowOffset];
+							items = thingGrid.ThingsListAtFast(baseIndex + 1 - rowOffset);
 							for (var i = 0; i < items.Count; i++)
 							{
 								var item = items[i];
@@ -939,7 +949,7 @@ namespace ZombieLand
 					case 6:
 						if (right && top)
 						{
-							items = grid[baseIndex + 1 + rowOffset];
+							items = thingGrid.ThingsListAtFast(baseIndex + 1 + rowOffset);
 							for (var i = 0; i < items.Count; i++)
 							{
 								var item = items[i];
@@ -951,7 +961,7 @@ namespace ZombieLand
 					case 7:
 						if (bottom)
 						{
-							items = grid[baseIndex - rowOffset];
+							items = thingGrid.ThingsListAtFast(baseIndex - rowOffset);
 							for (var i = 0; i < items.Count; i++)
 							{
 								var item = items[i];

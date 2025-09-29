@@ -11,7 +11,7 @@ namespace ZombieLand
 	{
 		public override bool TryMakePreToilReservations(bool errorOnFailed) => true;
 
-		public override IEnumerable<Toil> MakeNewToils()
+		protected override IEnumerable<Toil> MakeNewToils()
 		{
 			yield return new Toil()
 			{

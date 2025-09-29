@@ -63,7 +63,7 @@ namespace ZombieLand
 						for (var aIdx = 0; aIdx < areas.Length; aIdx++)
 						{
 							var (area, mode) = (areas[aIdx].Key, areas[aIdx].Value);
-							var inside = area.innerGrid[pawn.Position];
+							var inside = area[pawn.Position];
 							if (inside && mode == AreaRiskMode.ColonistInside || inside == false && mode == AreaRiskMode.ColonistOutside)
 							{
 								if (pawnsInDanger.ContainsKey(pawn) == false)
@@ -92,7 +92,7 @@ namespace ZombieLand
 						for (var aIdx = 0; aIdx < areas.Length; aIdx++)
 						{
 							var (area, mode) = (areas[aIdx].Key, areas[aIdx].Value);
-							var inside = area.innerGrid[zombie.Position];
+							var inside = area[zombie.Position];
 							if (inside && mode == AreaRiskMode.ZombieInside || inside == false && mode == AreaRiskMode.ZombieOutside)
 							{
 								if (pawnsInDanger.ContainsKey(zombie) == false)
@@ -249,9 +249,6 @@ namespace ZombieLand
 			return false;
 		}
 
-		[HarmonyPrefix]
-		[HarmonyPatch(nameof(AreaManager.SortAreas))]
-		public static bool SortAreas() => false;
 	}
 
 	[HarmonyPatch(typeof(Dialog_ManageAreas))]
@@ -269,7 +266,7 @@ namespace ZombieLand
 		{
 			alignment = TextAnchor.MiddleLeft,
 			clipping = TextClipping.Clip,
-			font = Text.fonts[1],
+			font = Text.fontStyles[1].font,
 			normal = new GUIStyleState() { textColor = Color.white },
 			padding = new RectOffset(7, 0, 0, 0)
 		};
@@ -294,7 +291,7 @@ namespace ZombieLand
 		{
 			Text.Font = GameFont.Small;
 
-			RenderList(__instance.map);
+			RenderList(Find.CurrentMap);
 			if (selected != null)
 			{
 				RenderSelectedRowContent(selected);
@@ -346,7 +343,7 @@ namespace ZombieLand
 			if (Widgets.ButtonImage(bRect, Constants.ButtonDel[deleteable ? 1 : 0]) && deleteable)
 			{
 				Event.current.Use();
-				areaManager.Remove(selected);
+				selected.Delete();
 				_ = ZombieAreaManager.pawnsInDanger.RemoveAll(pair => pair.Value == selected);
 				_ = ZombieSettings.Values.dangerousAreas.Remove(selected);
 				var newCount = areaManager.AllAreas.Count;
@@ -375,10 +372,9 @@ namespace ZombieLand
 					var newLabel = $"{labelPrefix} {n}";
 					if (existingLabels.Contains(newLabel) == false)
 					{
-						if (areaManager.TryMakeNewAllowed(out Area_Allowed newArea))
-						{
-							newArea.labelInt = newLabel;
-							foreach (IntVec3 cell in selected.ActiveCells)
+																if (areaManager.TryMakeNewAllowed(out Area_Allowed newArea))
+																{
+																	newArea.RenamableLabel = newLabel;							foreach (IntVec3 cell in selected.ActiveCells)
 								newArea[cell] = true;
 							selected = newArea;
 							selectedIndex = areaManager.AllAreas.IndexOf(selected);
@@ -555,10 +551,9 @@ namespace ZombieLand
 			var newRed = Tools.HorizontalSlider(cRect, area.Color.r, 0f, 1f);
 			if (area is Area_Allowed allowed1)
 			{
-				allowed1.colorInt.r = newRed;
-				allowed1.colorTextureInt = null;
-				area.Drawer.material = null;
-				area.Drawer.SetDirty();
+				var color = allowed1.Color;
+				color.r = newRed;
+				allowed1.SetColor(color);
 			}
 
 			cRect = new Rect(left, 129, 14, 14);
@@ -568,10 +563,9 @@ namespace ZombieLand
 			var newGreen = Tools.HorizontalSlider(cRect, area.Color.g, 0f, 1f);
 			if (area is Area_Allowed allowed2)
 			{
-				allowed2.colorInt.g = newGreen;
-				allowed2.colorTextureInt = null;
-				area.Drawer.material = null;
-				area.Drawer.SetDirty();
+				var color = allowed2.Color;
+				color.g = newGreen;
+				allowed2.SetColor(color);
 			}
 
 			cRect = new Rect(left, 149, 14, 14);
@@ -581,10 +575,9 @@ namespace ZombieLand
 			var newBlue = Tools.HorizontalSlider(cRect, area.Color.b, 0f, 1f);
 			if (area is Area_Allowed allowed3)
 			{
-				allowed3.colorInt.b = newBlue;
-				allowed3.colorTextureInt = null;
-				area.Drawer.material = null;
-				area.Drawer.SetDirty();
+				var color = allowed3.Color;
+				color.b = newBlue;
+				allowed3.SetColor(color);
 			}
 
 			lRect = new Rect(left, 178, width, 17);
