@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-  <name>Zombieland</name>
+  <name>Zombieland 1.6</name>
   <author>Andreas Pardeike, Louize</author>
   <supportedVersions>
     <li>1.6</li>
@@ -25,7 +25,7 @@
     <li>Multiplayer</li>
   </incompatibleWith>
   <packageId>brrainz.zombieland</packageId>
-  <modVersion>4.4.6.0</modVersion>
+  <modVersion>4.4.7.0</modVersion>
   <steamAppId>928376710</steamAppId>
   <description>Do you like The Walking Dead? Are you afraid of The Undead? Good. Because this mod will give you the Heebie-jeebies!
 
