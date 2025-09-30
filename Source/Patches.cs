@@ -1279,44 +1279,59 @@ namespace ZombieLand
 		[HarmonyPatch]
 		static class Building_Door_PawnCanOpen_Patch
 		{
+			private static bool isCheckingPawnCanOpen = false;
+
 			static void Postfix(Building_Door __instance, Pawn p, ref bool __result)
 			{
-				if (__result == false)
-					return;
-
-				if (p == null || p.Map == null || p.Drafted || __instance == null)
-					return;
-
-				if (__instance.FreePassage)
-					return;
-
-				if (p.CurJob?.playerForced ?? false)
-					return;
-
-				if (Tools.ShouldAvoidZombies(p) == false)
-					return;
-
-				var map = p.Map;
-
-				var tickManager = map.GetComponent<TickManager>();
-				if (tickManager == null)
-					return;
-
-				var avoidGrid = tickManager.avoidGrid;
-				if (avoidGrid == null)
-					return;
-
-				var size = __instance.def.size;
-				if (size.x == 1 && size.z == 1)
+				if (isCheckingPawnCanOpen)
 				{
-					if (avoidGrid.ShouldAvoid(map, __instance.Position))
-						__result = false;
+					return;
 				}
-				else
+
+				try
 				{
-					var cells = __instance.OccupiedRect().Cells;
-					if (cells.Any(cell => avoidGrid.ShouldAvoid(map, cell)))
-						__result = false;
+					isCheckingPawnCanOpen = true;
+
+					if (__result == false)
+						return;
+
+										if (p == null || p.Map == null || p.Drafted || __instance == null || __instance.Map == null)
+											return;
+					
+										if (__instance.FreePassage)						return;
+
+					if (p.CurJob?.playerForced ?? false)
+						return;
+
+					if (Tools.ShouldAvoidZombies(p) == false)
+						return;
+
+					var map = p.Map;
+
+					var tickManager = map.GetComponent<TickManager>();
+					if (tickManager == null)
+						return;
+
+					var avoidGrid = tickManager.avoidGrid;
+					if (avoidGrid == null)
+						return;
+
+					var size = __instance.def.size;
+					if (size.x == 1 && size.z == 1)
+					{
+						if (avoidGrid.ShouldAvoid(map, __instance.Position))
+							__result = false;
+					}
+					else
+					{
+						var cells = __instance.OccupiedRect().Cells;
+						if (cells.Any(cell => avoidGrid.ShouldAvoid(map, cell)))
+							__result = false;
+					}
+				}
+				finally
+				{
+					isCheckingPawnCanOpen = false;
 				}
 			}
 
@@ -2775,7 +2790,7 @@ namespace ZombieLand
 
 				if (zombie.state == ZombieState.Emerging)
 				{
-					zombie.Render(renderer, drawLoc);
+					// zombie.Render(renderer, drawLoc);
 					return;
 				}
 

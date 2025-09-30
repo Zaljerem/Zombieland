@@ -160,25 +160,28 @@ namespace ZombieLand
 			var type = AccessTools.TypeByName("CombatExtended.CompAmmoUser");
 			if (type == null)
 				return null;
-			var method = AccessTools.Method(type, "TryReduceAmmoCount");
+			var method = AccessTools.Method(type, "Notify_ShotFired");
 			if (method == null)
 			{
-				Error("Combat Extended installed, but method CompAmmoUser.TryReduceAmmoCount not found");
+				Error("Combat Extended installed, but method CompAmmoUser.Notify_ShotFired not found");
 				return null;
 			}
 			return method;
 		}
 
-		static bool Prefix(Building_Turret ___turret, ref bool __result)
+		static bool Prefix(Building_Turret ___turret)
 		{
 			if (___turret == null)
-				return true;
+				return true; // Not a turret, run the original method
+
 			if (Rand.Chance(ZombieSettings.Values.reducedTurretConsumption))
 			{
-				__result = true;
+				// By returning 'false', we skip the original Notify_ShotFired method,
+				// preventing ammo from being consumed. No need to set a result.
 				return false;
 			}
-			return true;
+
+			return true; // Run the original method normally
 		}
 	}
 }

@@ -37,6 +37,8 @@ namespace ZombieLand
 		public static readonly Dictionary<string, VersionedValue> defaultValues;
 		static readonly string SettingsFilePath = Path.Combine(GenFilePaths.ConfigFolderPath, "ZombielandAdvancedSettings.json");
 
+		public static Texture2D dot = new(3, 3);
+
 		static Constants()
 		{
 			var edge = new Color(1, 1, 1, 0.5f);
@@ -345,10 +347,7 @@ namespace ZombieLand
 		public static readonly System.Random random = new();
 
 		public static readonly Mesh screamMesh = MeshMakerPlanes.NewPlaneMesh(8f);
-		public static readonly Mesh healMesh = MeshMakerPlanes.NewPlaneMesh(4f);
-
-		public static Texture2D dot = new(3, 3);
-		public static Texture2D timeArrow = ContentFinder<Texture2D>.Get("TimeArrow", true);
+				public static Texture2D timeArrow = ContentFinder<Texture2D>.Get("TimeArrow", true);
 		public static Texture2D[] timeKnob = new[] { ContentFinder<Texture2D>.Get("TimeKnob", true), ContentFinder<Texture2D>.Get("TimeKnobSelected", true) };
 		public static Texture2D timeKnobHighlight = ContentFinder<Texture2D>.Get("TimeKnobHighlight", true);
 

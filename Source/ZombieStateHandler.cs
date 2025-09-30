@@ -578,7 +578,7 @@ namespace ZombieLand
 
 		// mine mountains ===========================================================================
 		//
-		static readonly Effecter effecter = EffecterDefOf.Mine.Spawn();
+		static Effecter effecter;
 		public static bool Mine(this JobDriver_Stumble driver, Zombie zombie, bool allDirections = false)
 		{
 			_ = driver;
@@ -608,6 +608,15 @@ namespace ZombieLand
 				return false;
 
 			zombie.rotationTracker.FaceCell(mineable.Position);
+			if (effecter == null)
+			{
+				effecter = EffecterDefOf.Mine.Spawn();
+				if (effecter == null)
+				{
+					Log.Error("Zombieland: EffecterDefOf.Mine.Spawn() returned null in ZombieStateHandler.Mine method.");
+					return false; // Prevent NullReferenceException later
+				}
+			}
 			effecter.Trigger(zombie, mineable);
 			var baseDamage = (int)GenMath.LerpDoubleClamped(0, 5, 2, 40, Tools.Difficulty());
 			var damage = (!mineable.def.building.isNaturalRock) ? baseDamage : baseDamage * 2;
