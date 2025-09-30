@@ -53,7 +53,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Brrainz.RimWorld.CrossPromotion" Version="1.1.2" />
 		<PackageReference Include="Lib.Harmony" Version="2.4.1" ExcludeAssets="runtime" />
 		<PackageReference Include="Microsoft.NETCore.Platforms" Version="7.0.4" />
 		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3">

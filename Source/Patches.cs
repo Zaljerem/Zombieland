@@ -163,7 +163,7 @@ namespace ZombieLand
 		//
 
 
-/*[HarmonyPatch(typeof(MapInterface))]
+[HarmonyPatch(typeof(MapInterface))]
 		[HarmonyPatch(nameof(MapInterface.MapInterfaceUpdate))]
 		[StaticConstructorOnStartup]
 		class MapInterface_MapInterfaceUpdate_Patch
@@ -216,7 +216,7 @@ namespace ZombieLand
 							Tools.DebugPosition(c.ToVector3(), new Color(0f, 1f, 0f, GenMath.LerpDouble(0, 10000, 0.4f, 1f, cost)));
 					}
 				}
-
+				/*
 				if (Constants.SHOW_WANDER_REGIONS)
 				{
 					var pathing = map?.GetComponent<TickManager>()?.zombiePathing;
@@ -247,9 +247,9 @@ namespace ZombieLand
 							}
 						}
 					}
-				}
+				} */
 			}
-		}*/
+		}
 
 		// patch for debugging: show zombie pathing grid around the mouse
 		//

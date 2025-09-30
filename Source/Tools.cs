@@ -872,7 +872,7 @@ namespace ZombieLand
 			var pathGrid = map.pathing.For(pawn).pathGrid;
 			if (pathGrid.Grid_Unsafe[idx] >= 10000)
 				return false;
-			return true;
+			return true; 
 			// For now, we disable this to gain execution speed
 			//return map.terrainGrid.topGrid[idx].DoesRepellZombies() == false;
 		}
