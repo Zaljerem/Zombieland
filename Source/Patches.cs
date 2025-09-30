@@ -782,6 +782,22 @@ namespace ZombieLand
 			}
 		}
 
+		// patch to prevent checking faction relation with itself
+		//
+		[HarmonyPatch(typeof(Faction), "RelationWith")]
+		static class Faction_RelationWith_Patch
+		{
+			static bool Prefix(Faction __instance, Faction other, ref FactionRelation __result)
+			{
+				if (__instance == other)
+				{
+					__result = new FactionRelation();
+					return false;
+				}
+				return true;
+			}
+		}
+
 		// patch to make downed zombies as easy to kill as standing
 		//
 		[HarmonyPatch(typeof(Projectile))]

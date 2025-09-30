@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using RimWorld;
+using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -384,23 +385,28 @@ namespace ZombieLand
 			paralyzedUntil = GenTicks.TicksAbs + GenDate.TicksPerHour / 2;
 		}
 
-		public override void Kill(DamageInfo? dinfo, Hediff exactCulprit = null)
-		{
-			if (IsSuicideBomber)
-			{
-				bombTickingInterval = -1f;
-				bombWillGoOff = false;
-				hasTankyShield = -1f;
-				// _ = Drawer.renderer.graphics.apparelGraphics.RemoveAll(record => record.sourceApparel?.def == CustomDefs.Apparel_BombVest);
-				Map.GetComponent<TickManager>()?.AddExplosion(Position);
-			}
-
-			if (isToxicSplasher)
-				DropStickyGoo();
-
-			base.Kill(dinfo, exactCulprit);
-		}
-
+		        public override void Kill(DamageInfo? dinfo, Hediff exactCulprit = null)
+				{
+					if (Destroyed)
+						return;
+		
+					if (IsSuicideBomber)
+					{
+						bombTickingInterval = -1f;
+						bombWillGoOff = false;
+						hasTankyShield = -1f;
+						// _ = Drawer.renderer.graphics.apparelGraphics.RemoveAll(record => record.sourceApparel?.def == CustomDefs.Apparel_BombVest);
+						Map.GetComponent<TickManager>()?.AddExplosion(Position);
+					}
+		
+					if (isToxicSplasher)
+						DropStickyGoo();
+		
+					base.Kill(dinfo, exactCulprit);
+		
+					if (Corpse == null && Find.WorldPawns.Contains(this) == false)
+						Find.WorldPawns.PassToWorld(this, PawnDiscardDecideMode.Discard);
+				}
 		// public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
 		// {
 		// 	base.Destroy(mode);
