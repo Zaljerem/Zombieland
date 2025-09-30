@@ -247,6 +247,8 @@ namespace ZombieLand
 		public float contaminationBaseFactor = 1f;
 		public ContaminationFactors contamination = new();
 
+        public List<string> allowedOdysseyLayers = new List<string>();
+
 		// unused
 		public int suicideBomberIntChance = 1;
 		public int toxicSplasherIntChance = 1;
@@ -303,6 +305,12 @@ namespace ZombieLand
 				}
 				return true;
 			});
+            // Odyssey integration
+            Scribe_Collections.Look(ref allowedOdysseyLayers, "allowedOdysseyLayers", LookMode.Value);
+            if (allowedOdysseyLayers == null) 
+            {
+                allowedOdysseyLayers = new List<string>();
+            }
 
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
 				Tools.UpdateBiomeBlacklist(biomesWithoutZombies);

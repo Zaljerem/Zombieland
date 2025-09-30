@@ -103,6 +103,9 @@ namespace ZombieLand
 		public static bool IsLoadingDefaults = true;
 		public static Stopwatch frameWatch = Stopwatch.StartNew();
 
+         
+
+
 		public ZombielandMod(ModContentPack content) : base(content)
 		{
 			Identifier = content.PackageId;
@@ -139,6 +142,9 @@ namespace ZombieLand
 		public override void DoSettingsWindowContents(Rect inRect)
 		{
 			var settings = ZombieSettings.GetGameSettings();
+			var listing = new Listing_Standard();
+			listing.Begin(inRect);
+
 			if (settings != null)
 			{
 				var offset = DrawAdvancedSettings(inRect);
@@ -150,6 +156,9 @@ namespace ZombieLand
 				_ = DrawAdvancedSettings(inRect);
 				ZombieSettingsDefaults.DoWindowContents(inRect);
 			}
+
+
+			listing.End();
 		}
 
 		public override void WriteSettings()

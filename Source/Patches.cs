@@ -248,6 +248,17 @@ namespace ZombieLand
 						}
 					}
 				} */
+				if (Constants.SHOW_WANDER_REGIONS)
+				{
+					var zombies = map.mapPawns.AllPawns.OfType<Zombie>();
+					foreach (var zombie in zombies)
+					{
+						if (zombie.wanderDestination.IsValid)
+						{
+							GenDraw.DrawLineBetween(zombie.DrawPos, zombie.wanderDestination.ToVector3Shifted(), SimpleColor.Yellow);
+						}
+					}
+				}
 			}
 		}
 
@@ -1984,6 +1995,40 @@ namespace ZombieLand
 										}				}
 			}
 		}
+        // Odyssey patch to prevent raids in disallowed layers
+        [HarmonyPatch(typeof(IncidentWorker_Raid), "TryExecuteWorker")]
+static class IncidentWorker_ZombieRaid_TryExecuteWorker_Patch
+{
+    static bool Prefix(IncidentParms parms)
+    {
+        if (!OdysseyTools.IsActive)
+            return true;
+
+        if (!ZombieSettings.Values.allowedOdysseyLayers.Any())
+            return true;
+
+        if (!(parms.target is Map map))
+            return true; 
+            
+        Def currentLayer = OdysseyTools.GetMapLayer(map);
+
+
+        if (currentLayer == null)
+            return true;
+
+
+        if (ZombieSettings.Values.allowedOdysseyLayers.Contains(currentLayer.defName))
+        {
+
+            return true;
+        }
+        else
+        {
+
+            return false; 
+        }
+    }
+}
 
 		// patch for detecting if a pawn enters a new cell
 		//
