@@ -1,5 +1,4 @@
-﻿using Brrainz;
-using HarmonyLib;
+﻿using HarmonyLib;
 using LudeonTK;
 using RimWorld;
 using RimWorld.Planet;
@@ -68,7 +67,7 @@ namespace ZombieLand
 			//	return false;
 			//});
 
-			CrossPromotion.Install(76561197973010050);
+			//CrossPromotion.Install(76561197973010050);
 		}
 
 		public static void Error(string error)
