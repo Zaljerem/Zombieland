@@ -172,7 +172,7 @@ namespace ZombieLand
 
 		static void ApplyEarlyPatches()
 		{
-			var harmony = new Harmony("net.pardeike.zombieland");
+			var harmony = new Harmony("net.pardeike.zombieland.early");
 
 			// patch to customize the blueprint of a zombieshocker so it ticks and vanishes if the wall below is destroyed
 			var method = AccessTools.Method(typeof(ThingDefGenerator_Buildings), "NewBlueprintDef_Thing");
