@@ -724,7 +724,24 @@ namespace ZombieLand
 			if (progress >= Constants.RUBBLE_EMERGE_DELAY)
 			{
 				var bodyOffset = GenMath.LerpDouble(Constants.RUBBLE_EMERGE_DELAY, 1, -0.45f, 0, progress);
-				renderer.RenderPawnAt(drawLoc + new Vector3(0, 0, bodyOffset), Rot4.South, false);
+				var bodyRot = GenMath.LerpDouble(Constants.RUBBLE_EMERGE_DELAY, 1, 90, 0, progress);
+
+				Rot4 rot = Rot4.South;
+
+				// Draw body
+				Graphic bodyGraphic = customBodyGraphic ?? Graphic;
+				Mesh bodyMesh = bodyGraphic.MeshAt(rot);
+				Material bodyMat = bodyGraphic.MatAt(rot);
+				Vector3 bodyDrawPos = drawLoc + new Vector3(0, 0, bodyOffset);
+				Graphics.DrawMesh(bodyMesh, bodyDrawPos, Quaternion.Euler(Vector3.right * bodyRot), bodyMat, 0);
+
+				// Draw head
+				Graphic headGraphic = customHeadGraphic ?? Graphic;
+				Mesh headMesh = headGraphic.MeshAt(rot);
+				Material headMat = headGraphic.MatAt(rot);
+				Vector3 headOffset = renderer.BaseHeadOffsetAt(rot);
+				Vector3 headDrawPos = bodyDrawPos + headOffset;
+				Graphics.DrawMesh(headMesh, headDrawPos, Quaternion.Euler(Vector3.right * bodyRot), headMat, 0);
 			}
 
 			RenderRubble(drawLoc);

@@ -1538,7 +1538,7 @@ namespace ZombieLand
 					return false;
 
 				var tickManager = pawn.Map?.GetComponent<TickManager>();
-				if (tickManager == null)
+				if (tickManager == null || tickManager.avoidGrid == null)
 					return false;
 
 				return tickManager.avoidGrid.ShouldAvoid(pawn.Map, cell);
@@ -1582,7 +1582,7 @@ namespace ZombieLand
 					return false;
 
 				var tickManager = pawn.Map?.GetComponent<TickManager>();
-				if (tickManager == null)
+				if (tickManager == null || tickManager.avoidGrid == null)
 					return false;
 
 				return tickManager.avoidGrid.ShouldAvoid(pawn.Map, cell);
@@ -1617,16 +1617,16 @@ namespace ZombieLand
 		[HarmonyPatch]
 		static class WorkGiver_Scanner_HasJobOnThing_Patches
 		{
-			static bool ShouldAvoid(Pawn pawn, Thing thing, bool forced)
-			{
-				if (forced || pawn.ActivePartOfColony() == false)
-					return false;
-
-				if (Tools.ShouldAvoidZombies(pawn) == false)
-					return false;
-
-				var tickManager = pawn.Map?.GetComponent<TickManager>();
-				if (tickManager == null)
+			            static bool ShouldAvoid(Pawn pawn, Thing thing, bool forced)
+			            {
+			                		            if (thing == null) return false;
+			                		            if (forced || pawn.ActivePartOfColony() == false)
+			                		                return false;
+			                				var tickManager = pawn.Map?.GetComponent<TickManager>();
+			                				if (tickManager == null || tickManager.avoidGrid == null)
+			                					return false;
+				// Add null check for thing.Map
+				if (thing.Map == null)
 					return false;
 
 				return tickManager.avoidGrid.ShouldAvoid(thing.Map, thing.Position);
@@ -1663,18 +1663,26 @@ namespace ZombieLand
 		{
 			static bool ShouldAvoid(Pawn pawn, Thing thing, bool forced)
 			{
+				if (thing == null) return false;
 				if (forced || pawn.ActivePartOfColony() == false)
 					return false;
 
 				var map = thing?.Map ?? pawn.Map;
-				if (map == null || thing.Position.InBounds(map) == false)
+				if (map == null)
+					return false;
+
+				// Add null check for thing.Map before accessing thing.Position.InBounds
+				if (thing.Map == null)
+					return false;
+
+				if (thing.Position.InBounds(map) == false)
 					return false;
 
 				if (Tools.ShouldAvoidZombies(pawn) == false)
 					return false;
 
 				var tickManager = map.GetComponent<TickManager>();
-				if (tickManager == null)
+				if (tickManager == null || tickManager.avoidGrid == null)
 					return false;
 
 				return tickManager.avoidGrid.ShouldAvoid(map, thing.Position);
@@ -2396,6 +2404,12 @@ static class IncidentWorker_ZombieRaid_TryExecuteWorker_Patch
 			[HarmonyPriority(Priority.First)]
 			static bool Prefix(ref bool __result, IncidentParms parms)
 			{
+				// Guard clause: Ensure TickManager is fully initialized
+				if (Find.CurrentMap?.GetComponent<TickManager>()?.isFullyInitialized == false)
+				{
+					return true; // Skip this patch and let the original method run
+				}
+
 				if (parms?.faction?.def != ZombieDefOf.Zombies)
 					return true;
 
@@ -2753,33 +2767,36 @@ static class IncidentWorker_ZombieRaid_TryExecuteWorker_Patch
 			static readonly Mesh shieldMesh = MeshPool.GridPlane(new Vector2(2f, 2f));
 			static readonly Mesh shieldMesh_flipped = MeshPool.GridPlaneFlip(new Vector2(2f, 2f));
 
-			[HarmonyPriority(Priority.First)]
-			            static bool Prefix(PawnRenderer __instance, Vector3 drawLoc)
-			            {
-			                if (AccessTools.Field(typeof(PawnRenderer), "pawn").GetValue(__instance) is not Zombie zombie)					return true;
-
-				if (zombie.needsGraphics)
-				{
-					var tickManager = zombie.Map?.GetComponent<TickManager>();
-					if (tickManager != null)
-						tickManager.AllZombies().DoIf(z => z.needsGraphics, z =>
-						{
-							z.needsGraphics = false;
-							ZombieGenerator.AssignNewGraphics(z);
-						});
-					else
-					{
-						zombie.needsGraphics = false;
-						ZombieGenerator.AssignNewGraphics(zombie);
-					}
-				}
-
-
-
-				return true;
-			}
-
-			[HarmonyPriority(Priority.First)]
+			            			[HarmonyPriority(Priority.First)]
+			            			static bool Prefix(PawnRenderer __instance, Vector3 drawLoc)
+			            			{
+			            				if (AccessTools.Field(typeof(PawnRenderer), "pawn").GetValue(__instance) is not Zombie zombie)
+			            					return true;
+			            
+			            				if (zombie.state == ZombieState.Emerging)
+			            				{
+			            					zombie.Render(__instance, drawLoc);
+			            					return false;
+			            				}
+			            
+			            				if (zombie.needsGraphics)
+			            				{
+			            					var tickManager = zombie.Map?.GetComponent<TickManager>();
+			            					if (tickManager != null)
+			            						tickManager.AllZombies().DoIf(z => z.needsGraphics, z =>
+			            						{
+			            							z.needsGraphics = false;
+			            							ZombieGenerator.AssignNewGraphics(z);
+			            						});
+			            					else
+			            					{
+			            						zombie.needsGraphics = false;
+			            						ZombieGenerator.AssignNewGraphics(zombie);
+			            					}
+			            				}
+			            
+			            				return true;
+			            			}			[HarmonyPriority(Priority.First)]
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 			{
 				var list = instructions.ToList();

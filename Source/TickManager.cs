@@ -103,6 +103,8 @@ namespace ZombieLand
 
 		public List<IntVec3> explosions = new();
 		public IncidentInfo incidentInfo = new();
+
+		public bool isFullyInitialized = false;
 		
 
 		public List<SoSTools.Floater> floatingSpaceZombiesBack;
@@ -173,12 +175,17 @@ namespace ZombieLand
 
 			nextVisibleGridUpdate = 0;
 			RecalculateZombieWanderDestination();
+		}
 
-			            var destinations = (Dictionary<Faction, PawnDestinationReservationManager.PawnDestinationSet>)AccessTools.Field(typeof(PawnDestinationReservationManager), "reservedDestinations").GetValue(map.pawnDestinationReservationManager);			var zombieFaction = Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies);
+		private void DelayedInitialize()
+		{
+			if (isFullyInitialized)
+				return;
+
+			var destinations = (Dictionary<Faction, PawnDestinationReservationManager.PawnDestinationSet>)AccessTools.Field(typeof(PawnDestinationReservationManager), "reservedDestinations").GetValue(map.pawnDestinationReservationManager);
+			var zombieFaction = Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies);
 			if (!destinations.ContainsKey(zombieFaction))
 				_ = map.pawnDestinationReservationManager.GetPawnDestinationSetFor(zombieFaction);
-
-			
 
 			var allZombies = AllZombies();
 			if (Tools.ShouldAvoidZombies())
@@ -207,6 +214,7 @@ namespace ZombieLand
 			while (taskTicker.Current as string != "end")
 				_ = taskTicker.MoveNext();
 
+			isFullyInitialized = true;
 			isInitialized = 3;
 		}
 
@@ -803,6 +811,11 @@ namespace ZombieLand
 		public override void MapComponentTick()
 		{
 			base.MapComponentTick();
+
+			if (isFullyInitialized == false)
+			{
+				DelayedInitialize();
+			}
 
 			_ = taskTicker.MoveNext();
 			IncreaseZombiePopulation();
