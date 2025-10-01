@@ -575,12 +575,12 @@ namespace ZombieLand
 			}))
 			{ Abort(ex7); yield break; }
 
-			if (RunWithFailureCheck(out var ex8, () =>
-			{
-				zombie.story.Childhood = childBackstories.SafeRandomElement();
-			}))
-			{ Abort(ex8); yield break; }
-
+				if (RunWithFailureCheck(out var ex8, () =>
+				{
+					if (isChild)
+						zombie.story.Childhood = childBackstories.SafeRandomElement();
+				}))
+				{ Abort(ex8); yield break; }
 			if (RunWithFailureCheck(out var ex9, () =>
 			{
 				if (zombie.ageTracker.AgeBiologicalYearsFloat >= 20f)
