@@ -65,13 +65,16 @@ namespace ZombieLand
 			hash = Gen.HashCombineStruct(hash, color);
 			hash = Gen.HashCombineStruct(hash, colorTwo);
 
-			for (var i = 0; i < 4; i++)
-			{
-				var iterator = InitIterativ(req, i, ZombieStains.maxStainPoints);
-				while (iterator.MoveNext())
-					;
-			}
-		}
+			        var iterator0 = InitIterativ(req, 0, ZombieStains.maxStainPoints);
+			        while (iterator0.MoveNext())
+			            ;
+			
+			        for (var i = 1; i < 4; i++)
+			        {
+			            var iterator = InitIterativ(req, i, ZombieStains.maxStainPoints);
+			            while (iterator.MoveNext())
+			                ;
+			        }		}
 
 		protected virtual void Dispose(bool disposing)
 		{
