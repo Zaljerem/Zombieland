@@ -604,15 +604,37 @@ namespace ZombieLand
 			return AccessTools.FirstMethod(type, method => method.CallsMethod(m_DoEffect));
 		}
 
-		static void DoEffect(JobDriver_AffectFloor self, IntVec3 c)
-		{
-			var map = (Map)f_Map.GetValue(self);
-			var contamination = map.GetContamination(c);
-			self.pawn.AddContamination(contamination, ZombieSettings.Values.contamination.floorAdd);
-			m_DoEffect.Invoke(self, new object[] { c });
-		}
-
-		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		        		static void DoEffect(JobDriver_AffectFloor self, IntVec3 c)
+		        		{
+		        			if (self?.pawn?.Map == null || c == IntVec3.Invalid)
+		        			{
+		        				// Log.Message($"[Zombieland] DoEffect skipped (Map or IntVec3 invalid): Map={(self?.pawn?.Map?.ToString() ?? "null")} | IntVec3={c}");
+		        				m_DoEffect.Invoke(self, new object[] { c }); // Still invoke original method
+		        				return;
+		        			}
+		        
+		        			var map = self.pawn.Map;
+		        			var terrain = map.terrainGrid.TerrainAt(c);
+		        
+		        			if (terrain == null)
+		        			{
+		        				// Log.Message($"[Zombieland] DoEffect skipped (no terrain): {c} on Map={map}");
+		        				m_DoEffect.Invoke(self, new object[] { c }); // Still invoke original method
+		        				return; // nothing to contaminate for Zombieland's logic
+		        			}
+		        
+		        			// Log.Message($"[Zombieland] DoEffect processing: {c} | Map={map} | Terrain={terrain}");
+		        
+		        			// Original logic for adding contamination to pawn, now outside the incorrect GetComponent block
+		        			var contamination = map.GetContamination(c);
+		        			if (ZombieSettings.Values != null && ZombieSettings.Values.contamination != null)
+		        			{
+		        				self.pawn.AddContamination(contamination, ZombieSettings.Values.contamination.floorAdd);
+		        			}
+		        
+		        			// Always invoke the original method to ensure vanilla functionality is preserved
+		        			m_DoEffect.Invoke(self, new object[] { c });
+		        		}		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
 			var replacement = SymbolExtensions.GetMethodInfo(() => DoEffect(default, default));
 			return instructions.MethodReplacer(m_DoEffect, replacement);
