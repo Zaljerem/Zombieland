@@ -65,6 +65,7 @@ namespace ZombieLand
 	public class TickManager : MapComponent
 	{
 		public int isInitialized = 0;
+		public bool zombieStateHandlerFailed = false;
 		int populationSpawnCounter;
 
 		int nextVisibleGridUpdate;
@@ -179,43 +180,56 @@ namespace ZombieLand
 
 		private void DelayedInitialize()
 		{
-			if (isFullyInitialized)
+			if (isFullyInitialized || zombieStateHandlerFailed)
 				return;
 
-			var destinations = (Dictionary<Faction, PawnDestinationReservationManager.PawnDestinationSet>)AccessTools.Field(typeof(PawnDestinationReservationManager), "reservedDestinations").GetValue(map.pawnDestinationReservationManager);
-			var zombieFaction = Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies);
-			if (!destinations.ContainsKey(zombieFaction))
-				_ = map.pawnDestinationReservationManager.GetPawnDestinationSetFor(zombieFaction);
-
-			var allZombies = AllZombies();
-			if (Tools.ShouldAvoidZombies())
+			try
 			{
-				var specs = allZombies
-					.Where(zombie => zombie.isAlbino == false)
-					.Select(zombie => new ZombieCostSpecs()
-					{
-						position = zombie.Position,
-						radius = Tools.ZombieAvoidRadius(zombie),
-						maxCosts = ZombieMaxCosts(zombie)
+				var destinations = (Dictionary<Faction, PawnDestinationReservationManager.PawnDestinationSet>)AccessTools.Field(typeof(PawnDestinationReservationManager), "reservedDestinations").GetValue(map.pawnDestinationReservationManager);
+				var zombieFaction = Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies);
+				if (!destinations.ContainsKey(zombieFaction))
+					_ = map.pawnDestinationReservationManager.GetPawnDestinationSetFor(zombieFaction);
 
-					}).ToList();
+				var allZombies = AllZombies();
+				if (Tools.ShouldAvoidZombies())
+				{
+					var specs = allZombies
+						.Where(zombie => zombie.isAlbino == false)
+						.Select(zombie => new ZombieCostSpecs()
+						{
+							position = zombie.Position,
+							radius = Tools.ZombieAvoidRadius(zombie),
+							maxCosts = ZombieMaxCosts(zombie)
 
-				avoidGrid = Tools.avoider.UpdateZombiePositionsImmediately(map, specs);
+						}).ToList();
+
+					avoidGrid = Tools.avoider.UpdateZombiePositionsImmediately(map, specs);
+				}
+				else
+					avoidGrid = new AvoidGrid(map);
+
+				hummingZombies.Clear();
+				allZombies.Where(zombie => zombie.IsActiveElectric).Do(zombie => hummingZombies.Add(zombie));
+				tankZombies.Clear();
+				allZombies.Where(zombie => zombie.IsTanky).Do(zombie => tankZombies.Add(zombie));
+
+				taskTicker = TickTasks();
+				while (taskTicker.Current as string != "end")
+					_ = taskTicker.MoveNext();
+
+				isFullyInitialized = true;
+				isInitialized = 3;
 			}
-			else
-				avoidGrid = new AvoidGrid(map);
-
-			hummingZombies.Clear();
-			allZombies.Where(zombie => zombie.IsActiveElectric).Do(zombie => hummingZombies.Add(zombie));
-			tankZombies.Clear();
-			allZombies.Where(zombie => zombie.IsTanky).Do(zombie => tankZombies.Add(zombie));
-
-			taskTicker = TickTasks();
-			while (taskTicker.Current as string != "end")
-				_ = taskTicker.MoveNext();
-
-			isFullyInitialized = true;
-			isInitialized = 3;
+			catch (TypeInitializationException ex)
+			{
+				Log.Error($"Zombieland: Failed to initialize ZombieStateHandler. Core mod functionality will be disabled. Inner exception: {ex.InnerException?.Message ?? ex.Message}");
+				zombieStateHandlerFailed = true;
+			}
+			catch (Exception ex)
+			{
+				Log.Error($"Zombieland: An unexpected error occurred during DelayedInitialize. Core mod functionality might be disabled. Exception: {ex.Message}");
+				zombieStateHandlerFailed = true;
+			}
 		}
 
 		public override void MapRemoved()
@@ -815,6 +829,11 @@ namespace ZombieLand
 			if (isFullyInitialized == false)
 			{
 				DelayedInitialize();
+			}
+
+			if (zombieStateHandlerFailed)
+			{
+				return;
 			}
 
 			_ = taskTicker.MoveNext();

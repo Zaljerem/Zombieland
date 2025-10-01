@@ -16,7 +16,8 @@ namespace ZombieLand
 		static readonly int[] adjIndex4 = { 0, 1, 2, 3 };
 		static int prevIndex4;
 
-		public static Dictionary<int, float> creepyAmbientSoundVolumes = new();
+		private static Dictionary<int, float> _creepyAmbientSoundVolumes;
+		public static Dictionary<int, float> creepyAmbientSoundVolumes => _creepyAmbientSoundVolumes ??= new Dictionary<int, float>();
 
 		// make zombies die if necessary ============================================================
 		//
