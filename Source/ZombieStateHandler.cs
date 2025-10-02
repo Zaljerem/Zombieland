@@ -411,34 +411,73 @@ namespace ZombieLand
 		}
 		//
 		static bool EatBodyPart(this JobDriver_Stumble driver, Zombie zombie, Pawn eatTargetPawn)
-		{
-			var bodyPartRecord = FirstEatablePart(eatTargetPawn);
-			if (bodyPartRecord == null)
-			{
-				driver.eatTarget.Destroy(DestroyMode.Vanish);
-				return false;
-			}
+{
+    // Guard: if no target, bail
+    if (eatTargetPawn == null || eatTargetPawn.Destroyed)
+    {
+        driver.eatTarget?.Destroy(DestroyMode.Vanish);
+        return false;
+    }
 
-			var eatTargetAlive = driver.eatTarget is Pawn eatTarget1 && eatTarget1.Dead == false;
-			var hediff_MissingPart = (Hediff_MissingPart)HediffMaker.MakeHediff(HediffDefOf.MissingBodyPart, eatTargetPawn, bodyPartRecord);
-			hediff_MissingPart.lastInjury = HediffDefOf.Bite;
-			hediff_MissingPart.IsFresh = true;
-			eatTargetPawn.health.AddHediff(hediff_MissingPart, null, null);
+    // Find an eatable part
+    var bodyPartRecord = FirstEatablePart(eatTargetPawn);
+    if (bodyPartRecord == null)
+    {
+        // No parts left -> destroy corpse and stop eating
+        if (!eatTargetPawn.Spawned) // likely already a corpse thing
+            driver.eatTarget?.Destroy(DestroyMode.Vanish);
+        else
+            eatTargetPawn.Destroy(DestroyMode.Vanish);
 
-			var eatTargetStillAlive = driver.eatTarget is Pawn eatTarget2 && eatTarget2.Dead == false;
-			if (eatTargetAlive && eatTargetStillAlive == false)
-			{
-				if (PawnUtility.ShouldSendNotificationAbout(eatTargetPawn) && eatTargetPawn.RaceProps.Humanlike)
-				{
-					var msg = "MessageEatenByPredator".Translate(new NamedArgument(driver.eatTarget.LabelShort, null), zombie.LabelIndefinite().Named("PREDATOR"), driver.eatTarget.Named("EATEN"));
-					Messages.Message(msg.CapitalizeFirst(), zombie, MessageTypeDefOf.NegativeEvent);
-				}
+        return false;
+    }
 
-				eatTargetPawn.Strip();
-			}
+    // Was the target alive before the bite?
+    var wasAlive = driver.eatTarget is Pawn pawn1 && !pawn1.Dead;
 
-			return true;
-		}
+    // Add missing part hediff (bite off)
+    try
+    {
+        var missingPart = (Hediff_MissingPart)HediffMaker.MakeHediff(HediffDefOf.MissingBodyPart, eatTargetPawn, bodyPartRecord);
+        missingPart.lastInjury = HediffDefOf.Bite;
+        missingPart.IsFresh = true;
+
+        eatTargetPawn.health?.AddHediff(missingPart, bodyPartRecord, null);
+    }
+    catch (Exception e)
+    {
+        Log.Warning($"[ZombieLand] Failed to add missing part on {eatTargetPawn}: {e}");
+        return false; // stop if health is in a bad state
+    }
+
+    // After bite, is the target still alive?
+    var nowAlive = driver.eatTarget is Pawn pawn2 && !pawn2.Dead;
+    if (wasAlive && !nowAlive)
+    {
+        // Notify if humanlike
+        if (PawnUtility.ShouldSendNotificationAbout(eatTargetPawn) && eatTargetPawn.RaceProps.Humanlike)
+        {
+            var msg = "MessageEatenByPredator".Translate(
+                driver.eatTarget.LabelShort,
+                zombie.LabelIndefinite().Named("PREDATOR"),
+                driver.eatTarget.Named("EATEN")
+            );
+            Messages.Message(msg.CapitalizeFirst(), zombie, MessageTypeDefOf.NegativeEvent);
+        }
+
+        // Strip corpse on death
+        eatTargetPawn.Strip();
+    }
+
+    // If target is a corpse and now has no more parts, clean up
+    if (eatTargetPawn.Dead && FirstEatablePart(eatTargetPawn) == null)
+    {
+        driver.eatTarget?.Destroy(DestroyMode.Vanish);
+        return false;
+    }
+
+    return true;
+}
 
 		public struct TrackMove
 		{
