@@ -20,6 +20,41 @@ namespace ZombieLand
 			}
 		}
 
+
+		  [HarmonyPatch("StartPath")]
+  		  [HarmonyPrefix]
+
+  public static bool StartPath_Prefix(Pawn_PathFollower __instance, LocalTargetInfo dest, PathEndMode peMode)
+  {
+      //var pawn = __instance?.pawn;
+      var pawn = (Pawn)AccessTools.Field(typeof(Pawn_PathFollower), "pawn").GetValue(__instance);
+      if (pawn == null)
+          return true;
+
+      // If the pawn is a Zombie and is Downed, swallow the StartPath attempt,
+      // end the current job and avoid the error.
+      if (pawn is Zombie && pawn.health.Downed)
+      {
+          try
+          {
+              pawn.jobs?.EndCurrentJob(JobCondition.Incompletable);
+          }
+          catch (Exception ex)
+          {
+              Log.Warning($"[ZombieLand] Failed to end job in StartPath Prefix for {pawn}: {ex}");
+          }
+         
+          //Log.Warning($"[ZombieLand] Suppressed StartPath for downed Zombie {pawn}. Job ended.");
+
+          return false;
+      }
+
+
+      return true;
+  }
+
+
+
 		[HarmonyPatch("PatherTick")]
 		[HarmonyPrefix]
 		public static bool PatherTick_Patch(Pawn_PathFollower __instance) 

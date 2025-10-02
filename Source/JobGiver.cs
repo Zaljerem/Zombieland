@@ -4,27 +4,35 @@ using Verse.AI;
 namespace ZombieLand
 {
 	public class JobGiver_Stumble : ThinkNode_JobGiver
-	{
-		public override ThinkNode DeepCopy(bool resolve = true)
-		{
-			return (JobGiver_Stumble)base.DeepCopy(resolve);
-		}
+{
+    public override ThinkNode DeepCopy(bool resolve = true)
+    {
+        return (JobGiver_Stumble)base.DeepCopy(resolve);
+    }
 
-		protected override Job TryGiveJob(Pawn pawn)
-		{
-			if (pawn is not Zombie zombie || zombie.isAlbino)
-				return null;
-			pawn.jobs.StopAll();
-			return JobMaker.MakeJob(CustomDefs.Stumble);
-		}
+    protected override Job TryGiveJob(Pawn pawn)
+    {
+        if (pawn is not Zombie zombie || zombie.isAlbino)
+            return null;
 
-		public override ThinkResult TryIssueJobPackage(Pawn pawn, JobIssueParams jobParams)
-		{
-			if (pawn is not Zombie zombie || zombie.isAlbino)
-				return ThinkResult.NoJob;
-			return base.TryIssueJobPackage(pawn, jobParams);
-		}
-	}
+        // Prevent assigning if downed, dead, or despawned
+        if (pawn.Downed || !pawn.Spawned || pawn.Dead)
+            return null;
+
+        return JobMaker.MakeJob(CustomDefs.Stumble);
+    }
+
+    public override ThinkResult TryIssueJobPackage(Pawn pawn, JobIssueParams jobParams)
+    {
+        if (pawn is not Zombie zombie || zombie.isAlbino)
+            return ThinkResult.NoJob;
+
+        if (pawn.Downed || !pawn.Spawned || pawn.Dead)
+            return ThinkResult.NoJob;
+
+        return base.TryIssueJobPackage(pawn, jobParams);
+    }
+}
 
 	public class JobGiver_Sabotage : ThinkNode_JobGiver
 	{
