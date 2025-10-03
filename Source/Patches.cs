@@ -3370,20 +3370,20 @@ static class IncidentWorker_ZombieRaid_TryExecuteWorker_Patch
 				{
 					if (stat == StatDefOf.MoveSpeed)
 					{
-						var tm = Find.TickManager;
-						var multiplier = defaultHumanMoveSpeed / ZombieTicker.PercentTicking;
-
+						                        var tm = Find.TickManager;
+						                        //Log.Warning($"[Zombieland Debug] Before patch - Zombie: {zombie.LabelCap}, Stat: {stat.defName}, TickRateMultiplier: {tm.TickRateMultiplier}");
+						                        var multiplier = defaultHumanMoveSpeed / ZombieTicker.PercentTicking;
 						if (zombie.health.Downed)
 						{
-							__result = (zombie.ropedBy != null ? 0.4f : 0.004f) * tm.TickRateMultiplier;
-							return false;
-						}
+							                            __result = (zombie.ropedBy != null ? 0.4f : 0.004f);// * tm.TickRateMultiplier;
+							                            //Log.Message($"[Zombieland Debug] After patch (Downed) - Zombie: {zombie.LabelCap}, Result: {__result}, TickRateMultiplier: {tm.TickRateMultiplier}");
+							                            return false;						}
 
 						if (zombie.IsTanky)
 						{
-							__result = 0.004f * multiplier * tm.TickRateMultiplier;
-							return false;
-						}
+														__result = 0.004f * multiplier;// * tm.TickRateMultiplier;
+							                            //Log.Message($"[Zombieland Debug] After patch (Tanky) - Zombie: {zombie.LabelCap}, Result: {__result}, TickRateMultiplier: {tm.TickRateMultiplier}");
+							                            return false;						}
 
 						var albinoSpeed = 1f;
 						if (zombie.isAlbino)
