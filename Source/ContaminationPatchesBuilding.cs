@@ -32,18 +32,44 @@ namespace ZombieLand
 			return thing;
 		}
 
-		static void SetTerrain(TerrainGrid self, IntVec3 c, TerrainDef newTerr, float contamination, Map map)
-		{
-			self.SetTerrain(c, newTerr);
-			if (contamination > 0)
-			{
-				var grounds = map.GetContamination();
-				grounds.cells[map.cellIndices.CellToIndex(c)] = contamination;
-				grounds.SetDirty();
-			}
-		}
+        //static void SetTerrain(TerrainGrid self, IntVec3 c, TerrainDef newTerr, float contamination, Map map)
+        //{
+        //	self.SetTerrain(c, newTerr);
+        //	if (contamination > 0)
+        //	{
+        //		var grounds = map.GetContamination();
+        //		grounds.cells[map.cellIndices.CellToIndex(c)] = contamination;
+        //		grounds.SetDirty();
+        //	}
 
-		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+        static void SetTerrain(TerrainGrid self, IntVec3 c, TerrainDef newTerr, float contamination, Map map)
+        {
+            self.SetTerrain(c, newTerr);
+
+            if (contamination <= 0 || map == null)
+                return;
+
+            var grounds = map.GetContamination();
+            if (grounds == null)
+            {
+                // If for some reason grid couldn't be created, just skip contamination set.
+                // (We already logged on creation failure above.)
+                return;
+            }
+
+            var idx = map.cellIndices.CellToIndex(c);
+            if (idx < 0 || idx >= grounds.cells.Length)
+            {
+                Log.Warning($"[ZombieLand] Contamination SetTerrain cell index out of range: {c} idx={idx} mapSize={map.Size}. Skipping contamination write.");
+                return;
+            }
+
+            grounds.cells[idx] = contamination;
+            grounds.SetDirty();
+        }
+
+
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
 		{
 			var sumVar = generator.DeclareLocal(typeof(float));
 
