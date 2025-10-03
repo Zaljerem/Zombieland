@@ -261,59 +261,91 @@ namespace ZombieLand
 
 		public void ExposeData()
 		{
-			// no base.ExposeData() to call
-
-			this.AutoExposeDataWithDefaults((settings, name, value, defaultValue) =>
-			{
-				const string fieldName = nameof(dangerousAreas);
-				if (name != fieldName)
-					return false;
-
-				var dict = (Dictionary<Area, AreaRiskMode>)(value ?? defaultValue);
-				if (Scribe.mode == LoadSaveMode.Saving)
-				{
-					if (Scribe.EnterNode(fieldName))
-					{
-						foreach (var (area, mode) in dict)
-							if (Find.Maps.Select(map => map.uniqueID).Contains(area.Map.uniqueID))
-							{
-								var riskArea = new ZombieRiskArea() { area = area.ID, map = area.Map.uniqueID, mode = mode };
-								Scribe_Deep.Look(ref riskArea, "area", Array.Empty<ZombieRiskArea>());
-							}
-						Scribe.ExitNode();
-					}
-				}
-				if (Scribe.mode == LoadSaveMode.LoadingVars)
-				{
-					Scribe_Collections.Look(ref ZombieRiskArea.temp, fieldName, LookMode.Deep);
-					ZombieRiskArea.temp ??= new List<ZombieRiskArea>();
-				}
-				if (Scribe.mode == LoadSaveMode.PostLoadInit)
-				{
-					if (Find.Maps != null)
-						foreach (var riskArea in ZombieRiskArea.temp)
-							if (riskArea != null)
-							{
-								var realArea = Find.Maps
-										.Where(map => map.uniqueID == riskArea.map)
-										.SelectMany(map => map.areaManager.AllAreas)
-										.FirstOrDefault(area => area.ID == riskArea.area);
-								if (realArea != null)
-									dict[realArea] = riskArea.mode;
-							}
-					settings.dangerousAreas = dict;
-				}
-				return true;
-			});
-            // Odyssey integration
-            Scribe_Collections.Look(ref allowedOdysseyLayers, "allowedOdysseyLayers", LookMode.Value);
-            if (allowedOdysseyLayers == null) 
-            {
-                allowedOdysseyLayers = new List<string>();
-            }
+			//Log.Message($"[Zombieland] SettingsGroup.ExposeData - Mode: {Scribe.mode}, ThreatScale (before): {threatScale}");
+			Scribe_Values.Look(ref threatScale, "threatScale", 1f);
+			Scribe_Values.Look(ref spawnWhenType, "spawnWhenType", SpawnWhenType.AllTheTime);
+			Scribe_Values.Look(ref spawnHowType, "spawnHowType", SpawnHowType.FromTheEdges);
+			Scribe_Values.Look(ref attackMode, "attackMode", AttackMode.OnlyHumans);
+			Scribe_Values.Look(ref enemiesAttackZombies, "enemiesAttackZombies", true);
+			Scribe_Values.Look(ref animalsAttackZombies, "animalsAttackZombies", false);
+			Scribe_Values.Look(ref smashMode, "smashMode", SmashMode.DoorsOnly);
+			Scribe_Values.Look(ref smashOnlyWhenAgitated, "smashOnlyWhenAgitated", true);
+			Scribe_Values.Look(ref doubleTapRequired, "doubleTapRequired", true);
+			Scribe_Values.Look(ref zombiesDieVeryEasily, "zombiesDieVeryEasily", false);
+			Scribe_Values.Look(ref healthFactor, "healthFactor", 1f);
+			Scribe_Values.Look(ref daysBeforeZombiesCome, "daysBeforeZombiesCome", 3);
+			Scribe_Values.Look(ref maximumNumberOfZombies, "maximumNumberOfZombies", 500);
+			Scribe_Values.Look(ref useDynamicThreatLevel, "useDynamicThreatLevel", true);
+			Scribe_Values.Look(ref zombiesDieOnZeroThreat, "zombiesDieOnZeroThreat", true);
+			Scribe_Values.Look(ref dynamicThreatSmoothness, "dynamicThreatSmoothness", 2.5f);
+			Scribe_Values.Look(ref dynamicThreatStretch, "dynamicThreatStretch", 20f);
+			Scribe_Values.Look(ref infectedRaidsChance, "infectedRaidsChance", 0.1f);
+			Scribe_Values.Look(ref colonyMultiplier, "colonyMultiplier", 1f);
+			Scribe_Values.Look(ref baseNumberOfZombiesinEvent, "baseNumberOfZombiesinEvent", 20);
+			Scribe_Values.Look(ref extraDaysBetweenEvents, "extraDaysBetweenEvents", 0);
+			Scribe_Values.Look(ref suicideBomberChance, "suicideBomberChance", 0.0025f);
+			Scribe_Values.Look(ref toxicSplasherChance, "toxicSplasherChance", 0.0025f);
+			Scribe_Values.Look(ref tankyOperatorChance, "tankyOperatorChance", 0.0025f);
+			Scribe_Values.Look(ref minerChance, "minerChance", 0.0025f);
+			Scribe_Values.Look(ref electrifierChance, "electrifierChance", 0.0025f);
+			Scribe_Values.Look(ref albinoChance, "albinoChance", 0.0025f);
+			Scribe_Values.Look(ref darkSlimerChance, "darkSlimerChance", 0.0025f);
+			Scribe_Values.Look(ref healerChance, "healerChance", 0.0025f);
+			Scribe_Values.Look(ref moveSpeedIdle, "moveSpeedIdle", 0.1f);
+			Scribe_Values.Look(ref moveSpeedTracking, "moveSpeedTracking", 0.5f);
+			Scribe_Values.Look(ref moveSpeedUpgraded, "moveSpeedUpgraded", false);
+			Scribe_Values.Look(ref damageFactor, "damageFactor", 1.0f);
+			Scribe_Values.Look(ref zombieInstinct, "zombieInstinct", ZombieInstinct.Normal);
+			Scribe_Values.Look(ref useCustomTextures, "useCustomTextures", true);
+			Scribe_Values.Look(ref playCreepyAmbientSound, "playCreepyAmbientSound", true);
+			Scribe_Values.Look(ref zombiesEatDowned, "zombiesEatDowned", true);
+			Scribe_Values.Look(ref zombiesEatCorpses, "zombiesEatCorpses", true);
+			Scribe_Values.Look(ref zombieBiteInfectionChance, "zombieBiteInfectionChance", 0.5f);
+			Scribe_Values.Look(ref hoursInfectionIsUnknown, "hoursInfectionIsUnknown", 8);
+			Scribe_Values.Look(ref hoursInfectionIsTreatable, "hoursInfectionIsTreatable", 24);
+			Scribe_Values.Look(ref hoursInfectionPersists, "hoursInfectionPersists", 144);
+			Scribe_Values.Look(ref anyTreatmentStopsInfection, "anyTreatmentStopsInfection", false);
+			Scribe_Values.Look(ref hoursAfterDeathToBecomeZombie, "hoursAfterDeathToBecomeZombie", 8);
+			Scribe_Values.Look(ref deadBecomesZombieMessage, "deadBecomesZombieMessage", true);
+			Scribe_Values.Look(ref dangerousSituationMessage, "dangerousSituationMessage", true);
+			Scribe_Values.Look(ref corpsesExtractAmount, "corpsesExtractAmount", 1f);
+			Scribe_Values.Look(ref lootExtractAmount, "lootExtractAmount", 0.1f);
+			Scribe_Values.Look(ref extractZombieArea, "extractZombieArea", "");
+			Scribe_Values.Look(ref corpsesHoursToDessicated, "corpsesHoursToDessicated", 2);
+			Scribe_Values.Look(ref betterZombieAvoidance, "betterZombieAvoidance", true);
+			Scribe_Values.Look(ref ragingZombies, "ragingZombies", true);
+			Scribe_Values.Look(ref zombieRageLevel, "zombieRageLevel", 3);
+			Scribe_Values.Look(ref replaceTwinkie, "replaceTwinkie", true);
+			Scribe_Values.Look(ref zombiesDropBlood, "zombiesDropBlood", true);
+			Scribe_Values.Look(ref zombiesBurnLonger, "zombiesBurnLonger", true);
+			Scribe_Values.Look(ref reducedTurretConsumption, "reducedTurretConsumption", 0f);
+			Scribe_Values.Look(ref zombiesCauseManhuntingResponse, "zombiesCauseManhuntingResponse", true);
+			Scribe_Values.Look(ref safeMeleeLimit, "safeMeleeLimit", 1);
+			Scribe_Values.Look(ref wanderingStyle, "wanderingStyle", WanderingStyle.Smart);
+			Scribe_Values.Look(ref showHealthBar, "showHealthBar", true);
+			Scribe_Collections.Look(ref biomesWithoutZombies, "biomesWithoutZombies", LookMode.Value);
+			Scribe_Values.Look(ref showZombieStats, "showZombieStats", true);
+			Scribe_Values.Look(ref highlightDangerousAreas, "highlightDangerousAreas", false);
+			Scribe_Values.Look(ref disableRandomApparel, "disableRandomApparel", false);
+			Scribe_Values.Look(ref floatingZombies, "floatingZombies", true);
+			Scribe_Values.Look(ref childChance, "childChance", 0.02f);
+			Scribe_Values.Look(ref spitterThreat, "spitterThreat", 1f);
+			Scribe_Values.Look(ref minimumZombiesForWallPushing, "minimumZombiesForWallPushing", 18);
+			Scribe_Collections.Look(ref blacklistedApparel, "blacklistedApparel", LookMode.Value);
+			Scribe_Values.Look(ref contaminationBaseFactor, "contaminationBaseFactor", 1f);
+			Scribe_Deep.Look(ref contamination, "contamination");
+			Scribe_Collections.Look(ref allowedOdysseyLayers, "allowedOdysseyLayers", LookMode.Value);
+			Scribe_Values.Look(ref suicideBomberIntChance, "suicideBomberIntChance", 1);
+			Scribe_Values.Look(ref toxicSplasherIntChance, "toxicSplasherIntChance", 1);
+			Scribe_Values.Look(ref tankyOperatorIntChance, "tankyOperatorIntChance", 1);
+			Scribe_Values.Look(ref minerIntChance, "minerIntChance", 1);
+			Scribe_Values.Look(ref electrifierIntChance, "electrifierIntChance", 1);
 
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
+			{
 				Tools.UpdateBiomeBlacklist(biomesWithoutZombies);
+			}
+			//Log.Message($"[Zombieland] SettingsGroup.ExposeData - Mode: {Scribe.mode}, ThreatScale (after): {threatScale}");
 		}
 	}
 
@@ -354,11 +386,13 @@ namespace ZombieLand
 
 		public override void ExposeData()
 		{
+			//Log.Message($"[Zombieland] ZombieSettingsDefaults.ExposeData - Mode: {Scribe.mode}, GroupThreatScale (before): {group?.threatScale}");
 			base.ExposeData();
 			group ??= new SettingsGroup();
 			groupOverTime ??= new() { new SettingsKeyFrame() { values = group.MakeCopy() } };
 			Scribe_Deep.Look(ref group, "defaults", Array.Empty<object>());
 			Scribe_Collections.Look(ref groupOverTime, "defaultsOverTime", LookMode.Deep, Array.Empty<object>());
+			//Log.Message($"[Zombieland] ZombieSettingsDefaults.ExposeData - Mode: {Scribe.mode}, GroupThreatScale (after): {group?.threatScale}");
 		}
 	}
 

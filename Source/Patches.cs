@@ -2734,7 +2734,7 @@ static class IncidentWorker_ZombieRaid_TryExecuteWorker_Patch
 		        
 		// use default mod settings for quick test play
 		//
-		[HarmonyPatch(typeof(Root_Play))]
+		/*[HarmonyPatch(typeof(Root_Play))]
 		[HarmonyPatch(nameof(Root_Play.SetupForQuickTestPlay))]
 		static class Root_Play_SetupForQuickTestPlay_Patch
 		{
@@ -2742,7 +2742,7 @@ static class IncidentWorker_ZombieRaid_TryExecuteWorker_Patch
 			{
 				ZombieSettings.ApplyDefaults();
 			}
-		}
+		}*/
 
 		[HarmonyPatch(typeof(PawnRenderer))]
 		[HarmonyPatch(nameof(PawnRenderer.RenderPawnAt))]
@@ -5215,7 +5215,7 @@ static class IncidentWorker_ZombieRaid_TryExecuteWorker_Patch
 		}
 		*/
 
-		[HarmonyPatch(typeof(Page_SelectScenario))]
+		/*[HarmonyPatch(typeof(Page_SelectScenario))]
 		[HarmonyPatch(nameof(Page_SelectScenario.BeginScenarioConfiguration))]
 		static class Page_SelectScenario_BeginScenarioConfiguration_Patch
 		{
@@ -5223,7 +5223,7 @@ static class IncidentWorker_ZombieRaid_TryExecuteWorker_Patch
 			{
 				ZombieSettings.ApplyDefaults();
 			}
-		}
+		}*/
 
 		// patch to insert our settings page
 		//
