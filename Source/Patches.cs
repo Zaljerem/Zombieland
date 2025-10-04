@@ -397,34 +397,28 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(Verse.TickManager.TickManagerUpdate))]
 		static class Verse_TickManager_TickManagerUpdate_Patch
 		{
-			static void Prefix(Verse.TickManager __instance)
-			{
-				_ = ZombieWanderer.processor.MoveNext();
-				if (Find.TickManager.Paused)
-					return;
-
-				ZombieTicker.zombiesTicked = 0;
-				ZombieTicker.managers = Find.Maps.Select(map => map.GetComponent<TickManager>()).OfType<TickManager>();
-
-				var p_CurTimePerTick = AccessTools.PropertyGetter(typeof(Verse.TickManager), "CurTimePerTick");
-				var f_realTimeToTickThrough = AccessTools.Field(typeof(Verse.TickManager), "realTimeToTickThrough");
-
-				var curTimePerTick = (float)p_CurTimePerTick.Invoke(__instance, null);
-				var realTimeToTickThrough = (float)f_realTimeToTickThrough.GetValue(__instance);
-				if (Mathf.Abs(Time.deltaTime - curTimePerTick) < curTimePerTick * 0.1f)
-					realTimeToTickThrough += curTimePerTick;
-				else
-					realTimeToTickThrough += Time.deltaTime;
-				f_realTimeToTickThrough.SetValue(__instance, realTimeToTickThrough);
-
-				var n1 = realTimeToTickThrough / curTimePerTick;
-				var n2 = __instance.TickRateMultiplier * 2f;
-				var loopEstimate = Mathf.FloorToInt(Mathf.Min(n1, n2));
-
-				ZombieTicker.maxTicking = Mathf.FloorToInt(loopEstimate * ZombieTicker.managers.Sum(tm => tm.allZombiesCached.Count(zombie => zombie.Spawned && zombie.Dead == false)));
-				ZombieTicker.currentTicking = Mathf.FloorToInt(ZombieTicker.maxTicking * ZombieTicker.PercentTicking);
-			}
-
+			            static void Prefix(Verse.TickManager __instance)
+			            {
+			                _ = ZombieWanderer.processor.MoveNext();
+			                if (Find.TickManager.Paused)
+			                    return;
+			
+			                ZombieTicker.zombiesTicked = 0;
+			                ZombieTicker.managers = Find.Maps.Select(map => map.GetComponent<TickManager>()).OfType<TickManager>();
+			
+			                var p_CurTimePerTick = AccessTools.PropertyGetter(typeof(Verse.TickManager), "CurTimePerTick");
+			                var f_realTimeToTickThrough = AccessTools.Field(typeof(Verse.TickManager), "realTimeToTickThrough");
+			
+			                var curTimePerTick = (float)p_CurTimePerTick.Invoke(__instance, null);
+			                var realTimeToTickThrough = (float)f_realTimeToTickThrough.GetValue(__instance);
+			
+			                var n1 = realTimeToTickThrough / curTimePerTick;
+			                var n2 = __instance.TickRateMultiplier * 2f;
+			                var loopEstimate = Mathf.FloorToInt(Mathf.Min(n1, n2));
+			
+			                ZombieTicker.maxTicking = Mathf.FloorToInt(loopEstimate * ZombieTicker.managers.Sum(tm => tm.allZombiesCached.Count(zombie => zombie.Spawned && zombie.Dead == false)));
+			                ZombieTicker.currentTicking = Mathf.FloorToInt(ZombieTicker.maxTicking * ZombieTicker.PercentTicking);
+			            }
 			static void Postfix(Verse.TickManager __instance)
 			{
 				if (__instance.Paused)
@@ -3375,13 +3369,13 @@ static class IncidentWorker_ZombieRaid_TryExecuteWorker_Patch
 						                        var multiplier = defaultHumanMoveSpeed / ZombieTicker.PercentTicking;
 						if (zombie.health.Downed)
 						{
-							                            __result = (zombie.ropedBy != null ? 0.4f : 0.004f);// * tm.TickRateMultiplier;
+							                            __result = (zombie.ropedBy != null ? 0.4f : 0.004f) * tm.TickRateMultiplier;
 							                            //Log.Message($"[Zombieland Debug] After patch (Downed) - Zombie: {zombie.LabelCap}, Result: {__result}, TickRateMultiplier: {tm.TickRateMultiplier}");
 							                            return false;						}
 
 						if (zombie.IsTanky)
 						{
-														__result = 0.004f * multiplier;// * tm.TickRateMultiplier;
+														__result = 0.004f * multiplier * tm.TickRateMultiplier;
 							                            //Log.Message($"[Zombieland Debug] After patch (Tanky) - Zombie: {zombie.LabelCap}, Result: {__result}, TickRateMultiplier: {tm.TickRateMultiplier}");
 							                            return false;						}
 
