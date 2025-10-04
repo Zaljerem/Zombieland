@@ -774,24 +774,22 @@ namespace ZombieLand
 				if (zombie.GetHashCode() % 16 + 1 <= volume * 16f)
 				{
 					var style = ZombieSettings.Values.wanderingStyle;
-					/*if (style == WanderingStyle.Smart)
+					if (style == WanderingStyle.Smart)
 					{
-						var pathing = map.GetComponent<TickManager>()?.zombiePathing;
-						if (pathing != null)
+						var info = ZombieWanderer.GetMapInfo(map);
+						var nextCell = info.GetParent(basePos, false);
+						if (nextCell.IsValid)
 						{
-							var destination = pathing.GetWanderDestination(basePos);
-							if (destination.IsValid)
-							{
-								possibleMoves.Sort((p1, p2) => p1.DistanceToSquared(destination).CompareTo(p2.DistanceToSquared(destination)));
-								possibleMoves = possibleMoves.Take(Constants.NUMBER_OF_TOP_MOVEMENT_PICKS).ToList();
-								possibleMoves = possibleMoves.OrderBy(grid.GetZombieCount).ToList();
-								driver.destination = possibleMoves.First();
-								return;
-							}
-							else
-								style = WanderingStyle.Simple; // use fallback
+							var destination = basePos + ((nextCell - basePos).ToVector3() * 10).ToIntVec3();
+							possibleMoves.Sort((p1, p2) => p1.DistanceToSquared(destination).CompareTo(p2.DistanceToSquared(destination)));
+							possibleMoves = possibleMoves.Take(Constants.NUMBER_OF_TOP_MOVEMENT_PICKS).ToList();
+							possibleMoves = possibleMoves.OrderBy(grid.GetZombieCount).ToList();
+							driver.destination = possibleMoves.First();
+							return;
 						}
-					}*/
+						else
+							style = WanderingStyle.Simple; // use fallback
+					}
 					
 					if (style == WanderingStyle.Simple)
 					{
