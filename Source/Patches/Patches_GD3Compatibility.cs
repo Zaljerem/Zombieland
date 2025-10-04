@@ -23,7 +23,7 @@ namespace ZombieLand
             }
             else
             {
-                Log.Warning("Zombieland: Could not find GD3.GDUtility.IsFlyingMech. GD3 compatibility patch not applied.");
+                Log.Message("Zombieland: Could not find GD3.GDUtility.IsFlyingMech. GD3 compatibility patch not applied.");
             }
         }
 
