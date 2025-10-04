@@ -223,13 +223,11 @@ namespace ZombieLand
 				GUI.color = Color.yellow;
 			if (contamination > 0.8f)
 				GUI.color = Color.red;
-			row.Gap(6f);
-			/*
-			row.FillableBar(140f, 16f, contamination, $"{contamination:P2} contamination",
-                                        ContentFinder<Texture2D>.Get("UI/Widgets/BarFill", true),
-                                        ContentFinder<Texture2D>.Get("UI/Widgets/BarBackground", true));
-			GUI.color = Color.white;
-			*/
+    row.Gap(6f);
+    row.FillableBar(140f, 16f, contamination, $"{contamination:P2} contamination",
+                                TexUI.FastFillTex,  // Use existing texture
+                                TexUI.GrayTextBG);     // Use existing texture
+    GUI.color = Color.white;
         }
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
