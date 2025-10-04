@@ -87,26 +87,38 @@ namespace ZombieLand
 		}
 	}
 
-	[HarmonyPatch(typeof(Widgets), nameof(Widgets.ThingIcon), new[] { typeof(Rect), typeof(Thing), typeof(float), typeof(Rot4?), typeof(bool), typeof(float), typeof(bool) })]
-	static class Widgets_ThingIcon_Patch
-	{
-		static bool Prepare() => Constants.CONTAMINATION;
+    [HarmonyPatch(typeof(Widgets), nameof(Widgets.ThingIcon), new[] { typeof(Rect), typeof(Thing), typeof(float), typeof(Rot4?), typeof(bool), typeof(float), typeof(bool) })]
+    static class Widgets_ThingIcon_Patch
+    {
+        static bool Prepare() => Constants.CONTAMINATION;
 
-		static void Prefix(Rect rect, Thing thing, float alpha, Rot4? rot, bool stackOfOne, float scale, bool grayscale)
-		{
-			var contamination = thing.GetContamination();
-			if (contamination == 0)
-				return;
-			var texture = Constants.thingIconTextures[Mathf.FloorToInt(alpha * 4f + 0.2f)];
-			Tools.DrawBorderRect(rect, texture);
-			rect = rect.ExpandedBy(-1, -1);
-			rect.yMin = rect.yMax - rect.height * Tools.Boxed(contamination, 0, 1);
-			Widgets.DrawBoxSolid(rect, new Color(0, 1, 0, alpha).ToTransparent(0.25f));
-		}
-	}
+        static void Prefix(Rect rect, Thing thing, float alpha, Rot4? rot, bool stackOfOne, float scale, bool grayscale)
+        {
+            var contamination = thing.GetContamination();
+            if (contamination == 0)
+                return;
+
+            // Debug check: alpha is sometimes outside [0,1]
+            //if (alpha < 0f || alpha > 1f)
+               // Log.Warning($"[ZombieLand] ThingIcon alpha out of range: {alpha} for {thing}");
+
+            // Clamp to valid index range
+            int idx = Mathf.FloorToInt(alpha * 4f + 0.2f);
+            idx = Mathf.Clamp(idx, 0, Constants.thingIconTextures.Length - 1);
+
+            var texture = Constants.thingIconTextures[idx];
+            Tools.DrawBorderRect(rect, texture);
+
+            rect = rect.ExpandedBy(-1, -1);
+            rect.yMin = rect.yMax - rect.height * Tools.Boxed(contamination, 0, 1);
+
+            Widgets.DrawBoxSolid(rect, new Color(0, 1, 0, alpha).ToTransparent(0.25f));
+        }
+    }
 
 
-	[HarmonyPatch(typeof(PlaySettings), nameof(PlaySettings.DoPlaySettingsGlobalControls))]
+
+    [HarmonyPatch(typeof(PlaySettings), nameof(PlaySettings.DoPlaySettingsGlobalControls))]
 	static class PlaySettings_DoPlaySettingsGlobalControls_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;

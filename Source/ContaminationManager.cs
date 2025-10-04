@@ -410,10 +410,29 @@ namespace ZombieLand
 		public static float GetEffectiveness(this Thing thing)
 			=> Mathf.Max(0.05f, 1 - ContaminationManager.Instance.Get(thing, false) * ZombieSettings.Values.contamination.contaminationEffectivenessPercentage);
 
-		public static ContaminationGrid GetContamination(this Map map)
-			=> ContaminationManager.Instance.grounds[map.Index];
+        //public static ContaminationGrid GetContamination(this Map map)
+        //	=> ContaminationManager.Instance.grounds[map.Index];
+        public static ContaminationGrid GetContamination(this Map map)
+        {
+            if (map == null) return null;
 
-		public static float GetContamination(this Map map, IntVec3 cell, bool safeMode = false)
+            var manager = ContaminationManager.Instance;
+            if (manager == null) return null;
+
+            if (manager.grounds == null) return null;
+
+            if (!manager.grounds.TryGetValue(map.Index, out var grid))
+            {
+                // lazily initialize if missing
+                grid = new ContaminationGrid(map);
+                manager.grounds[map.Index] = grid;
+            }
+
+            return grid;
+        }
+
+
+        public static float GetContamination(this Map map, IntVec3 cell, bool safeMode = false)
 			=> safeMode == false || cell.InBounds(map) ? ContaminationManager.Instance.grounds[map.Index][cell] : 0;
 
 		public static void SetContamination(this Thing thing, float value)
