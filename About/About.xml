@@ -20,6 +20,8 @@
     <li>ceteam.combatextended</li>
     <li>kentington.saveourship2</li>
     <li>petetimessix.simplesidearms</li>
+    <li>fxz.glitterworlddestroyer.mk5</li>
+    <li>mrhydralisk.layeredatmosphereorbit</li>
   </loadAfter>
   <incompatibleWith>
     <li>Multiplayer</li>
