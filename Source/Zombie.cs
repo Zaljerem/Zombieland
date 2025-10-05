@@ -674,30 +674,66 @@ namespace ZombieLand
 						GasUtility.AddGas(Position, map, GasType.ToxGas, gasAmount);
 				}
 
-				if (isHealer)
-				{
-					var radius = 4 + ZombieLand.Tools.Difficulty() * 2;
+				//new
+                if (isHealer)
+                {
+					int radius = (int)(4 + ZombieLand.Tools.Difficulty() * 2);
+                    // gather nearby zombie candidates once
+                    var candidates = map.listerThings.ThingsInGroup(ThingRequestGroup.Pawn)
+                        .OfType<Zombie>();
 
-					var n = GenRadial.RadialDistinctThingsAround(Position, map, radius, false)
-						.OfType<Zombie>()
-						.Where(zombie => zombie.health.hediffSet.hediffs.Any()).Count();
+                    // For better locality, use GenRadial radius enumeration to limit scanning
+                    var cells = GenRadial.RadialCellsAround(Position, radius, true);
+                    // select up to M best by hediff count (M=8)
+                    const int M = 8;
+                    Zombie[] best = new Zombie[M];
+                    int bestCount = 0;
 
-					GenRadial.RadialDistinctThingsAround(Position, map, radius, false)
-						.OfType<Zombie>()
-						.Select(zombie => (zombie, zombie.health.hediffSet.hediffs))
-						.Where(pair => pair.hediffs.Any())
-						.OrderByDescending(pair => pair.hediffs.Count)
-						.Do(pair =>
-						{
-							if (healInfo.Count < 8)
-							{
-								var zombie = pair.zombie;
-								zombie.health.hediffSet.Clear();
-								healInfo.Add(new HealerInfo(zombie));
-							}
-						});
-				}
-			}
+                    foreach (var cell in cells)
+                    {
+                        if (!cell.InBounds(map)) continue;
+                        var things = map.thingGrid.ThingsListAt(cell);
+                        if (things == null) continue;
+                        for (int t = 0; t < things.Count; t++)
+                        {
+                            if (things[t] is Zombie z && z.health?.hediffSet?.hediffs != null && z.health.hediffSet.hediffs.Count > 0)
+                            {
+                                int score = z.health.hediffSet.hediffs.Count;
+                                // insert into best[] if score is high enough (simple insertion into fixed-size top-N)
+                                int insertIndex = bestCount;
+                                if (bestCount < M)
+                                {
+                                    best[bestCount++] = z;
+                                    insertIndex = bestCount - 1;
+                                }
+                                else
+                                {
+                                    // find min in best to replace if current score higher
+                                    int minIdx = 0, minScore = int.MaxValue;
+                                    for (int i = 0; i < M; i++)
+                                    {
+                                        int s = best[i].health.hediffSet.hediffs.Count;
+                                        if (s < minScore) { minScore = s; minIdx = i; }
+                                    }
+                                    if (score > minScore) best[minIdx] = z;
+                                }
+                            }
+                        }
+                    }
+
+                    // Now process up to M best (avoid calling Clear on entire hediffSet maybe heavy)
+                    for (int i = 0; i < bestCount; i++)
+                    {
+                        var z = best[i];
+                        if (z == null) continue;
+
+                        // Instead of Clear(), consider tending/healing specific hediffs selectively,
+                        // or clearing only non-permanent ones. If Clear() is required, keep it but keep M small.
+                        z.health.hediffSet.Clear();
+                        healInfo.Add(new HealerInfo(z));
+                    }
+                }
+            }
 		}
 
 		public static Quaternion ZombieAngleAxis(float angle, Vector3 axis, Pawn pawn)
