@@ -391,49 +391,109 @@ namespace ZombieLand
 			}
 		}
 
-		// custom ticking
-		//
-		[HarmonyPatch(typeof(Verse.TickManager))]
-		[HarmonyPatch(nameof(Verse.TickManager.TickManagerUpdate))]
-		static class Verse_TickManager_TickManagerUpdate_Patch
-		{
-			            static void Prefix(Verse.TickManager __instance)
-			            {
-			                _ = ZombieWanderer.processor.MoveNext();
-			                if (Find.TickManager.Paused)
-			                    return;
-			
-			                ZombieTicker.zombiesTicked = 0;
-			                ZombieTicker.managers = Find.Maps.Select(map => map.GetComponent<TickManager>()).OfType<TickManager>();
-			
-			                var p_CurTimePerTick = AccessTools.PropertyGetter(typeof(Verse.TickManager), "CurTimePerTick");
-			                var f_realTimeToTickThrough = AccessTools.Field(typeof(Verse.TickManager), "realTimeToTickThrough");
-			
-			                var curTimePerTick = (float)p_CurTimePerTick.Invoke(__instance, null);
-			                var realTimeToTickThrough = (float)f_realTimeToTickThrough.GetValue(__instance);
-			
-			                var n1 = realTimeToTickThrough / curTimePerTick;
-			                var n2 = __instance.TickRateMultiplier * 2f;
-			                var loopEstimate = Mathf.FloorToInt(Mathf.Min(n1, n2));
-			
-			                ZombieTicker.maxTicking = Mathf.FloorToInt(loopEstimate * ZombieTicker.managers.Sum(tm => tm.allZombiesCached.Count(zombie => zombie.Spawned && zombie.Dead == false)));
-			                ZombieTicker.currentTicking = Mathf.FloorToInt(ZombieTicker.maxTicking * ZombieTicker.PercentTicking);
-			            }
-			static void Postfix(Verse.TickManager __instance)
-			{
-				if (__instance.Paused)
-					return;
+        // custom ticking
+        // Zal - made some performance improvements
+        [HarmonyPatch(typeof(Verse.TickManager))]
+        [HarmonyPatch(nameof(Verse.TickManager.TickManagerUpdate))]
+        static class Verse_TickManager_TickManagerUpdate_Patch
+        {
+            private static readonly MethodInfo m_CurTimePerTick =
+                AccessTools.PropertyGetter(typeof(Verse.TickManager), "CurTimePerTick");
 
-				var ticked = ZombieTicker.zombiesTicked;
-				var current = ZombieTicker.currentTicking;
-				var newPercentZombiesTicked = ticked == 0 || current == 0 ? 1f : ticked / (float)current;
+            private static readonly FieldInfo f_realTimeToTickThrough =
+                AccessTools.Field(typeof(Verse.TickManager), "realTimeToTickThrough");
 
-				if (ticked > current - 100)
-					newPercentZombiesTicked = Math.Min(1f, newPercentZombiesTicked + 0.5f);
-				ZombieTicker.PercentTicking = newPercentZombiesTicked;
-			}
-		}
-		[HarmonyPatch(typeof(Verse.TickManager))]
+            private static List<TickManager> cachedManagers = new();
+            private static int lastMapCount = -1;
+
+            static void Prefix(Verse.TickManager __instance)
+            {
+                try
+                {
+                    // advance any external zombie processor
+                    _ = ZombieWanderer.processor.MoveNext();
+
+                    if (Find.TickManager.Paused)
+                        return;
+
+                    ZombieTicker.zombiesTicked = 0;
+
+                    // Cache manager list only when maps change
+                    if (Find.Maps.Count != lastMapCount)
+                    {
+                        cachedManagers.Clear();
+                        foreach (var map in Find.Maps)
+                        {
+                            var comp = map.GetComponent<TickManager>();
+                            if (comp != null)
+                                cachedManagers.Add(comp);
+                        }
+                        ZombieTicker.managers = cachedManagers;
+                        lastMapCount = Find.Maps.Count;
+                    }
+
+                    // Use cached reflection accessors
+                    float curTimePerTick = (float)m_CurTimePerTick.Invoke(__instance, null);
+                    float realTimeToTickThrough = (float)f_realTimeToTickThrough.GetValue(__instance);
+
+                    // Basic tick calculation
+                    float n1 = realTimeToTickThrough / curTimePerTick;
+                    float n2 = __instance.TickRateMultiplier * 2f;
+                    int loopEstimate = Mathf.FloorToInt(Mathf.Min(n1, n2));
+
+                    // Count active zombies efficiently (iterate HashSet)
+                    //int liveZombies = 0;
+                   // foreach (var tm in cachedManagers)
+                  //  {
+                   //     if (tm.allZombiesCached == null)
+                   //         continue;
+
+                   //     foreach (var z in tm.allZombiesCached)
+                   //     {
+                    //        if (z != null && z.Spawned && !z.Dead)
+                                //liveZombies++;
+                    //    }
+                    // }
+
+					// new
+                    // Use cached live zombie counts instead of enumerating
+                    int liveZombies = 0;
+                    foreach (var tm in cachedManagers)
+                    {
+                        liveZombies += tm.LiveZombieCount;
+                    }
+
+
+                    ZombieTicker.maxTicking = Mathf.FloorToInt(loopEstimate * liveZombies);
+                    ZombieTicker.currentTicking = Mathf.FloorToInt(ZombieTicker.maxTicking * ZombieTicker.PercentTicking);
+                }
+                catch (System.Exception ex)
+                {
+                    Log.ErrorOnce($"TickManagerUpdate zombie prefix failed: {ex}", 133781);
+                }
+            }
+
+            static void Postfix(Verse.TickManager __instance)
+            {
+                if (__instance.Paused)
+                    return;
+
+                int ticked = ZombieTicker.zombiesTicked;
+                int current = ZombieTicker.currentTicking;
+                if (current == 0)
+                {
+                    ZombieTicker.PercentTicking = 1f;
+                    return;
+                }
+
+                float newPercent = ticked == 0 ? 1f : (ticked / (float)current);
+                if (ticked > current - 100)
+                    newPercent = Mathf.Min(1f, newPercent + 0.5f);
+
+                ZombieTicker.PercentTicking = newPercent;
+            }
+        }
+        [HarmonyPatch(typeof(Verse.TickManager))]
 		[HarmonyPatch(nameof(Verse.TickManager.DoSingleTick))]
 		static class TickManager_DoSingleTick_Patch
 		{
@@ -1399,79 +1459,104 @@ namespace ZombieLand
 			}
 		}
 
-		// patch to stop jobs when zombies have to be avoided
-		//
-		[HarmonyPatch(typeof(JobDriver))]
-		[HarmonyPatch(nameof(JobDriver.DriverTick))]
-		static class JobDriver_DriverTick_Patch
-		{
-			static void Postfix(JobDriver __instance, Pawn ___pawn)
-			{
-				if (___pawn is Zombie || ___pawn.Map == null || ___pawn.IsColonist == false)
-					return;
+        // patch to stop jobs when zombies have to be avoided
+        // Zal - made some attempts to improve performance
+        [HarmonyPatch(typeof(JobDriver))]
+        [HarmonyPatch(nameof(JobDriver.DriverTick))]
+        static class JobDriver_DriverTick_Patch
+        {
+            private static readonly HashSet<JobDef> IgnoreJobDefs = new()
+    {
+        JobDefOf.ExtinguishSelf,
+        JobDefOf.Flee,
+        JobDefOf.FleeAndCower,
+        JobDefOf.Vomit
+    };
 
-				// could also check ___pawn.health.capacities.CapableOf(PawnCapacityDefOf.Moving) but it's expensive
-				// and Pawn_HealthTracker.ShouldBeDowned checks it too
-				if (___pawn.health.Downed || ___pawn.InMentalState || ___pawn.Drafted)
-					return;
+            // Cache reusable lists per pawn to prevent GC churn
+            private static readonly Dictionary<int, List<IntVec3>> TempCells = new();
 
-				if (__instance.job == null || __instance.job.playerForced || Tools.ShouldAvoidZombies(___pawn) == false)
-					return;
+            // Run this logic once every 30 ticks per pawn
+            private const int CheckInterval = 30;
 
-				var tickManager = ___pawn.Map.GetComponent<TickManager>();
-				if (tickManager == null)
-					return;
+            static void Postfix(JobDriver __instance, Pawn ___pawn)
+            {
+                if (___pawn is Zombie || ___pawn.Map == null || !___pawn.IsColonist)
+                    return;
 
-				var avoidGrid = tickManager.avoidGrid;
-				if (avoidGrid == null)
-					return;
-				if (avoidGrid.InAvoidDanger(___pawn) == false)
-					return;
+                if (___pawn.health.Downed || ___pawn.InMentalState || ___pawn.Drafted)
+                    return;
 
-				var jobDef = __instance.job.def;
-				if (false
-					|| jobDef == JobDefOf.ExtinguishSelf
-					|| jobDef == JobDefOf.Flee
-					|| jobDef == JobDefOf.FleeAndCower
-					|| jobDef == JobDefOf.Vomit
-				)
-					return;
+                Job job = __instance.job;
+                if (job == null || job.playerForced || IgnoreJobDefs.Contains(job.def))
+                    return;
 
-				var pos = ___pawn.Position;
-				var map = ___pawn.Map;
+                // Skip most ticks
+                if (___pawn.IsHashIntervalTick(CheckInterval) == false)
+                    return;
 
-				var safeDestinations = new List<IntVec3>();
-				map.floodFiller.FloodFill(pos, (IntVec3 cell) =>
-				{
-					if (cell.x == pos.x && cell.z == pos.z)
-						return true;
-					if (cell.Walkable(map) == false)
-						return false;
-					if (cell.GetEdifice(map) is Building_Door building_Door && building_Door.CanPhysicallyPass(___pawn) == false)
-						return false;
-					return PawnUtility.AnyPawnBlockingPathAt(cell, ___pawn, true, false, false) == false;
-				}, (IntVec3 cell) =>
-				{
-					if (cell.Standable(map) && avoidGrid.ShouldAvoid(map, cell) == false)
-						safeDestinations.Add(cell);
-					return false;
-				}, 64, false, null);
+                if (!Tools.ShouldAvoidZombies(___pawn))
+                    return;
 
-				if (safeDestinations.Count > 0)
-				{
-					safeDestinations.SortByDescending(dest => (pos - dest).LengthHorizontalSquared);
-					var destination = safeDestinations.First();
-					if (destination.IsValid)
-					{
-						var flee = JobMaker.MakeJob(JobDefOf.Flee, destination);
-						flee.playerForced = true;
-						___pawn.jobs.ClearQueuedJobs();
-						___pawn.jobs.StartJob(flee, JobCondition.Incompletable, null);
-					}
-				}
-			}
-		}
-		[HarmonyPatch(typeof(JobGiver_ConfigurableHostilityResponse))]
+                Map map = ___pawn.Map;
+                var tickManager = map.GetComponent<TickManager>();
+                var avoidGrid = tickManager?.avoidGrid;
+                if (avoidGrid == null || !avoidGrid.InAvoidDanger(___pawn))
+                    return;
+
+                IntVec3 pos = ___pawn.Position;
+                List<IntVec3> safeCells = TempCells.TryGetValue(___pawn.thingIDNumber, out var cache)
+                    ? cache
+                    : (TempCells[___pawn.thingIDNumber] = new List<IntVec3>());
+
+                safeCells.Clear();
+
+                map.floodFiller.FloodFill(pos, (IntVec3 cell) =>
+                {
+                    if (cell == pos)
+                        return true;
+                    if (!cell.Walkable(map))
+                        return false;
+                    if (cell.GetEdifice(map) is Building_Door door && !door.CanPhysicallyPass(___pawn))
+                        return false;
+                    return !PawnUtility.AnyPawnBlockingPathAt(cell, ___pawn, true, false, false);
+                },
+                (IntVec3 cell) =>
+                {
+                    if (cell.Standable(map) && !avoidGrid.ShouldAvoid(map, cell))
+                        safeCells.Add(cell);
+                    return false;
+                },
+                64, false, null);
+
+                if (safeCells.Count == 0)
+                    return;
+
+                // Choose farthest destination without sorting
+                IntVec3 bestDest = IntVec3.Invalid;
+                int bestDistSq = 0;
+                for (int i = 0; i < safeCells.Count; i++)
+                {
+                    int distSq = (pos - safeCells[i]).LengthHorizontalSquared;
+                    if (distSq > bestDistSq)
+                    {
+                        bestDistSq = distSq;
+                        bestDest = safeCells[i];
+                    }
+                }
+
+                if (!bestDest.IsValid)
+                    return;
+
+                Job flee = JobMaker.MakeJob(JobDefOf.Flee, bestDest);
+                flee.playerForced = true;
+                ___pawn.jobs.ClearQueuedJobs();
+                ___pawn.jobs.StartJob(flee, JobCondition.Incompletable, null);
+            }
+        }
+
+
+        [HarmonyPatch(typeof(JobGiver_ConfigurableHostilityResponse))]
 		[HarmonyPatch("TryGetAttackNearbyEnemyJob")]
 		static class JobGiver_ConfigurableHostilityResponse_TryGetAttackNearbyEnemyJob_Patch
 		{
