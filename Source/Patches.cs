@@ -333,9 +333,11 @@ namespace ZombieLand
 
 						TooltipHandler.TipRegion(zlRect, new TipSignal(delegate
 						{
-							var currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
-							return $"Zombieland v{currentVersion.ToString(4)}";
-						}, 99799));
+                            //var currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
+                            string currentVersion = "4.5.0.0";
+                            return $"Zombieland v{currentVersion}";
+                            //return $"Zombieland v{currentVersion.ToString(4)}";
+                        }, 99799));
 						if (Mouse.IsOver(zlRect) && tickManager.allZombiesCached.Count <= 100)
 							tickManager.allZombiesCached.Do(zombie => TargetHighlighter.Highlight(new GlobalTargetInfo(zombie), true, false, false));
 
