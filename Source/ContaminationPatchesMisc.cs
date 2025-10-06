@@ -447,40 +447,106 @@ namespace ZombieLand
 		}
 	}
 
-	[HarmonyPatch(typeof(JobDriver_Lovin), "MakeNewToils")]
-	static class JobDriver_Lovin_MakeNewToils_Patch
-	{
-		static readonly string layDownToilName = Toils_LayDown.LayDown(default, default, default).debugName;
+	//new
 
-		static bool Prepare() => Constants.CONTAMINATION;
+    [HarmonyPatch(typeof(JobDriver_Lovin), "MakeNewToils")]
+    static class JobDriver_Lovin_MakeNewToils_Patch
+    {
+        static readonly string layDownToilName =
+            Toils_LayDown.LayDown(default, default, default).debugName;
 
-		static readonly FieldInfo f_ticksLeft = AccessTools.Field(typeof(JobDriver_Lovin), "ticksLeft");
-		static readonly FieldInfo f_Partner = AccessTools.Field(typeof(JobDriver_Lovin), "Partner");
+        static bool Prepare() => Constants.CONTAMINATION;
 
-		static IEnumerable<Toil> Postfix(IEnumerable<Toil> toils, JobDriver_Lovin __instance)
-		{
-			foreach (var toil in toils)
-			{
-				if (toil.debugName == layDownToilName && toil.initAction != null)
-				{
-					var action = toil.initAction;
-					toil.initAction = () =>
-					{
-						if ((int)f_ticksLeft.GetValue(__instance) <= 25000)
-						{
-							var p1 = __instance.pawn;
-							var p2 = (Pawn)f_Partner.GetValue(__instance);
-							0.1f.Equalize(p1, p2);
-						}
-						action();
-					};
-				}
-				yield return toil;
-			}
-		}
-	}
+        static readonly FieldInfo f_ticksLeft = AccessTools.Field(typeof(JobDriver_Lovin), "ticksLeft");
+        static readonly FieldInfo f_partner = AccessTools.Field(typeof(JobDriver_Lovin), "Partner");
 
-	[HarmonyPatch(typeof(Corpse), nameof(Corpse.InnerPawn), MethodType.Setter)]
+        static IEnumerable<Toil> Postfix(IEnumerable<Toil> toils, JobDriver_Lovin __instance)
+        {
+            foreach (var toil in toils)
+            {
+                if (toil.initAction != null && toil.debugName == layDownToilName)
+                {
+                    var originalInit = toil.initAction;
+
+                    toil.initAction = () =>
+                    {
+                        // outermost guard
+                        try
+                        {
+                            //Log.Message("[ZombieLand] >>> Entered Lovin.initAction <<<");
+
+                            if (__instance == null)
+                            {
+                                //Log.Warning("[ZombieLand] __instance is null before any access");
+                                return;
+                            }
+
+                            var pawn = __instance.pawn;
+                            //Log.Message($"[ZombieLand] pawn={pawn}");
+
+                            var partnerObj = f_partner?.GetValue(__instance);
+                            if (f_partner == null)
+                            {
+                                //Log.Warning("[ZombieLand] f_partner FieldInfo is null!");
+                                return;
+                            }
+
+                            var partner = partnerObj as Pawn;
+                            //Log.Message($"[ZombieLand] partner={partner}");
+
+                            var ticksLeftObj = f_ticksLeft?.GetValue(__instance);
+                            if (f_ticksLeft == null)
+                            {
+                                //Log.Warning("[ZombieLand] f_ticksLeft FieldInfo is null!");
+                                return;
+                            }
+
+                            //Log.Message($"[ZombieLand] ticksLeftObj={ticksLeftObj}");
+
+                            if (ticksLeftObj is int ticksLeft)
+                            {
+                                if (ticksLeft <= 25000 && pawn != null && partner != null &&
+                                    pawn.Spawned && partner.Spawned && pawn.Map == partner.Map)
+                                {
+                                    //Log.Message($"[ZombieLand] Equalize attempt {pawn.LabelShortCap} ↔ {partner.LabelShortCap}");
+                                    0.1f.Equalize(pawn, partner);
+                                }
+                            }
+                            else
+                            {
+                                //Log.Warning($"[ZombieLand] ticksLeft is not int ({ticksLeftObj?.GetType()?.Name ?? "null"})");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning($"[ZombieLand] Lovin Equalize failed EARLY: {ex}");
+                        }
+
+                        // Always run original
+                        try
+                        {
+                            originalInit();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning($"[ZombieLand] originalInit threw: {ex}");
+                        }
+
+                        //Log.Message("[ZombieLand] <<< Exited Lovin.initAction <<<");
+                    };
+
+                }
+
+                yield return toil;
+            }
+        }
+    }
+
+
+
+
+
+    [HarmonyPatch(typeof(Corpse), nameof(Corpse.InnerPawn), MethodType.Setter)]
 	static class Corpse_InnerPawn_Setter_Patch
 	{
 		static bool Prepare() => Constants.CONTAMINATION;

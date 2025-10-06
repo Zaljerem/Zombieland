@@ -267,34 +267,66 @@ namespace ZombieLand
 			}
 		}
 
-		public float Equalize(LocalTargetInfo t1, LocalTargetInfo t2, float weight = 0.5f, bool includeHoldings1 = true, bool includeHoldings2 = true)
-		{
-			var map = (t1.Thing ?? t2.Thing).Map;
+        //new
 
-			var _grid = (ContaminationGrid)null;
-			ContaminationGrid cachedGrid()
-			{
-				_grid ??= grounds[map.Index];
-				return _grid;
-			}
+        public float Equalize(LocalTargetInfo t1, LocalTargetInfo t2, float weight = 0.5f, bool includeHoldings1 = true, bool includeHoldings2 = true)
+        {
+            try
+            {
+                var baseThing = t1.Thing ?? t2.Thing;
+                if (baseThing == null)
+                    throw new NullReferenceException($"Both targets lack Thing references: t1={t1}, t2={t2}");
 
-			var isT1 = t1.Thing != null;
-			var isT2 = t2.Thing != null;
-			if (isT1 == false && isT2 == false)
-				throw new Exception($"cannot equalize cells only ({t1} to {t2}, weight {weight})");
-			var c1 = isT1 ? Get(t1.Thing, includeHoldings1) : cachedGrid()[t1.Cell];
-			var c2 = isT2 ? Get(t2.Thing, includeHoldings2) : cachedGrid()[t2.Cell];
-			if (c1 < c2)
-				(c1, c2, t1, t2) = (c2, c1, t2, t1);
-			var transfer = c1 * (1 - weight) + c2 * weight - c1;
-			if (transfer == 0)
-				return 0;
-			ChangeDirectly(t1, map, transfer);
-			ChangeDirectly(t2, map, -transfer);
-			return transfer;
-		}
+                var map = baseThing.Map;
+                if (map == null)
+                    throw new NullReferenceException($"Map is null for {baseThing}");
 
-		public Color Color => Color.white;
+                //Log.Message($"[ZombieLand] Equalize between {t1} and {t2} on map {map}");
+
+                ContaminationGrid _grid = null;
+                ContaminationGrid cachedGrid()
+                {
+                    _grid ??= grounds[map.Index];
+                    return _grid;
+                }
+
+                var isT1 = t1.Thing != null;
+                var isT2 = t2.Thing != null;
+                if (!isT1 && !isT2)
+                    throw new Exception($"Cannot equalize cells only ({t1} to {t2}, weight {weight})");
+
+                var c1 = isT1 ? Get(t1.Thing, includeHoldings1) : cachedGrid()[t1.Cell];
+                var c2 = isT2 ? Get(t2.Thing, includeHoldings2) : cachedGrid()[t2.Cell];
+
+                //Log.Message($"[ZombieLand] c1={c1}, c2={c2}");
+
+                if (c1 < c2)
+                    (c1, c2, t1, t2) = (c2, c1, t2, t1);
+
+                var transfer = c1 * (1 - weight) + c2 * weight - c1;
+                if (transfer == 0)
+                {
+                    //Log.Message("[ZombieLand] Equalize transfer=0, skipping");
+                    return 0;
+                }
+
+                ChangeDirectly(t1, map, transfer);
+                ChangeDirectly(t2, map, -transfer);
+
+                //Log.Message($"[ZombieLand] Equalize success: transfer={transfer}");
+                return transfer;
+            }
+            catch (Exception ex)
+            {
+                Log.Message($"[ZombieLand] Equalize internal failure: {ex}");
+                return 0f;
+            }
+        }
+
+
+
+
+        public Color Color => Color.white;
 
 		public bool GetCellBool(int index)
 		{
@@ -455,10 +487,43 @@ namespace ZombieLand
 		public static CellBoolDrawer GetContaminationDrawer(this Map map)
 			=> ContaminationManager.Instance.grounds[map.Index].drawer;
 
-		public static float Equalize(this float factor, LocalTargetInfo info1, LocalTargetInfo info2, bool includeHoldings1 = true, bool includeHoldings2 = true)
-			=> ContaminationManager.Instance.Equalize(info1, info2, factor, includeHoldings1, includeHoldings2);
+        //public static float Equalize(this float factor, LocalTargetInfo info1, LocalTargetInfo info2, bool includeHoldings1 = true, bool includeHoldings2 = true)
+        //	=> ContaminationManager.Instance.Equalize(info1, info2, factor, includeHoldings1, includeHoldings2);
 
-		public static void AddContamination(this Thing thing, float val, float factor = 1f)
+        //new
+        public static float Equalize(this float factor, LocalTargetInfo info1, LocalTargetInfo info2, bool includeHoldings1 = true, bool includeHoldings2 = true)
+        {
+            if (Current.Game == null || Current.Game.World == null)
+            {
+                //Log.WarningOnce("[ZombieLand] Equalize skipped: Game or World null", 123400);
+                return 0f;
+            }
+
+            var mgr = ContaminationManager.Instance;
+            if (mgr == null)
+            {
+                //Log.WarningOnce("[ZombieLand] Equalize skipped: ContaminationManager.Instance is null", 123401);
+                return 0f;
+            }
+
+            try
+            {
+                //Log.Message($"[ZombieLand] Equalize start: factor={factor}, info1={info1}, info2={info2}");
+                var result = mgr.Equalize(info1, info2, factor, includeHoldings1, includeHoldings2);
+                //Log.Message($"[ZombieLand] Equalize result={result}");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Log.Message($"[ZombieLand] Contamination Equalize failed: {ex}");
+                return 0f;
+            }
+        }
+
+
+
+
+        public static void AddContamination(this Thing thing, float val, float factor = 1f)
 		{
 			if (val <= 0)
 				return;
