@@ -382,6 +382,8 @@ namespace ZombieLand
 
 		public void ZombieTicking()
 		{
+			if (map == null || map.components == null) return;
+
 			PrepareThreadedTicking(this);
 			var threatLevel = ZombieWeather.GetThreatLevel(map);
 			for (var i = 0; i < currentZombiesTicking.Length; i++)

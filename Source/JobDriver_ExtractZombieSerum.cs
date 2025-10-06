@@ -55,7 +55,8 @@ namespace ZombieLand
 					{
 						var extractResult = ThingMaker.MakeThing(CustomDefs.ZombieExtract, null);
 						extractResult.stackCount = Tools.ExtractPerZombie();
-						_ = GenPlace.TryPlaceThing(extractResult, pawn.Position, pawn.Map, ThingPlaceMode.Near, null, null);
+						if (extractResult.stackCount > 0)
+							_ = GenPlace.TryPlaceThing(extractResult, pawn.Position, pawn.Map, ThingPlaceMode.Near, null, null);
 
 						zombieCorpse?.Destroy();
 
