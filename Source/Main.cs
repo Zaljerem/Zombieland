@@ -60,8 +60,8 @@ namespace ZombieLand
 		public static JobDef DoubleTap;
 		public static JobDef RopeZombie;
 		public static JobDef ZapZombies;
-		public static JobDef FixBrokenChainsaw;
-		public static RecipeDef CureZombieInfection;
+		        public static JobDef FixBrokenChainsaw;
+		        public static JobDef ClearContamination;		public static RecipeDef CureZombieInfection;
 		public static ThingDef Zombie;
 		public static ThingDef ZombieExtract;
 		public static ThingDef Corpse_Zombie;

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+  <WorkGiverDef>
+    <defName>ClearContamination</defName>
+    <label>clean contamination</label>
+    <giverClass>Zombieland.WorkGiver_ClearContamination</giverClass>
+    <workType>Cleaning</workType>
+    <priorityInType>100</priorityInType>
+    <verb>clean</verb>
+    <gerund>cleaning</gerund>
+    <scanThings>false</scanThings>
+    <scanCells>true</scanCells>
+  </WorkGiverDef>
+</Defs>

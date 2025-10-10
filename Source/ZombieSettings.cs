@@ -245,6 +245,7 @@ namespace ZombieLand
 		public int minimumZombiesForWallPushing = 18;
 		public List<string> blacklistedApparel = new();
 		public float contaminationBaseFactor = 1f;
+		public bool disableCleanContamination = true;
 		public ContaminationFactors contamination = new();
 
         public List<string> allowedOdysseyLayers = new List<string>();
@@ -333,6 +334,7 @@ namespace ZombieLand
 			Scribe_Values.Look(ref minimumZombiesForWallPushing, "minimumZombiesForWallPushing", 18);
 			Scribe_Collections.Look(ref blacklistedApparel, "blacklistedApparel", LookMode.Value);
 			Scribe_Values.Look(ref contaminationBaseFactor, "contaminationBaseFactor", 1f);
+			Scribe_Values.Look(ref disableCleanContamination, "disableCleanContamination", true);
 			Scribe_Deep.Look(ref contamination, "contamination");
 			Scribe_Collections.Look(ref allowedOdysseyLayers, "allowedOdysseyLayers", LookMode.Value);
 			Scribe_Values.Look(ref suicideBomberIntChance, "suicideBomberIntChance", 1);
