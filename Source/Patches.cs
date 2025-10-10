@@ -2540,7 +2540,7 @@ return list;
 		static class PawnGenerator_GeneratePawn_Patch
 		{
 			[HarmonyPriority(Priority.First)]
-			static bool Prefix(PawnGenerationRequest request, ref Pawn __result)
+			static bool Prefix(ref PawnGenerationRequest request, ref Pawn __result)
 			{
 				if (request.Faction?.def != ZombieDefOf.Zombies)
 					return true;
@@ -2549,8 +2549,8 @@ return list;
 				if (request.KindDef == ZombieDefOf.ZombieSpitter)
 					return true;
 
-				__result = PawnGenerator.GeneratePawn(request);
-				return false;
+				request.ForceNoBackstory = true;
+				return true;
 			}
 		}
 
