@@ -5667,5 +5667,20 @@ return list;
 				}
 			}
 		}
+
+		[HarmonyPatch(typeof(Pawn))]
+		[HarmonyPatch("ExposeData")]
+		public static class Zombie_ExposeData_Patch
+		{
+			public static void Postfix(Pawn __instance)
+			{
+				if (__instance is Zombie zombie && zombie.Destroyed)
+				{
+					// Remove broken references after load
+					if (Find.WorldPawns.Contains(__instance))
+						Find.WorldPawns.RemovePawn(__instance);
+				}
+			}
+		}
 	}
 }

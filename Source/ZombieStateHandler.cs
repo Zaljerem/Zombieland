@@ -414,7 +414,7 @@ namespace ZombieLand
 		static bool EatBodyPart(this JobDriver_Stumble driver, Zombie zombie, Pawn eatTargetPawn)
 {
     // Guard: if no target, bail
-    if (eatTargetPawn == null || eatTargetPawn.Destroyed)
+    if (eatTargetPawn?.Destroyed != false || eatTargetPawn.health == null || eatTargetPawn.Dead)
     {
         driver.eatTarget?.Destroy(DestroyMode.Vanish);
         return false;

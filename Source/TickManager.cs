@@ -170,10 +170,20 @@ namespace ZombieLand
 			base.FinalizeInit();
 			isInitialized = 2;
 
-			Tools.nextPlayerReachableRegionsUpdate = 0;
-
-			var grid = map.GetGrid();
-			grid.IterateCellsQuick(cell => cell.zombieCount = 0);
+			            Tools.nextPlayerReachableRegionsUpdate = 0;
+			
+			            // Explicitly update ZombieTicker.managers after loading
+			            var cachedManagers = new List<TickManager>();
+			            foreach (var map in Find.Maps)
+			            {
+			                var comp = map.GetComponent<TickManager>();
+			                if (comp != null)
+			                    cachedManagers.Add(comp);
+			            }
+			            ZombieTicker.managers = cachedManagers;
+			            // End of new code
+			
+			            var grid = map.GetGrid();			grid.IterateCellsQuick(cell => cell.zombieCount = 0);
 
 			colonyPointsTickCounter = -1;
 			RecalculateColonyPoints();
