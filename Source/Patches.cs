@@ -1647,6 +1647,7 @@ namespace ZombieLand
 			static IEnumerable<MethodBase> TargetMethods()
 			{
 				return GenTypes.AllSubclasses(typeof(WorkGiver_Scanner))
+				.Where(t => t.IsAbstract == false && t.IsGenericTypeDefinition == false)
 				.Select(type => type.GetMethod("HasJobOnCell", AccessTools.all | BindingFlags.DeclaredOnly))
 				.Where(method => method != null)
 				.Cast<MethodBase>();
@@ -1691,6 +1692,7 @@ namespace ZombieLand
 			static IEnumerable<MethodBase> TargetMethods()
 			{
 				return GenTypes.AllSubclasses(typeof(WorkGiver_Scanner))
+				.Where(t => t.IsAbstract == false && t.IsGenericTypeDefinition == false)
 				.Select(type => type.GetMethod(nameof(WorkGiver_Scanner.JobOnCell), AccessTools.all | BindingFlags.DeclaredOnly))
 				.Where(method => method != null)
 				.Cast<MethodBase>();
@@ -1735,6 +1737,7 @@ namespace ZombieLand
 			static IEnumerable<MethodBase> TargetMethods()
 			{
 				return GenTypes.AllSubclasses(typeof(WorkGiver_Scanner))
+				.Where(t => t.IsAbstract == false && t.IsGenericTypeDefinition == false)
 				.Select(type => type.GetMethod(nameof(WorkGiver_Scanner.HasJobOnThing), AccessTools.all | BindingFlags.DeclaredOnly))
 				.Where(method => method != null)
 				.Cast<MethodBase>();
@@ -1791,6 +1794,7 @@ namespace ZombieLand
 			static IEnumerable<MethodBase> TargetMethods()
 			{
 				return GenTypes.AllSubclasses(typeof(WorkGiver_Scanner))
+				.Where(t => t.IsAbstract == false && t.IsGenericTypeDefinition == false)
 				.Select(type => type.GetMethod(nameof(WorkGiver_Scanner.JobOnThing), AccessTools.all | BindingFlags.DeclaredOnly))
 				.Where(method => method != null)
 				.Cast<MethodBase>();
