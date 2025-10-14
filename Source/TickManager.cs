@@ -445,7 +445,6 @@ namespace ZombieLand
             }
 
             // Partial Fisher-Yates: pick k items into result array without full shuffle
-            var arr = _tmpZombieList.ToArray(); // small one-time allocation; you can reuse if needed
             var result = new Zombie[k];
             // If k > total/2 it is cheaper to shuffle once; choose strategy
             if (k * 4 > total) // heuristic: if k > total/4, shuffle whole array
@@ -454,9 +453,9 @@ namespace ZombieLand
                 for (int i = total - 1; i > 0; i--)
                 {
                     int j = _rng.Next(i + 1);
-                    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+                    var tmp = _tmpZombieList[i]; _tmpZombieList[i] = _tmpZombieList[j]; _tmpZombieList[j] = tmp;
                 }
-                for (int i = 0; i < k; i++) result[i] = arr[i];
+                for (int i = 0; i < k; i++) result[i] = _tmpZombieList[i];
             }
             else
             {
@@ -465,8 +464,8 @@ namespace ZombieLand
                 for (int i = 0; i < k; i++)
                 {
                     int j = _rng.Next(i, total); // pick random from [i..total-1]
-                    result[i] = arr[j];
-                    arr[j] = arr[i]; // move used slot into i to avoid duplicates
+                    result[i] = _tmpZombieList[j];
+                    _tmpZombieList[j] = _tmpZombieList[i]; // move used slot into i to avoid duplicates
                 }
             }
 
