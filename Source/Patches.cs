@@ -5685,6 +5685,18 @@ return list;
 						Find.WorldPawns.RemovePawn(__instance);
 				}
 			}
+			[HarmonyPatch(typeof(Scribe_References), nameof(Scribe_References.Look))]
+			static class Scribe_References_Look_Patch
+			{ 
+				static bool Prefix(ref Thing refee, string label)
+				{
+					if (Scribe.mode == LoadSaveMode.Saving && label == "otherPawn" && refee is Zombie)
+					{
+						return false;
+					}
+					return true;
+				}
+			}
 		}
 	}
 }

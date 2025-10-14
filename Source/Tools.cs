@@ -1515,6 +1515,8 @@ namespace ZombieLand
 		public static Dictionary<float, HashSet<IntVec3>> circles;
 		public static IEnumerable<IntVec3> GetCircle(float radius)
 		{
+			if (radius > 1000)
+				radius = 250;
 			circles ??= new Dictionary<float, HashSet<IntVec3>>();
 			var cells = circles.ContainsKey(radius) ? circles[radius] : null;
 			if (cells == null)

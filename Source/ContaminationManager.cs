@@ -269,59 +269,125 @@ namespace ZombieLand
 
         //new
 
-        public float Equalize(LocalTargetInfo t1, LocalTargetInfo t2, float weight = 0.5f, bool includeHoldings1 = true, bool includeHoldings2 = true)
-        {
-            try
-            {
-                var baseThing = t1.Thing ?? t2.Thing;
-                if (baseThing == null)
-                    throw new NullReferenceException($"Both targets lack Thing references: t1={t1}, t2={t2}");
+                public float Equalize(LocalTargetInfo t1, LocalTargetInfo t2, float weight = 0.5f, bool includeHoldings1 = true, bool includeHoldings2 = true)
 
-                var map = baseThing.Map;
-                if (map == null)
-                    throw new NullReferenceException($"Map is null for {baseThing}");
-
-                //Log.Message($"[ZombieLand] Equalize between {t1} and {t2} on map {map}");
-
-                ContaminationGrid _grid = null;
-                ContaminationGrid cachedGrid()
                 {
-                    _grid ??= grounds[map.Index];
-                    return _grid;
+
+                    try
+
+                    {
+
+                        var baseThing = t1.Thing ?? t2.Thing;
+
+                        if (baseThing == null)
+
+                            throw new NullReferenceException($"Both targets lack Thing references: t1={t1}, t2={t2}");
+
+        
+
+                        var map = baseThing.Map;
+
+        				if (map == null)
+
+        				{
+
+        					var otherThing = t1.Thing == baseThing ? t2.Thing : t1.Thing;
+
+        					if (otherThing != null)
+
+        						map = otherThing.Map;
+
+        				}
+
+        
+
+                        if (map == null)
+
+                            throw new NullReferenceException($"Map is null for {baseThing}");
+
+        
+
+                        //Log.Message($"[ZombieLand] Equalize between {t1} and {t2} on map {map}");
+
+        
+
+                        ContaminationGrid _grid = null;
+
+                        ContaminationGrid cachedGrid()
+
+                        {
+
+                            _grid ??= grounds[map.Index];
+
+                            return _grid;
+
+                        }
+
+        
+
+                        var isT1 = t1.Thing != null;
+
+                        var isT2 = t2.Thing != null;
+
+                        if (!isT1 && !isT2)
+
+                            throw new Exception($"Cannot equalize cells only ({t1} to {t2}, weight {weight})");
+
+        
+
+                        var c1 = isT1 ? Get(t1.Thing, includeHoldings1) : cachedGrid()[t1.Cell];
+
+                        var c2 = isT2 ? Get(t2.Thing, includeHoldings2) : cachedGrid()[t2.Cell];
+
+        
+
+                        //Log.Message($"[ZombieLand] c1={c1}, c2={c2}");
+
+        
+
+                        if (c1 < c2)
+
+                            (c1, c2, t1, t2) = (c2, c1, t2, t1);
+
+        
+
+                        var transfer = c1 * (1 - weight) + c2 * weight - c1;
+
+                        if (transfer == 0)
+
+                        {
+
+                            //Log.Message("[ZombieLand] Equalize transfer=0, skipping");
+
+                            return 0;
+
+                        }
+
+        
+
+                        ChangeDirectly(t1, map, transfer);
+
+                        ChangeDirectly(t2, map, -transfer);
+
+        
+
+                        //Log.Message($"[ZombieLand] Equalize success: transfer={transfer}");
+
+                        return transfer;
+
+                    }
+
+                    catch (Exception ex)
+
+                    {
+
+                        Log.Message($"[ZombieLand] Equalize internal failure: {ex}");
+
+                        return 0f;
+
+                    }
+
                 }
-
-                var isT1 = t1.Thing != null;
-                var isT2 = t2.Thing != null;
-                if (!isT1 && !isT2)
-                    throw new Exception($"Cannot equalize cells only ({t1} to {t2}, weight {weight})");
-
-                var c1 = isT1 ? Get(t1.Thing, includeHoldings1) : cachedGrid()[t1.Cell];
-                var c2 = isT2 ? Get(t2.Thing, includeHoldings2) : cachedGrid()[t2.Cell];
-
-                //Log.Message($"[ZombieLand] c1={c1}, c2={c2}");
-
-                if (c1 < c2)
-                    (c1, c2, t1, t2) = (c2, c1, t2, t1);
-
-                var transfer = c1 * (1 - weight) + c2 * weight - c1;
-                if (transfer == 0)
-                {
-                    //Log.Message("[ZombieLand] Equalize transfer=0, skipping");
-                    return 0;
-                }
-
-                ChangeDirectly(t1, map, transfer);
-                ChangeDirectly(t2, map, -transfer);
-
-                //Log.Message($"[ZombieLand] Equalize success: transfer={transfer}");
-                return transfer;
-            }
-            catch (Exception ex)
-            {
-                Log.Message($"[ZombieLand] Equalize internal failure: {ex}");
-                return 0f;
-            }
-        }
 
 
 
