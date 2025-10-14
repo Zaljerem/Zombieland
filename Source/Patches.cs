@@ -5685,17 +5685,35 @@ return list;
 						Find.WorldPawns.RemovePawn(__instance);
 				}
 			}
-			[HarmonyPatch(typeof(Scribe_References), nameof(Scribe_References.Look))]
-			static class Scribe_References_Look_Patch
-			{ 
-				static bool Prefix(ref Thing refee, string label)
+		}
+
+		[HarmonyPatch]
+		static class Scribe_References_Look_Patch
+		{
+			static System.Reflection.MethodBase TargetMethod()
+			{
+				var methods = typeof(Scribe_References).GetMethods()
+					.Where(m => m.Name == nameof(Scribe_References.Look));
+
+				foreach (var method in methods)
 				{
-					if (Scribe.mode == LoadSaveMode.Saving && label == "otherPawn" && refee is Zombie)
-					{
-						return false;
-					}
-					return true;
+					if (!method.IsGenericMethodDefinition) continue;
+					var parameters = method.GetParameters();
+					if (parameters.Length != 3) continue;
+					var firstParam = parameters[0];
+					if (firstParam.ParameterType.IsByRef && firstParam.ParameterType.GetElementType().IsGenericParameter)
+						return method.MakeGenericMethod(typeof(Thing));
 				}
+				return null;
+			}
+
+			static bool Prefix(ref Thing refee, string label)
+			{
+				if (Scribe.mode == LoadSaveMode.Saving && label == "otherPawn" && refee is Zombie)
+				{
+					return false;
+				}
+				return true;
 			}
 		}
 	}

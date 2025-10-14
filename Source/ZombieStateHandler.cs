@@ -301,6 +301,12 @@ namespace ZombieLand
 			if (enemy == null)
 				return false;
 
+			if (enemy is Zombie)
+			{
+				// Log.MessageOnce($"Zombieland: Zombie {zombie.Name} tried to attack another zombie {enemy.Name}. This should not happen. Making the zombie wander instead.", zombie.thingIDNumber + enemy.thingIDNumber);
+				return false;
+			}
+
 			driver.destination = enemy.Position;
 
 			zombie.state = ZombieState.Tracking;
