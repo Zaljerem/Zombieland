@@ -26,6 +26,13 @@ namespace ZombieLand
 		{
 			base.ExposeData();
 			Scribe_Values.Look<float>(ref opinionOffset, "opinionOffset", 0f, false);
+			if (Scribe.mode == LoadSaveMode.PostLoadInit)
+			{
+				if (otherPawn != null && otherPawn.Destroyed)
+				{
+					otherPawn = null;
+				}
+			}
 		}
 
 		public override void Init()
