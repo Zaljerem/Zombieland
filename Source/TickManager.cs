@@ -931,7 +931,7 @@ namespace ZombieLand
         {
             if (allZombiesCached != null)
             {
-                allZombiesCached.RemoveWhere(z => z == null || z.Destroyed || z.Spawned == false);
+                CacheUtils.PurgeInvalid(allZombiesCached);
                 LiveZombieCount = allZombiesCached.Count;
             }
             else
