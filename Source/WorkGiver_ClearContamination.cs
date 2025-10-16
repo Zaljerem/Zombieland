@@ -1,4 +1,5 @@
 using RimWorld;
+using System.Collections.Generic;
 using System.Linq;
 using Verse;
 using Verse.AI;
@@ -9,7 +10,7 @@ namespace ZombieLand
     {
         public override PathEndMode PathEndMode => PathEndMode.Touch;
 
-        public override ThingRequest PotentialWorkThingRequest => ThingRequest.ForGroup(ThingRequestGroup.Filth);
+
 
         public override int MaxRegionsToScanBeforeGlobalSearch => 4;
 
@@ -24,10 +25,26 @@ namespace ZombieLand
             return !grid.cells.Any(c => c > 0);
         }
 
+        public override IEnumerable<IntVec3> PotentialWorkCellsGlobal(Pawn pawn)
+        {
+            var grid = ContaminationManager.Instance.grounds[pawn.Map.Index];
+            if (grid == null)
+                return Enumerable.Empty<IntVec3>();
+
+            return grid.cells.Select((value, index) => new { value, index })
+                .Where(cell => cell.value > 0)
+                .Select(cell => pawn.Map.cellIndices.IndexToCell(cell.index));
+        }
+
         public override Job JobOnCell(Pawn pawn, IntVec3 c, bool forced = false)
         {
             if (ContaminationManager.Instance.grounds[pawn.Map.Index][c] > 0f)
-                return JobMaker.MakeJob(CustomDefs.ClearContamination, c);
+            {
+                if (pawn.CanReserve(c, 1, -1, null, forced))
+                {
+                    return JobMaker.MakeJob(CustomDefs.ClearContamination, c);
+                }
+            }
             return null;
         }
     }

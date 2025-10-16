@@ -422,7 +422,8 @@ namespace ZombieLand
     // Guard: if no target, bail
     if (eatTargetPawn?.Destroyed != false || eatTargetPawn.health == null || eatTargetPawn.Dead)
     {
-        driver.eatTarget?.Destroy(DestroyMode.Vanish);
+        if (driver.eatTarget?.Destroyed == false)
+            driver.eatTarget?.Destroy(DestroyMode.Vanish);
         return false;
     }
 
@@ -430,12 +431,14 @@ namespace ZombieLand
     var bodyPartRecord = FirstEatablePart(eatTargetPawn);
     if (bodyPartRecord == null)
     {
-        // No parts left -> destroy corpse and stop eating
-        if (!eatTargetPawn.Spawned) // likely already a corpse thing
-            driver.eatTarget?.Destroy(DestroyMode.Vanish);
-        else
-            eatTargetPawn.Destroy(DestroyMode.Vanish);
-
+		if (driver.eatTarget?.Destroyed == false)
+			{
+	// No parts left -> destroy corpse and stop eating
+			if (!eatTargetPawn.Spawned) // likely already a corpse thing
+					driver.eatTarget?.Destroy(DestroyMode.Vanish);
+			else
+				eatTargetPawn.Destroy(DestroyMode.Vanish);
+			}
         return false;
     }
 
@@ -479,7 +482,8 @@ namespace ZombieLand
     // If target is a corpse and now has no more parts, clean up
     if (eatTargetPawn.Dead && FirstEatablePart(eatTargetPawn) == null)
     {
-        driver.eatTarget?.Destroy(DestroyMode.Vanish);
+        if (driver.eatTarget?.Destroyed == false)
+            driver.eatTarget?.Destroy(DestroyMode.Vanish);
         return false;
     }
 

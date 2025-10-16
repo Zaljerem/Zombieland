@@ -21,7 +21,7 @@ namespace ZombieLand
 
         public override bool TryMakePreToilReservations(bool errorOnFailed)
         {
-            return pawn.Reserve(TargetA, job, 1, -1, null, errorOnFailed);
+            return pawn.Reserve(TargetA, job, 1, -1, null, false);
         }
 
         protected override IEnumerable<Toil> MakeNewToils()
