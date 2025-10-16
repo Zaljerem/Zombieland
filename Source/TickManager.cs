@@ -929,16 +929,15 @@ namespace ZombieLand
 		//new
         public void RecountLiveZombies()
         {
-            int count = 0;
             if (allZombiesCached != null)
             {
-                foreach (var z in allZombiesCached)
-                {
-                    if (z != null && z.Spawned && !z.Dead)
-                        count++;
-                }
+                allZombiesCached.RemoveWhere(z => z == null || z.Destroyed || z.Spawned == false);
+                LiveZombieCount = allZombiesCached.Count;
             }
-            LiveZombieCount = count;
+            else
+            {
+                LiveZombieCount = 0;
+            }
         }
 
 
