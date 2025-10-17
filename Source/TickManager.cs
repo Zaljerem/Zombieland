@@ -30,6 +30,8 @@ namespace ZombieLand
 			if (RimThreaded == null)
 				managers.Do(tickManager =>
 				{
+					if (tickManager.isFullyInitialized == false)
+                    return;
 					switch (tickManager.isInitialized)
 					{
 						case 0:
@@ -901,11 +903,11 @@ namespace ZombieLand
 		{
 			base.MapComponentTick();
 
-			if (isFullyInitialized == false)
-			{
-				DelayedInitialize();
-			}
-
+			    if (isFullyInitialized == false)
+			    {
+			        Log.Warning("TickManager not fully initialized, running DelayedInitialize");
+			        DelayedInitialize();
+			    }
 			if (zombieStateHandlerFailed)
 			{
 				return;
