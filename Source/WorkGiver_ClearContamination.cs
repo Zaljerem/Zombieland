@@ -38,7 +38,8 @@ namespace ZombieLand
 
         public override Job JobOnCell(Pawn pawn, IntVec3 c, bool forced = false)
         {
-            if (ContaminationManager.Instance.grounds[pawn.Map.Index][c] > 0f)
+            var cellContamination = ContaminationManager.Instance.grounds[pawn.Map.Index][c];
+            if (cellContamination > 0.1f)
             {
                 if (pawn.CanReserve(c, 1, -1, null, forced))
                 {
