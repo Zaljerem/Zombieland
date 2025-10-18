@@ -67,8 +67,13 @@ namespace ZombieLand
 										list.Dialog_FloatSlider("ZombielandContamination", _ => "{0:0%}", false, ref settings.contaminationBaseFactor, 0f, 5f);
 										if (oldValue != settings.contaminationBaseFactor)
 											ContaminationFactors.ApplyBaseFactor(settings.contamination, settings.contaminationBaseFactor);
+
+										var oldValue2 = settings.disableCleanContamination;
 										list.Dialog_Checkbox("DisableCleanContamination", ref settings.disableCleanContamination);
-									}				list.Gap(12f);
+										if (oldValue2 != settings.disableCleanContamination)
+											Find.CurrentMap?.mapPawns?.AllPawns?.ForEach(pawn => pawn.workSettings?.Notify_DisabledWorkTypesChanged());
+									}
+				list.Gap(12f);
 
 				// When?
 				if (DialogExtensions.Section<SpawnWhenType>(":WhenDoZombiesSpawn"))
