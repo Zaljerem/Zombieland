@@ -271,8 +271,8 @@ namespace ZombieLand
 			}
 
 			// attacker is zombie? use default
-			if (attacker is Zombie)
-				return;
+			// if (attacker is Zombie)
+			// 	return;
 
 			// attacker is animal
 			if (attacker.RaceProps?.Animal ?? false)
@@ -304,6 +304,20 @@ namespace ZombieLand
 
 			// attacker is friendly (disabled because the postfix deals with that)
 
+			else if (attacker is Zombie)
+			{
+				validator = (Thing t) =>
+				{
+					if (t is Zombie || t is ZombieBlob || t is ZombieSpitter)
+						return false; // Zombies should not attack other zombies or zombie-related entities
+
+					if (t is Pawn pawn && pawn.Faction != null && pawn.Faction != Faction.OfPlayer)
+					{
+						return true; // Target non-player pawns
+					}
+					return oldValidator(t); // Fallback to original validator for other cases
+				};
+			}
 			// attacker is enemy
 			validator = (Thing t) =>
 			{

@@ -11,6 +11,10 @@ namespace ZombieLand
     {
         static SneakyBastardCompatibility_Patches()
         {
+            if (ModLister.GetActiveModWithIdentifier("SneakyBastardForCE") == null)
+            {
+                return;
+            }
             var harmony = new Harmony("Zombieland.SneakyBastardCompatibility");
 
             var original = AccessTools.Method("SneakyBastardForCE.StatPart_SEX_Dodge:TransformValue");
