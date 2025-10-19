@@ -559,6 +559,9 @@ namespace ZombieLand
         //new
         public static float Equalize(this float factor, LocalTargetInfo info1, LocalTargetInfo info2, bool includeHoldings1 = true, bool includeHoldings2 = true)
         {
+            if (info1.HasThing == false || info2.HasThing == false)
+                return 0f;
+
             if (Current.Game == null || Current.Game.World == null)
             {
                 //Log.WarningOnce("[ZombieLand] Equalize skipped: Game or World null", 123400);

@@ -1619,11 +1619,15 @@ namespace ZombieLand
 				if (Tools.ShouldAvoidZombies(pawn) == false)
 					return false;
 
-				var tickManager = pawn.Map?.GetComponent<TickManager>();
+				var map = pawn.Map;
+				if (map == null || cell.InBounds(map) == false)
+					return false;
+
+				var tickManager = map.GetComponent<TickManager>();
 				if (tickManager == null || tickManager.avoidGrid == null)
 					return false;
 
-				return tickManager.avoidGrid.ShouldAvoid(pawn.Map, cell);
+				return tickManager.avoidGrid.ShouldAvoid(map, cell);
 			}
 
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
@@ -1664,11 +1668,15 @@ namespace ZombieLand
 				if (Tools.ShouldAvoidZombies(pawn) == false)
 					return false;
 
-				var tickManager = pawn.Map?.GetComponent<TickManager>();
+				var map = pawn.Map;
+				if (map == null || cell.InBounds(map) == false)
+					return false;
+
+				var tickManager = map.GetComponent<TickManager>();
 				if (tickManager == null || tickManager.avoidGrid == null)
 					return false;
 
-				return tickManager.avoidGrid.ShouldAvoid(pawn.Map, cell);
+				return tickManager.avoidGrid.ShouldAvoid(map, cell);
 			}
 
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
@@ -1706,14 +1714,16 @@ namespace ZombieLand
 				if (thing == null) return false;
 				if (forced || pawn.ActivePartOfColony() == false)
 					return false;
-				var tickManager = pawn.Map?.GetComponent<TickManager>();
-				if (tickManager == null || tickManager.avoidGrid == null)
-					return false;
-				// Add null check for thing.Map
-				if (thing.Map == null)
+
+				var map = thing.Map;
+				if (map == null || thing.Position.InBounds(map) == false)
 					return false;
 
-				return tickManager.avoidGrid.ShouldAvoid(thing.Map, thing.Position);
+				var tickManager = map.GetComponent<TickManager>();
+				if (tickManager == null || tickManager.avoidGrid == null)
+					return false;
+
+				return tickManager.avoidGrid.ShouldAvoid(map, thing.Position);
 			}
 
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
@@ -1752,15 +1762,8 @@ namespace ZombieLand
 				if (forced || pawn.ActivePartOfColony() == false)
 					return false;
 
-				var map = thing?.Map ?? pawn.Map;
-				if (map == null)
-					return false;
-
-				// Add null check for thing.Map before accessing thing.Position.InBounds
-				if (thing.Map == null)
-					return false;
-
-				if (thing.Position.InBounds(map) == false)
+				var map = thing.Map;
+				if (map == null || thing.Position.InBounds(map) == false)
 					return false;
 
 				if (Tools.ShouldAvoidZombies(pawn) == false)
@@ -5669,6 +5672,17 @@ return list;
 						yield return instruction;
 					}
 				}
+			}
+		}
+
+		[HarmonyPatch(typeof(Pawn))]
+		[HarmonyPatch(nameof(Pawn.Destroy))]
+		static class Pawn_Destroy_Patch
+		{
+			static void Prefix(Pawn __instance)
+			{
+				if (__instance is Zombie zombie)
+					zombie.Dispose();
 			}
 		}
 
