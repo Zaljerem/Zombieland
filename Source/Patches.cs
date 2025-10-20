@@ -23,14 +23,14 @@ namespace ZombieLand
 	[StaticConstructorOnStartup]
 	static class Patches
 	{
-		        static readonly List<string> errors = new();
-		        static bool RimWorldRealFoWActive = false;
-		
-		        static readonly Material LineMatCyan = MaterialPool.MatFrom(GenDraw.LineTexPath, ShaderDatabase.Transparent, Color.cyan);		static Patches()
+		static readonly List<string> errors = new();
+
+		static readonly Material LineMatCyan = MaterialPool.MatFrom(GenDraw.LineTexPath, ShaderDatabase.Transparent, Color.cyan);
+		static Patches()
 		{
-			            RuntimeHelpers.RunClassConstructor(typeof(ZombieGenerator).TypeHandle);
-			            RimWorldRealFoWActive = ModLister.GetActiveModWithIdentifier("Dubwise.RimWorldRealFoW") != null;
-			            var harmony = new Harmony("net.pardeike.zombieland");			errors = new List<string>();
+			RuntimeHelpers.RunClassConstructor(typeof(ZombieGenerator).TypeHandle);
+			var harmony = new Harmony("net.pardeike.zombieland");
+			errors = new List<string>();
 			try
 			{
 				harmony.PatchAll();
@@ -568,13 +568,11 @@ namespace ZombieLand
 		[HarmonyPatch("Tick")]
 		static class Pawn_Tick_Patch
 		{
-			            static bool RunTicking(Pawn pawn)
-			            {
-			                if (Patches.RimWorldRealFoWActive)
-			                    return true;
-			
-			                if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
-			                    return true;
+			static bool RunTicking(Pawn pawn)
+			{
+				if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+					return true;
+
 				if (pawn.RaceProps.Humanlike)
 				{
 					var hediffs = pawn.health.hediffSet.hediffs;
