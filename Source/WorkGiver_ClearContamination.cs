@@ -19,16 +19,18 @@ namespace ZombieLand
 			if (ZombieSettings.Values.disableCleanContamination)
 				return true;
 
-            var grid = ContaminationManager.Instance.grounds[pawn.Map.Index];
-            if (grid == null)
+            if (ContaminationManager.Instance.grounds.TryGetValue(pawn.Map.Index, out var grid) == false || grid == null)
                 return true;
+
             return !grid.cells.Any(c => c > 0);
         }
 
         public override IEnumerable<IntVec3> PotentialWorkCellsGlobal(Pawn pawn)
         {
-            var grid = ContaminationManager.Instance.grounds[pawn.Map.Index];
-            if (grid == null)
+            if (ZombieSettings.Values.disableCleanContamination)
+                return Enumerable.Empty<IntVec3>();
+
+            if (ContaminationManager.Instance.grounds.TryGetValue(pawn.Map.Index, out var grid) == false || grid == null)
                 return Enumerable.Empty<IntVec3>();
 
             return grid.cells.Select((value, index) => new { value, index })
@@ -38,7 +40,13 @@ namespace ZombieLand
 
         public override Job JobOnCell(Pawn pawn, IntVec3 c, bool forced = false)
         {
-            var cellContamination = ContaminationManager.Instance.grounds[pawn.Map.Index][c];
+            if (ZombieSettings.Values.disableCleanContamination)
+                return null;
+
+            if (ContaminationManager.Instance.grounds.TryGetValue(pawn.Map.Index, out var grid) == false || grid == null)
+                return null;
+
+            var cellContamination = grid[c];
             if (cellContamination >= 0.1f)
             {
                 if (pawn.CanReserve(c, 1, -1, null, forced))
