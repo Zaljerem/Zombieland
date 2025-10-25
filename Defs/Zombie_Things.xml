@@ -149,7 +149,7 @@
 						<li>Chemfuel</li>
 					</thingDefs>
 				</fuelFilter>
-				<fuelConsumptionRate>100.0</fuelConsumptionRate>
+				<fuelConsumptionRate>0.01</fuelConsumptionRate>
 				<consumeFuelOnlyWhenUsed>true</consumeFuelOnlyWhenUsed>
 				<autoRefuelPercent>1</autoRefuelPercent>
 				<showFuelGizmo>true</showFuelGizmo>
