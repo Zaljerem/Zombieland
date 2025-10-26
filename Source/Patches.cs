@@ -3558,15 +3558,12 @@ return list;
 					if (stat == StatDefOf.MeleeDodgeChance)
 					{
 						if (zombie.wasMapPawnBefore)
-						{
 							__result = 0.9f;
-							return false;
-						}
-
-						if (zombie.isAlbino)
+						else if (zombie.isAlbino)
 							__result = 0f;
 						else
 							__result = 0.02f;
+						__result *= ZombieSettings.Values.zombieDodgeChanceFactor;
 						return false;
 					}
 

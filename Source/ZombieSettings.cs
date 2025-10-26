@@ -240,6 +240,7 @@ namespace ZombieLand
 		public bool showZombieStats = true;
 		public Dictionary<Area, AreaRiskMode> dangerousAreas = new();
 		public bool highlightDangerousAreas = false;
+		public float zombieDodgeChanceFactor = 1f;
 		public bool disableRandomApparel = false;
 		public bool floatingZombies = true;
 		public float childChance = 0.02f;
@@ -330,6 +331,7 @@ namespace ZombieLand
 			Scribe_Values.Look(ref showZombieStats, "showZombieStats", true);
 			Scribe_Values.Look(ref highlightDangerousAreas, "highlightDangerousAreas", false);
 			Scribe_Values.Look(ref disableRandomApparel, "disableRandomApparel", false);
+			Scribe_Values.Look(ref zombieDodgeChanceFactor, "zombieDodgeChanceFactor", 1f);
 			Scribe_Values.Look(ref floatingZombies, "floatingZombies", true);
 			Scribe_Values.Look(ref childChance, "childChance", 0.02f);
 			Scribe_Values.Look(ref spitterThreat, "spitterThreat", 1f);

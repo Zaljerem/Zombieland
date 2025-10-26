@@ -243,11 +243,12 @@ namespace ZombieLand
 				}
 
 				// Damage
-				if (DialogExtensions.Section<string>(":ZombieDamageTitle", ":ZombieDamageFactor", ":SafeMeleeLimit", ":ZombiesCauseManhunting"))
+				if (DialogExtensions.Section<string>(":ZombieDamageTitle", ":ZombieDamageFactor", ":ZombieDodgeChance", ":SafeMeleeLimit", ":ZombiesCauseManhunting"))
 				{
 					list.Dialog_Label("ZombieDamageTitle", headerColor);
 					list.Gap(8f);
 					list.Dialog_FloatSlider("ZombieDamageFactor", _ => "{0:0.0}x", false, ref settings.damageFactor, 0.1f, 4f);
+					list.Dialog_FloatSlider("ZombieDodgeChance", f => $"{f:P0}", false, ref settings.zombieDodgeChanceFactor, 0f, 2f);
 					list.Dialog_IntSlider("SafeMeleeLimit", n => n == 0 ? "Off".TranslateSimple() : n.ToString(), ref settings.safeMeleeLimit, 0, 4);
 					if (settings.safeMeleeLimit > 0)
 					{
