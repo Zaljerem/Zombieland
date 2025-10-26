@@ -158,6 +158,8 @@ namespace ZombieLand
 				try
 				{
 					var holder = Tools.DeserializeFromHex<Holder>(hex);
+					if (holder?.settings == null)
+						return;
 					DialogTimeHeader.Reset();
 					settingsOverTime.Clear();
 					settingsOverTime.AddRange(holder.settings
