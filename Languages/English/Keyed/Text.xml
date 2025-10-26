@@ -150,6 +150,7 @@
 
 	<ZombieHealthTitle>Zombie health</ZombieHealthTitle>
 	<ZombieHealthFactor>Health</ZombieHealthFactor>
+	<ZombieDodgeChance>ZombieDodgeChance</ZombieDodgeChance>
 	<DoubleTapRequired>Zombies recover from injuries</DoubleTapRequired>
 	<ZombiesDieVeryEasily>Zombies are easy to kill</ZombiesDieVeryEasily>
 
