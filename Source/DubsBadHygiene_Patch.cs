@@ -58,32 +58,10 @@ namespace ZombieLand
                             var map = pawn.Map;
                             if (map == null) return;
 
-                            var hygieneCompType = AccessTools.TypeByName("DubsBadHygiene.MapComponent_Hygiene");
-                            if (hygieneCompType == null) return;
-
-                            var getCompMethod = typeof(Map).GetMethod("GetComponent", new Type[] { });
-                            if (getCompMethod == null) return;
-
-                            var genericGetCompMethod = getCompMethod.MakeGenericMethod(hygieneCompType);
-                            if (genericGetCompMethod == null) return;
-
-                            var hygieneComp = genericGetCompMethod.Invoke(map, null);
-                            if (hygieneComp == null) return;
-
-                            var sewageGridProperty = AccessTools.Property(hygieneCompType, "SewageGrid");
-                            if (sewageGridProperty == null) return;
-
-                            var sewageGrid = sewageGridProperty.GetValue(hygieneComp);
-                            if (sewageGrid == null) return;
-
-                            var gridLayerType = sewageGrid.GetType();
-                            var addAtMethod = AccessTools.Method(gridLayerType, "AddAt", new[] { typeof(IntVec3), typeof(float), typeof(bool), typeof(bool), typeof(MapMeshFlagDef) });
-                            if (addAtMethod == null) return;
-
                             var fixture = __instance.job.targetA.Thing;
                             if (fixture != null)
                             {
-                                var contaminationToSpread = contamination;
+                                var contaminationToSpread = contamination * 0.5f;
 
                                 var adjacentOffsets = GenAdj.AdjacentCells;
                                 foreach (var offset in adjacentOffsets)
@@ -91,7 +69,7 @@ namespace ZombieLand
                                     var cell = fixture.Position + offset;
                                     if (cell.InBounds(map))
                                     {
-                                        map.AddContamination(cell, contaminationToSpread / 8);
+                                        map.AddContamination(cell, contaminationToSpread / 8f);
                                     }
                                 }
                             }
