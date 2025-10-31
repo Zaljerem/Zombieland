@@ -296,4 +296,9 @@
 	<OdysseyLayers>Odyssey Layers</OdysseyLayers>
 	<OdysseyLayersWithoutZombies>Layers without zombies</OdysseyLayersWithoutZombies>
 
+	<MinContaminationToCleanCell>Min Contamination to Clean Ground (%)</MinContaminationToCleanCell>
+	<MinContaminationToCleanItem>Min Contamination to Clean Item (%)</MinContaminationToCleanItem>
+	<MinContaminationToCleanCell_Help>The minimum contamination level of a cell to be considered for cleaning.</MinContaminationToCleanCell_Help>
+	<MinContaminationToCleanItem_Help>The minimum contamination level of an item to be considered for cleaning.</MinContaminationToCleanItem_Help>
+
 </LanguageData>

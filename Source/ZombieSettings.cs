@@ -253,6 +253,9 @@ namespace ZombieLand
 
         public List<string> allowedOdysseyLayers = new List<string>();
 
+		public float minContaminationToCleanCell = 0.1f;
+		public float minContaminationToCleanItem = 0.1f;
+
 		// unused
 		public int suicideBomberIntChance = 1;
 		public int toxicSplasherIntChance = 1;
@@ -339,6 +342,11 @@ namespace ZombieLand
 			Scribe_Collections.Look(ref blacklistedApparel, "blacklistedApparel", LookMode.Value);
 			Scribe_Values.Look(ref contaminationBaseFactor, "contaminationBaseFactor", 1f);
 			Scribe_Values.Look(ref disableCleanContamination, "disableCleanContamination", true);
+			Scribe_Values.Look(ref minContaminationToCleanCell, "minContaminationToCleanCell", 0.1f);
+			Scribe_Values.Look(ref minContaminationToCleanItem, "minContaminationToCleanItem", 0.1f);
+			Scribe_Values.Look(ref minContaminationToCleanCell, "minContaminationToCleanCell", 0.1f);
+			Scribe_Values.Look(ref minContaminationToCleanItem, "minContaminationToCleanItem", 0.1f);
+
 			Scribe_Deep.Look(ref contamination, "contamination");
 			Scribe_Collections.Look(ref allowedOdysseyLayers, "allowedOdysseyLayers", LookMode.Value);
 			Scribe_Values.Look(ref suicideBomberIntChance, "suicideBomberIntChance", 1);

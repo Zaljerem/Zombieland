@@ -319,6 +319,50 @@ namespace ZombieLand
 			GUI.color = color;
 		}
 
+				public static void Dialog_PercentageTextField(this Listing_Standard list, string labelId, ref float value, string tooltip)
+
+				{
+					list.Gap(6f);
+					list.Help(labelId, Text.LineHeight);
+					var rectLine = list.GetRect(Text.LineHeight);
+					rectLine.xMin += inset;
+					rectLine.xMax -= inset;
+					var rectLeft = rectLine.LeftHalf().Rounded();
+					var rectRight = rectLine.RightHalf().Rounded();
+					var color = GUI.color;
+					GUI.color = contentColor;
+					Widgets.Label(rectLeft, labelId.SafeTranslate());
+					var alignment = Text.CurTextFieldStyle.alignment;
+					Text.CurTextFieldStyle.alignment = TextAnchor.MiddleRight;
+
+					var percentSymbolWidth = "% ".GetWidthCached();
+					var textFieldRect = new Rect(rectRight.x, rectRight.y, rectRight.width - percentSymbolWidth, rectRight.height);
+
+					var buffer = (value * 100f).ToString("F0");
+					var result = Widgets.TextField(textFieldRect, buffer);
+
+					if (float.TryParse(result, out var floatResult))
+					{
+						value = Mathf.Clamp(floatResult / 100f, 0.02f, 1f);
+					}
+					else
+					{
+						value = 0.1f;
+					}
+
+					Text.CurTextFieldStyle.alignment = alignment;
+
+					var percentRect = new Rect(textFieldRect.xMax, rectRight.y, percentSymbolWidth, rectRight.height);
+					var anchor = Text.Anchor;
+					Text.Anchor = TextAnchor.MiddleLeft;
+					Widgets.Label(percentRect, "%");
+					Text.Anchor = anchor;
+					GUI.color = color;
+
+				}
+
+		
+
 		public static void Dialog_FloatSlider(this Listing_Standard list, string labelId, Func<float, string> labelFormatFunc, bool logarithmic, ref float value, float min, float max, Func<float, float> formatFunc = null)
 		{
 			if (labelId != null)

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+  <JobDef>
+    <defName>CleanContaminatedItem</defName>
+    <driverClass>Zombieland.JobDriver_CleanContaminatedItem</driverClass>
+    <reportString>cleaning contaminated item.</reportString>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+    <alwaysShowWeapon>false</alwaysShowWeapon>
+    <casualInterruptible>true</casualInterruptible>
+  </JobDef>
+</Defs>
