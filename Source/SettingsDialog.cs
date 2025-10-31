@@ -68,6 +68,7 @@ namespace ZombieLand
 										if (oldValue != settings.contaminationBaseFactor)
 											ContaminationFactors.ApplyBaseFactor(settings.contamination, settings.contaminationBaseFactor);
 										list.Dialog_Checkbox("DisableCleanContamination", ref settings.disableCleanContamination);
+										list.Dialog_Checkbox("DisableWashingContamination", ref settings.contamination.disableWashingContamination);
 										DialogExtensions.Dialog_PercentageTextField(list, "MinContaminationToCleanCell", ref settings.minContaminationToCleanCell, "The minimum contamination level of a cell to be considered for cleaning.");
 										DialogExtensions.Dialog_PercentageTextField(list, "MinContaminationToCleanItem", ref settings.minContaminationToCleanItem, "The minimum contamination level of an item to be considered for cleaning.");
 									}				list.Gap(12f);

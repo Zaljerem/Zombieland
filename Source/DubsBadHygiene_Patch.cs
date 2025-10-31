@@ -47,6 +47,8 @@ namespace ZombieLand
                 {
                     toil.AddFinishAction(() =>
                     {
+                        if (ZombieSettings.Values.contamination.disableWashingContamination) return;
+
                         var pawn = __instance.pawn;
                         if (pawn == null) return;
 

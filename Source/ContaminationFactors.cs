@@ -62,6 +62,7 @@ namespace ZombieLand
 		[ValueRange(0.01f, 0.5f)] public float fireReduction = 0.05f;
 		[ValueRange(0.01f, 0.9f)] public float randomThingCreateChance = 0.1f;
 		[ValueRange(0f, 1f)] public float randomThingDensityDistribution = 0.5f;
+		public bool disableWashingContamination = false;
 		[ValueRange(1f, 1f)] public float mechClusterChance = 1f;
 		[ValueRange(0f, 1f)] public float mechClusterDensityDistribution = 0.5f;
 

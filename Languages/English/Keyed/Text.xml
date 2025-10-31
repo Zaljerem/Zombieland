@@ -300,5 +300,6 @@
 	<MinContaminationToCleanItem>Min Contamination to Clean Item (%)</MinContaminationToCleanItem>
 	<MinContaminationToCleanCell_Help>The minimum contamination level of a cell to be considered for cleaning.</MinContaminationToCleanCell_Help>
 	<MinContaminationToCleanItem_Help>The minimum contamination level of an item to be considered for cleaning.</MinContaminationToCleanItem_Help>
+	<DisableWashingContamination>Disable contamination cleaning via Dubs Bad Hygiene</DisableWashingContamination>
 
 </LanguageData>
