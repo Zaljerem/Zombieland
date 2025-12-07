@@ -147,6 +147,7 @@ namespace ZombieLand
 		}
 	}
 
+	[HarmonyBefore("*")]
 	[HarmonyPatch(typeof(Thing), nameof(Thing.TryAbsorbStack))]
 	static class Thing_TryAbsorbStack_Patch
 	{
@@ -168,7 +169,10 @@ namespace ZombieLand
 			var thisCount = __instance.stackCount - otherCount;
 
 			var thisContamination = __instance.GetContamination(includeHoldings: true);
-			var newContamination = (otherCount * otherContamination + thisCount * thisContamination) / (thisCount + otherCount);
+			var totalCount = thisCount + otherCount;
+			if (totalCount == 0)
+				return; 
+			var newContamination = (otherCount * otherContamination + thisCount * thisContamination) / totalCount;
 			var transfer = newContamination - thisContamination;
 
 						var savedMapIndex = (sbyte)Tools.f_mapIndexOrState.GetValue(__instance);

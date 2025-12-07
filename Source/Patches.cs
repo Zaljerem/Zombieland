@@ -2222,8 +2222,12 @@ return list;
 							var z = Math.Sign(value.z - pos.z) + 1;
 							var orthIdx = x + 3 * z;
 							var pair = orthogonalIndices[orthIdx];
-							_ = FilthMaker.TryMakeFilth(pos + pair[0], map, CustomDefs.TarSlime);
-							_ = FilthMaker.TryMakeFilth(pos + pair[1], map, CustomDefs.TarSlime);
+							var p1 = pos + pair[0];
+							if (p1.InBounds(map))
+								_ = FilthMaker.TryMakeFilth(p1, map, CustomDefs.TarSlime);
+							var p2 = pos + pair[1];
+							if (p2.InBounds(map))
+								_ = FilthMaker.TryMakeFilth(p2, map, CustomDefs.TarSlime);
 						}
 					}
 

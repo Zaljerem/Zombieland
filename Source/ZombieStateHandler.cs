@@ -1153,10 +1153,27 @@ namespace ZombieLand
 		{
 			if (eatSubject == null || eatSubject.health == null || eatSubject.health.hediffSet == null)
 				return null;
-			return eatSubject.health.hediffSet
-						.GetNotMissingParts(BodyPartHeight.Undefined, BodyPartDepth.Outside)
-						.InRandomOrder()
-						.FirstOrDefault();
+
+			var allParts = eatSubject.health.hediffSet
+				.GetNotMissingParts(BodyPartHeight.Undefined, BodyPartDepth.Outside)
+				.InRandomOrder();
+
+			foreach (var part in allParts)
+			{
+				if (IsValidBodyPart(part))
+					return part;
+			}
+
+			return null;
+		}
+
+		static bool IsValidBodyPart(BodyPartRecord part)
+		{
+			if (part == null || part.def == null)
+				return false;
+			if (part.parent != null)
+				return IsValidBodyPart(part.parent);
+			return true;
 		}
 
 		static void AttackThing(Zombie zombie, Thing thing, JobDef def)
