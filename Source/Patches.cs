@@ -4371,6 +4371,12 @@ return list;
 							// if death means becoming a zombie, install zombie infection
 							if (ZombieSettings.Values.hoursAfterDeathToBecomeZombie > -1)
 							{
+								var existingZombieInfection = hediffSet.hediffs.FirstOrDefault(h => h.def == CustomDefs.ZombieInfection) as Hediff_ZombieInfection;
+								if (existingZombieInfection != null)
+								{
+									return;
+								}
+
 								var immunityGeneDef = DefDatabase<GeneDef>.GetNamed("PerfectImmunity", false);
 								if (immunityGeneDef != null && (pawn?.genes?.HasActiveGene(immunityGeneDef) ?? false))
 								{

@@ -898,10 +898,14 @@ namespace ZombieLand
 			}
 			if (pawn == null || pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter || pawn.InfectionState() == InfectionState.Infecting)
 				return;
-		
+
 			if (pawn.health?.hediffSet == null)
 				return;
-		
+
+			// Check if pawn already has a zombie infection to prevent duplicates
+			if (pawn.health.hediffSet.HasHediff(CustomDefs.ZombieInfection))
+				return;
+
 			var torso = pawn.health.hediffSet.GetNotMissingParts(BodyPartHeight.Undefined, BodyPartDepth.Undefined, null, null).FirstOrDefault((BodyPartRecord x) => x.def == BodyPartDefOf.Torso);
 			if (torso == null)
 				return;
