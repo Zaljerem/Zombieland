@@ -187,6 +187,9 @@ namespace ZombieLand
 			var method = AccessTools.Method(typeof(ThingDefGenerator_Buildings), "NewBlueprintDef_Thing");
 			var postfix = AccessTools.Method(typeof(ZombielandMod), "NewBlueprintDef_Thing_Postfix");
 			_ = harmony.Patch(method, postfix: new HarmonyMethod(postfix));
+
+			// Initialize Portraits of Rim compatibility patch
+			var compat = new PortraitsOfRimCompatibility();
 		}
 		//
 		static void NewBlueprintDef_Thing_Postfix(ThingDef def, ref ThingDef __result)
