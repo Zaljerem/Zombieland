@@ -1,4 +1,4 @@
-﻿using RimWorld;
+using RimWorld;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -83,9 +83,10 @@ namespace ZombieLand
 				// How?
 				if (DialogExtensions.Section<SpawnHowType>(":HowDoZombiesSpawn", ":SmartWandering", ":BlacklistedBiomes", ":Biomes"))
 				{
-					list.Dialog_Enum("HowDoZombiesSpawn", ref settings.spawnHowType);
+				list.Dialog_Enum("HowDoZombiesSpawn", ref settings.spawnHowType);
 					list.Gap(8);
 					list.ChooseWanderingStyle(settings);
+					list.ChooseSmartWanderingTime(settings);
 					var localSettings = settings;
 					list.Dialog_Button("BlacklistedBiomes", "Biomes", false, () => Find.WindowStack.Add(new Dialog_BiomeList(localSettings)));
 					list.Gap(30f);

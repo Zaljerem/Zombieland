@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
 using System;
@@ -49,6 +49,12 @@ namespace ZombieLand
 		Random,
 		Simple,
 		Smart
+	}
+
+	public enum SmartWanderingTime
+	{
+		Night,
+		AllDay
 	}
 
 	public enum AreaRiskMode : byte
@@ -235,6 +241,7 @@ namespace ZombieLand
 		public bool zombiesCauseManhuntingResponse = true;
 		public int safeMeleeLimit = 1;
 		public WanderingStyle wanderingStyle = WanderingStyle.Smart;
+		public SmartWanderingTime smartWanderingTime = SmartWanderingTime.Night;
 		public bool showHealthBar = true;
 		public HashSet<string> biomesWithoutZombies = new();
 		public bool showZombieStats = true;
@@ -329,6 +336,7 @@ namespace ZombieLand
 			Scribe_Values.Look(ref zombiesCauseManhuntingResponse, "zombiesCauseManhuntingResponse", true);
 			Scribe_Values.Look(ref safeMeleeLimit, "safeMeleeLimit", 1);
 			Scribe_Values.Look(ref wanderingStyle, "wanderingStyle", WanderingStyle.Smart);
+			Scribe_Values.Look(ref smartWanderingTime, "smartWanderingTime", SmartWanderingTime.Night);
 			Scribe_Values.Look(ref showHealthBar, "showHealthBar", true);
 			Scribe_Collections.Look(ref biomesWithoutZombies, "biomesWithoutZombies", LookMode.Value);
 			Scribe_Values.Look(ref showZombieStats, "showZombieStats", true);

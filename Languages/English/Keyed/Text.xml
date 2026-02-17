@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
 
 	<Zombieland_Settings>Hover over any element to read a help text about it to the right. All settings can be changed in-game and are active immediately, they are saved with the game.\n\nTo set defaults for new games, change the settings from the main screen (Options/Mod Settings/Zombieland).</Zombieland_Settings>
@@ -62,6 +62,9 @@
 	<SmartWandering_Random>Random</SmartWandering_Random>
 	<SmartWandering_Simple>Simple</SmartWandering_Simple>
 	<SmartWandering_Smart>Smart</SmartWandering_Smart>
+	<SmartWanderingTime>Smart Wandering Time</SmartWanderingTime>
+	<SmartWanderingTime_Night>Night Only</SmartWanderingTime_Night>
+	<SmartWanderingTime_AllDay>All Day</SmartWanderingTime_AllDay>
 	<BlacklistedBiomes>Biomes without zombies</BlacklistedBiomes>
 	<Biomes>Biomes</Biomes>
 

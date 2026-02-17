@@ -1,4 +1,4 @@
-﻿using RimWorld;
+using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -465,6 +465,12 @@ namespace ZombieLand
 			var defaultChoice = Enum.GetName(typeof(WanderingStyle), WanderingStyle.Smart);
 			var choices = Enum.GetValues(typeof(WanderingStyle)).Cast<WanderingStyle>().ToList();
 			list.Dialog_List("SmartWandering", settings.wanderingStyle, value => settings.wanderingStyle = value, choices, value => $"SmartWandering_{value}".Translate(), WanderingStyle.Smart);
+		}
+
+		public static void ChooseSmartWanderingTime(this Listing_Standard list, SettingsGroup settings)
+		{
+			var choices = Enum.GetValues(typeof(SmartWanderingTime)).Cast<SmartWanderingTime>().ToList();
+			list.Dialog_List("SmartWanderingTime", settings.smartWanderingTime, value => settings.smartWanderingTime = value, choices, value => $"SmartWanderingTime_{value}".Translate(), SmartWanderingTime.Night);
 		}
 
 		public static string ExtractAmount(float f)

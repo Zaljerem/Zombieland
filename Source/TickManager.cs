@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using RimWorld;
 using System;
 using System.Collections;
@@ -848,20 +848,27 @@ namespace ZombieLand
 				yield return null;
 				ExecuteExplosions();
 				yield return null;
-				var volume = 0f;
+			var volume = 0f;
 				if (allZombiesCached.Any())
 				{
 					if (map != null)
 					{
-						var hour = GenLocalDate.HourFloat(map);
-						if (hour < 12f)
-							hour += 24f;
-						if (hour > Constants.ZOMBIE_SPAWNING_HOURS[1] && hour < Constants.ZOMBIE_SPAWNING_HOURS[2])
+						if (ZombieSettings.Values.smartWanderingTime == SmartWanderingTime.AllDay)
+						{
 							volume = 1f;
-						else if (hour >= Constants.ZOMBIE_SPAWNING_HOURS[0] && hour <= Constants.ZOMBIE_SPAWNING_HOURS[1])
-							volume = GenMath.LerpDouble(Constants.ZOMBIE_SPAWNING_HOURS[0], Constants.ZOMBIE_SPAWNING_HOURS[1], 0f, 1f, hour);
-						else if (hour >= Constants.ZOMBIE_SPAWNING_HOURS[2] && hour <= Constants.ZOMBIE_SPAWNING_HOURS[3])
-							volume = GenMath.LerpDouble(Constants.ZOMBIE_SPAWNING_HOURS[2], Constants.ZOMBIE_SPAWNING_HOURS[3], 1f, 0f, hour);
+						}
+						else
+						{
+							var hour = GenLocalDate.HourFloat(map);
+							if (hour < 12f)
+								hour += 24f;
+							if (hour > Constants.ZOMBIE_SPAWNING_HOURS[1] && hour < Constants.ZOMBIE_SPAWNING_HOURS[2])
+								volume = 1f;
+							else if (hour >= Constants.ZOMBIE_SPAWNING_HOURS[0] && hour <= Constants.ZOMBIE_SPAWNING_HOURS[1])
+								volume = GenMath.LerpDouble(Constants.ZOMBIE_SPAWNING_HOURS[0], Constants.ZOMBIE_SPAWNING_HOURS[1], 0f, 1f, hour);
+							else if (hour >= Constants.ZOMBIE_SPAWNING_HOURS[2] && hour <= Constants.ZOMBIE_SPAWNING_HOURS[3])
+								volume = GenMath.LerpDouble(Constants.ZOMBIE_SPAWNING_HOURS[2], Constants.ZOMBIE_SPAWNING_HOURS[3], 1f, 0f, hour);
+						}
 					}
 				}
 				ZombieStateHandler.creepyAmbientSoundVolumes[map.uniqueID] = volume;
