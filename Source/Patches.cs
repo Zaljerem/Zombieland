@@ -2327,21 +2327,32 @@ return list;
 
 		// patch to make infected colonists have no needs
 		//
+		// Compatibility: When Need Bar Overflow is loaded, uses Prefix/Postfix instead of Transpiler
+		// to avoid conflicting with NBO's transpiler that modifies the same IL code
+		//
 		[HarmonyPatch(typeof(Need))]
 		[HarmonyPatch(nameof(Need.CurLevel), MethodType.Setter)]
 		public static class Need_CurLevel_Patch
 		{
 			// this is set periodically from Alerts.Alert_ZombieInfection
 			public static HashSet<Pawn> infectedColonists = new();
+			
+			// Cache the pawn field accessor for performance
+			static readonly AccessTools.FieldRef<Need, Pawn> needPawnField = 
+				AccessTools.FieldRefAccess<Need, Pawn>("pawn");
 
 			static bool ShouldBeAverageNeed(Pawn pawn)
 			{
 				return infectedColonists.Contains(pawn);
 			}
 
-			[HarmonyPriority(Priority.First)]
+			// When NBO is not loaded, use transpiler for better performance
+			// When NBO is loaded, skip transpiler to avoid conflicts
 			static IEnumerable<CodeInstruction> Transpiler(ILGenerator il, IEnumerable<CodeInstruction> instructions)
 			{
+				if (ModCompat.NeedBarOverflowCompatibility.IsActive)
+					yield break; // Skip transpiler when NBO is active
+
 				var average = il.DeclareLocal(typeof(float));
 				var originalStart = il.DefineLabel();
 
@@ -2372,6 +2383,21 @@ return list;
 
 				if (!found)
 					Error("Unexpected code in patch " + MethodBase.GetCurrentMethod().DeclaringType);
+			}
+
+			// Finalizer used when NBO is loaded for compatibility
+			// This runs after all other patches and directly sets the field
+			// Harmony Finalizers must return Exception (null = don't suppress)
+			static Exception Finalizer(Need __instance)
+			{
+				if (ModCompat.NeedBarOverflowCompatibility.IsActive && infectedColonists.Contains(needPawnField(__instance)))
+				{
+					var curLevelIntField = AccessTools.Field(typeof(Need), "curLevelInt");
+					var maxLevelProperty = AccessTools.Property(typeof(Need), "MaxLevel");
+					var maxLevel = (float)maxLevelProperty.GetValue(__instance);
+					curLevelIntField.SetValue(__instance, (int)(0.5f * maxLevel));
+				}
+				return null; // Don't suppress any exceptions
 			}
 		}
 
