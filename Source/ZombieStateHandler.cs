@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using RimWorld;
 using System.Collections.Generic;
 using System.Linq;
@@ -781,7 +781,7 @@ namespace ZombieLand
 			if (map.areaManager.Home[basePos] == false)
 			{
 				var volume = creepyAmbientSoundVolumes.TryGetValue(map.uniqueID, 0f);
-				if (zombie.GetHashCode() % 16 + 1 <= volume * 16f)
+				if (volume > 0)
 				{
 					var style = ZombieSettings.Values.wanderingStyle;
 					if (style == WanderingStyle.Smart)

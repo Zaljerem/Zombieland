@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using RimWorld;
 using System;
 using System.Collections;
@@ -268,6 +268,14 @@ namespace ZombieLand
 			{
 				ClearCells();
 				dirtyCells = false;
+			}
+
+			if (positions.Length > 0)
+			{
+				dirtyCells = true;
+				var it0 = Recalculate(positions, false);
+				while (it0.MoveNext())
+					yield return null;
 			}
 
 			if (zombies.Any(zombie => zombie.raging > 0 || zombie.isDarkSlimer))

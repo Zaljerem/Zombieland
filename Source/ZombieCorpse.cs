@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Verse;
 
@@ -30,15 +31,22 @@ namespace ZombieLand
 				});
 
 			var tickManager = map.GetComponent<TickManager>();
-			tickManager.allZombieCorpses.Add(this);
+			if (tickManager != null)
+			{ 
+				tickManager.allZombieCorpses ??= new List<ZombieCorpse>();
+				tickManager.allZombieCorpses.Add(this);
+			}
 		}
 
 		public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
 		{
 			try
 			{
-				var tickManager = Map.GetComponent<TickManager>();
-				_ = tickManager?.allZombieCorpses.Remove(this);
+				var tickManager = Map?.GetComponent<TickManager>();
+				if (tickManager != null && tickManager.allZombieCorpses != null)
+				{
+					_ = tickManager.allZombieCorpses.Remove(this);
+				}
 			}
 			catch
 			{
