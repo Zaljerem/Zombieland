@@ -115,10 +115,11 @@ namespace ZombieLand
 				}
 
 				// Senses
-				if (DialogExtensions.Section<ZombieInstinct>(":ZombieInstinctTitle", ":RagingZombies", ":RageLevel"))
+				if (DialogExtensions.Section<ZombieInstinct>(":ZombieInstinctTitle", ":RagingZombies", ":ZombieHivemind", ":RageLevel"))
 				{
 					list.Dialog_Enum("ZombieInstinctTitle", ref settings.zombieInstinct);
 					list.Dialog_Checkbox("RagingZombies", ref settings.ragingZombies);
+					list.Dialog_Checkbox("ZombieHivemind", ref settings.zombieHivemind);
 					var rageLevelNames = new string[] { "RageLevelVeryLow", "RageLevelLow", "RageLevelNormal", "RageLevelHigh", "RageLevelVeryHigh" };
 					list.Gap(8f);
 					if (settings.ragingZombies)
@@ -247,7 +248,7 @@ namespace ZombieLand
 				}
 
 				// Damage
-				if (DialogExtensions.Section<string>(":ZombieDamageTitle", ":ZombieDamageFactor", ":ZombieDodgeChance", ":SafeMeleeLimit", ":ZombiesCauseManhunting"))
+				if (DialogExtensions.Section<string>(":ZombieDamageTitle", ":ZombieDamageFactor", ":ZombieDodgeChance", ":SafeMeleeLimit", ":ZombiesCauseManhunting", ":MinAttackDistanceSquared", ":CanAttackSearchRadius"))
 				{
 					list.Dialog_Label("ZombieDamageTitle", headerColor);
 					list.Gap(8f);
@@ -262,6 +263,9 @@ namespace ZombieLand
 					}
 					list.Gap(6f);
 					list.Dialog_Checkbox("ZombiesCauseManhunting", ref settings.zombiesCauseManhuntingResponse);
+					list.Gap(12f);
+					list.Dialog_FloatSlider("MinAttackDistanceSquared", f => $"{f:0.00}", false, ref settings.minAttackDistanceSquared, 2.25f, 9f);
+					list.Dialog_IntSlider("CanAttackSearchRadius", n => $"{n} cells", ref settings.canAttackSearchRadius, 1, 4);
 					list.Gap(36f);
 				}
 

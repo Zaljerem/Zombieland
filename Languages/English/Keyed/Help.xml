@@ -76,6 +76,8 @@
 	<ZombieDamageFactor_Help>A large multiplier will increase their strength which will allow them to overcome others easily. Very useful for mech raids but will deteriorate your walls and doors quicker (if you have that turned on).</ZombieDamageFactor_Help>
 	<SafeMeleeLimit_Help>The number of zombies that can be fought simultaneously in a melee fight before the defender is overwhelmed and starts getting bitten.\n\nTank zombies count as two zombies and defenders melee level 0-20 gives you 0-100% chance to block a bite (better with less zombies than the limit)</SafeMeleeLimit_Help>
 	<ZombiesCauseManhunting_Help>Will animals become manhunters when attacked by zombies?</ZombiesCauseManhunting_Help>
+	<MinAttackDistanceSquared_Help>Controls how close zombies need to be to detect and attack targets. Higher values mean zombies can detect targets from further away. Default is 2.25 (about 1.5 cells), maximum is 9 (3 cells).</MinAttackDistanceSquared_Help>
+	<CanAttackSearchRadius_Help>How many cells around zombies should be scanned for potential attack targets. Higher values make zombies better at detecting nearby creatures but may impact performance. Default is 1 (adjacent cells only), maximum is 4 cells.</CanAttackSearchRadius_Help>
 
 	<!-- -->
 
@@ -110,6 +112,7 @@
 	<ZombieInstinct_Normal_Help>Zombie senses reach a bit longer</ZombieInstinct_Normal_Help>
 	<ZombieInstinct_Sensitive_Help>Zombies are very sensitive and sense you and your trails over many cells</ZombieInstinct_Sensitive_Help>
 	<RagingZombies_Help>To simulate group behaviour, zombies can become enraged if a tight group of zombies gets too large. Raging zombies have red eyes and start walking towards your colonists. They will be stronger and faster than normal. Try preventing zombie hordes from becoming to large or stuck at places on the map to avoid raging zombies.</RagingZombies_Help>
+	<ZombieHivemind_Help>When enabled, all zombies share a hivemind. When one zombie detects a target (via pheromones), all zombies on the map instantly know about it and can track to that location. This makes zombies significantly more dangerous as they don't need to individually discover trails. Default is off.</ZombieHivemind_Help>
 	<RageLevel_Help>This level controls the group size that triggers raging zombies. High levels are more dangerous and make zombies trigger more easily.</RageLevel_Help>
 
 	<!-- -->

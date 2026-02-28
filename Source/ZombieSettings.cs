@@ -233,7 +233,10 @@ namespace ZombieLand
 		public int corpsesHoursToDessicated = 2;
 		public bool betterZombieAvoidance = true;
 		public bool ragingZombies = true;
+		public bool zombieHivemind = false;
 		public int zombieRageLevel = 3;
+		public float minAttackDistanceSquared = 2.25f;
+		public int canAttackSearchRadius = 1;
 		public bool replaceTwinkie = true;
 		public bool zombiesDropBlood = true;
 		public bool zombiesBurnLonger = true;
@@ -328,7 +331,10 @@ namespace ZombieLand
 			Scribe_Values.Look(ref corpsesHoursToDessicated, "corpsesHoursToDessicated", 2);
 			Scribe_Values.Look(ref betterZombieAvoidance, "betterZombieAvoidance", true);
 			Scribe_Values.Look(ref ragingZombies, "ragingZombies", true);
+			Scribe_Values.Look(ref zombieHivemind, "zombieHivemind", false);
 			Scribe_Values.Look(ref zombieRageLevel, "zombieRageLevel", 3);
+			Scribe_Values.Look(ref minAttackDistanceSquared, "minAttackDistanceSquared", 2.25f);
+			Scribe_Values.Look(ref canAttackSearchRadius, "canAttackSearchRadius", 1);
 			Scribe_Values.Look(ref replaceTwinkie, "replaceTwinkie", true);
 			Scribe_Values.Look(ref zombiesDropBlood, "zombiesDropBlood", true);
 			Scribe_Values.Look(ref zombiesBurnLonger, "zombiesBurnLonger", true);

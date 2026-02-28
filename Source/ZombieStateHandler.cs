@@ -702,8 +702,32 @@ namespace ZombieLand
 		//
 		public static bool RageMove(this JobDriver_Stumble driver, Zombie zombie, PheromoneGrid grid, List<IntVec3> possibleMoves, bool checkSmashable)
 		{
-			var info = ZombieWanderer.GetMapInfo(zombie.Map);
-			var newPos = info.GetParent(zombie.Position, false);
+			// Check if Smart Wandering should apply (respects smartWanderingTime setting)
+			// This makes raging zombies drift toward home area during Smart Wandering time
+			var map = zombie.Map;
+			var basePos = zombie.Position;
+			if (map.areaManager.Home[basePos] == false)
+			{
+				var volume = creepyAmbientSoundVolumes.TryGetValue(map.uniqueID, 0f);
+				if (volume > 0 && ZombieSettings.Values.wanderingStyle == WanderingStyle.Smart)
+				{
+					// Smart Wandering time - drift toward home area even while raging
+					var info = ZombieWanderer.GetMapInfo(map);
+					var nextCell = info.GetParent(basePos, false);
+					if (nextCell.IsValid)
+					{
+						var destination = basePos + ((nextCell - basePos).ToVector3() * 10).ToIntVec3();
+						possibleMoves.Sort((p1, p2) => p1.DistanceToSquared(destination).CompareTo(p2.DistanceToSquared(destination)));
+						possibleMoves = possibleMoves.Take(Constants.NUMBER_OF_TOP_MOVEMENT_PICKS).ToList();
+						possibleMoves = possibleMoves.OrderBy(grid.GetZombieCount).ToList();
+						driver.destination = possibleMoves.First();
+						return false;
+					}
+				}
+			}
+
+			var info2 = ZombieWanderer.GetMapInfo(zombie.Map);
+			var newPos = info2.GetParent(zombie.Position, false);
 
 			if (newPos.IsValid == false)
 			{
@@ -714,7 +738,7 @@ namespace ZombieLand
 						zombie.tankDestination = IntVec3.Invalid;
 
 					// tanky can get directly through walls
-					newPos = info.GetParent(zombie.Position, true);
+					newPos = info2.GetParent(zombie.Position, true);
 				}
 
 				if (newPos.IsValid == false)
@@ -921,116 +945,24 @@ namespace ZombieLand
 		static Thing CanAttack(Zombie zombie)
 		{
 			var map = zombie.Map;
-			var size = map.Size;
-			var thingGrid = map.thingGrid;
 			var basePos = zombie.Position;
-			var (left, top, right, bottom) = (basePos.x > 0, basePos.z < size.z - 1, basePos.x < size.x - 1, basePos.z > 0);
-			var baseIndex = map.cellIndices.CellToIndex(basePos);
-			var rowOffset = size.z;
 			var mode = ZombieSettings.Values.attackMode;
+			var searchRadius = ZombieSettings.Values.canAttackSearchRadius;
 
-			List<Thing> items;
-			zombie.Randomize8();
-			for (var r = 0; r < 8; r++)
-				switch (zombie.adjIndex8[r])
+			// Scan all cells within the configured search radius
+			foreach (var cell in GenRadial.RadialCellsAround(basePos, searchRadius, false))
+			{
+				if (!cell.InBounds(map))
+					continue;
+
+				var items = map.thingGrid.ThingsListAtFast(cell);
+				for (var i = 0; i < items.Count; i++)
 				{
-					case 0:
-						if (left)
-						{
-							items = thingGrid.ThingsListAtFast(baseIndex - 1);
-							for (var i = 0; i < items.Count; i++)
-							{
-								var item = items[i];
-								if (item is not Zombie && Tools.Attackable(zombie, mode, item))
-									return item;
-							}
-						}
-						break;
-					case 1:
-						if (left && top)
-						{
-							items = thingGrid.ThingsListAtFast(baseIndex - 1 + rowOffset);
-							for (var i = 0; i < items.Count; i++)
-							{
-								var item = items[i];
-								if (item is not Zombie && Tools.Attackable(zombie, mode, item))
-									return item;
-							}
-						}
-						break;
-					case 2:
-						if (left && bottom)
-						{
-							items = thingGrid.ThingsListAtFast(baseIndex - 1 - rowOffset);
-							for (var i = 0; i < items.Count; i++)
-							{
-								var item = items[i];
-								if (item is not Zombie && Tools.Attackable(zombie, mode, item))
-									return item;
-							}
-						}
-						break;
-					case 3:
-						if (top)
-						{
-							items = thingGrid.ThingsListAtFast(baseIndex + rowOffset);
-							for (var i = 0; i < items.Count; i++)
-							{
-								var item = items[i];
-								if (item is not Zombie && Tools.Attackable(zombie, mode, item))
-									return item;
-							}
-						}
-						break;
-					case 4:
-						if (right)
-						{
-							items = thingGrid.ThingsListAtFast(baseIndex + 1);
-							for (var i = 0; i < items.Count; i++)
-							{
-								var item = items[i];
-								if (item is not Zombie && Tools.Attackable(zombie, mode, item))
-									return item;
-							}
-						}
-						break;
-					case 5:
-						if (right && bottom)
-						{
-							items = thingGrid.ThingsListAtFast(baseIndex + 1 - rowOffset);
-							for (var i = 0; i < items.Count; i++)
-							{
-								var item = items[i];
-								if (item is not Zombie && Tools.Attackable(zombie, mode, item))
-									return item;
-							}
-						}
-						break;
-					case 6:
-						if (right && top)
-						{
-							items = thingGrid.ThingsListAtFast(baseIndex + 1 + rowOffset);
-							for (var i = 0; i < items.Count; i++)
-							{
-								var item = items[i];
-								if (item is not Zombie && Tools.Attackable(zombie, mode, item))
-									return item;
-							}
-						}
-						break;
-					case 7:
-						if (bottom)
-						{
-							items = thingGrid.ThingsListAtFast(baseIndex - rowOffset);
-							for (var i = 0; i < items.Count; i++)
-							{
-								var item = items[i];
-								if (item is not Zombie && Tools.Attackable(zombie, mode, item))
-									return item;
-							}
-						}
-						break;
+					var item = items[i];
+					if (item is not Zombie && Tools.Attackable(zombie, mode, item))
+						return item;
 				}
+			}
 			return null;
 		}
 

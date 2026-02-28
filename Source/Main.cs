@@ -190,6 +190,17 @@ namespace ZombieLand
 
 			// Initialize Portraits of Rim compatibility patch
 			var compat = new PortraitsOfRimCompatibility();
+
+			// HAR (Humanoid Alien Races) compatibility patch
+			try
+			{
+				var harHarmony = new Harmony("net.pardeike.zombieland.har");
+				HAR_CompatibilityPatch.Patch(harHarmony);
+			}
+			catch (Exception ex)
+			{
+				Log.Error($"Failed to apply HAR compatibility patch: {ex}");
+			}
 		}
 		//
 		static void NewBlueprintDef_Thing_Postfix(ThingDef def, ref ThingDef __result)

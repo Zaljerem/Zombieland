@@ -114,6 +114,8 @@
 	<SafeMeleeLimit>Safe melee limit</SafeMeleeLimit>
 	<SafeMeleeExample>Example: [_]{0}[_] melee level, [_]{1}[_] zombies => {2}% chance</SafeMeleeExample>
 	<ZombiesCauseManhunting>Zombies can anger animals</ZombiesCauseManhunting>
+	<MinAttackDistanceSquared>Melee attack range</MinAttackDistanceSquared>
+	<CanAttackSearchRadius>Attack detection radius</CanAttackSearchRadius>
 
 	<ZombieGameTweaks>Game tweaks</ZombieGameTweaks>
 	<ReduceTurretConsumption>Reduce turret gun consumption</ReduceTurretConsumption>
@@ -144,6 +146,7 @@
 	<ZombieInstinct_Normal>Normal</ZombieInstinct_Normal>
 	<ZombieInstinct_Sensitive>Elevated</ZombieInstinct_Sensitive>
 	<RagingZombies>Zombies rage if a group gets too large</RagingZombies>
+	<ZombieHivemind>Zombie hivemind</ZombieHivemind>
 	<RageLevel>Rage level</RageLevel>
 	<RageLevelVeryLow>Very low</RageLevelVeryLow>
 	<RageLevelLow>Low</RageLevelLow>

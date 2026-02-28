@@ -968,6 +968,20 @@ namespace ZombieLand
 			if (thing is ZombieCorpse || thing is ZombieBlob || thing is ZombieSpitter)
 				return false;
 
+			var distance = (thing.DrawPos - zombie.DrawPos).MagnitudeHorizontalSquared();
+			if (distance > ZombieSettings.Values.minAttackDistanceSquared)
+				return false;
+
+			// Raging zombies attack ANY creature (ignore attackMode)
+			if (zombie.raging > 0 && thing is Pawn)
+			{
+				if (Customization.DoesAttractsZombies(thing as Pawn) == false)
+					return false;
+				if ((thing as Pawn).InfectionState() == InfectionState.Infecting)
+					return false;
+				return true;
+			}
+
 			if (thing is Pawn target)
 			{
 				if (Customization.DoesAttractsZombies(target) == false)
@@ -975,10 +989,6 @@ namespace ZombieLand
 
 				if (target.equipment?.Primary is Chainsaw chainsaw && chainsaw.running && zombie.IsActiveElectric == false)
 					return Rand.Chance(chainsaw.CounterHitChance());
-
-				var distance = (target.DrawPos - thing.DrawPos).MagnitudeHorizontalSquared();
-				if (distance > Constants.MIN_ATTACKDISTANCE_SQUARED)
-					return false;
 
 				if (target.InfectionState() == InfectionState.Infecting)
 					return false;
@@ -1082,16 +1092,29 @@ namespace ZombieLand
 			var grid = map.GetGrid();
 			var baseTimestamp = grid.GetTimestamp(nextMove);
 			if (baseTimestamp > 0)
-				for (var i = 0; i < 9; i++)
+			{
+				if (ZombieSettings.Values.zombieHivemind)
 				{
-					var pos = basePos + GenAdj.AdjacentCellsAndInside[i];
-					if (pos.x != nextMove.x || pos.z != nextMove.z && pos.InBounds(map))
+					// Hivemind: Broadcast timestamp to ALL cells on the map
+					for (var z = 0; z < map.Size.z; z++)
+						for (var x = 0; x < map.Size.x; x++)
+							grid.BumpTimestamp(new IntVec3(x, 0, z), baseTimestamp);
+				}
+				else
+				{
+					// Normal: Only update adjacent cells
+					for (var i = 0; i < 9; i++)
 					{
-						var distance = Mathf.Abs(nextMove.x - pos.x) + Mathf.Abs(nextMove.z - pos.z);
-						var timestamp = baseTimestamp - distance * Constants.ZOMBIE_CLOGGING_FACTOR * 2;
-						grid.BumpTimestamp(pos, timestamp);
+						var pos = basePos + GenAdj.AdjacentCellsAndInside[i];
+						if ((pos.x != nextMove.x || pos.z != nextMove.z) && pos.InBounds(map))
+						{
+							var distance = Mathf.Abs(nextMove.x - pos.x) + Mathf.Abs(nextMove.z - pos.z);
+							var timestamp = baseTimestamp - distance * Constants.ZOMBIE_CLOGGING_FACTOR * 2;
+							grid.BumpTimestamp(pos, timestamp);
+						}
 					}
 				}
+			}
 		}
 
 		public static string GetHex(byte[] ba)
