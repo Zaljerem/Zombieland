@@ -8,7 +8,7 @@ namespace ZombieLand
 {
 	static class SettingsDialog
 	{
-		public static readonly float totalEstimatedHeight = 3880f;
+		public static readonly float totalEstimatedHeight = 5000f;
 		public static Vector2 scrollPosition = Vector2.zero;
 
 		public static void DoWindowContentsInternal(ref SettingsGroup settings, ref List<SettingsKeyFrame> settingsOverTime, Rect inRect)
