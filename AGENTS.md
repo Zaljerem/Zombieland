@@ -24,6 +24,12 @@ Rules:
 - keep track of what you are doing but make sure you do not simply pile up work log after work log
 - make sure you read the *important* work documents regularily - they have no purpose if you only creete but never read them
 
+Commit policy:
+
+- Normal development commits must not include the built mod DLLs `1.4/Assemblies/ZombieLand.dll` or `1.6/Assemblies/ZombieLand.dll`. Builds and validation may update/deploy them locally, but before a normal commit restore them with `git restore -- 1.4/Assemblies/ZombieLand.dll 1.6/Assemblies/ZombieLand.dll`.
+- Release/version-bump commits are the exception: include the rebuilt `ZombieLand.dll` files together with the version files changed by the bump, currently `Directory.Build.props`, `About/About.xml`, and `About/Manifest.xml`.
+- Do not use `.gitignore` or `git update-index --skip-worktree` as the shared policy for these DLLs. They are tracked files and release commits must remain able to update them intentionally.
+
 Operating model:
 
 - Static/decompiler pass first. For every Harmony patch group, prove the target exists, the signature still matches, closure/delegate targets still have the same role, and the patch still makes semantic sense in RimWorld 1.6 before launching the game. This catches stale targets and 1.4-era assumptions early.
