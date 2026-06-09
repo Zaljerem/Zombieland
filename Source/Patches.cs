@@ -22,7 +22,7 @@ namespace ZombieLand
 	public class StickyGoo : Filth { }
 
 	[StaticConstructorOnStartup]
-	static class Patches
+	static partial class Patches
 	{
 		static readonly List<string> errors = new();
 
@@ -32,12 +32,13 @@ namespace ZombieLand
 			errors = new List<string>();
 			try
 			{
-				harmony.PatchAll();
+				PatchGroups.ApplyAll(harmony, Assembly.GetExecutingAssembly());
 			}
 			catch (Exception ex)
 			{
 				var error = ex.ToString();
 				Log.Error(error);
+				PatchGroups.RecordExternalFailure(PatchGroups.Startup, "Patch grouping failed", error);
 				var idx = error.IndexOf("\n  at");
 				if (idx > 0)
 					errors.Insert(0, error.Substring(0, idx));
@@ -50,10 +51,11 @@ namespace ZombieLand
 			LongEventHandler.ExecuteWhenFinished(() =>
 			{
 				CETools.Init(harmony);
-				AlienTools.Init();
-				VehicleTools.Init();
-				Customization.Init();
-				DubsTools.Init();
+				PatchGroups.RunLateAction(PatchGroups.Optional, "AlienTools", AlienTools.Init);
+				PatchGroups.RunLateAction(PatchGroups.Optional, "VehicleTools", VehicleTools.Init);
+				PatchGroups.RunLateAction(PatchGroups.Optional, "Customization", Customization.Init);
+				PatchGroups.RunLateAction(PatchGroups.Optional, "DubsTools", DubsTools.Init);
+				PatchGroups.TryShowFailureDialogAtStartScreen();
 			});
 
 			// for debugging
@@ -71,8 +73,10 @@ namespace ZombieLand
 
 		public static void Error(string error)
 		{
-			errors.Add(error);
 			Log.Error(error);
+			PatchGroups.ThrowActiveFailure(error);
+			errors.Add(error);
+			PatchGroups.RecordExternalFailure(PatchGroups.Misc, error);
 		}
 
 		static bool IsConcretePatchTarget(MethodInfo method)
@@ -101,44 +105,6 @@ namespace ZombieLand
 			}
 			if (playSound && ZombieAwarenessCues.ShouldPlayZombieActionSound())
 				CustomDefs.TarSmokePop.PlayOneShot(SoundInfo.InMap(new TargetInfo(center, map)));
-		}
-
-		// settings backwards compatibility
-		//
-		[HarmonyPatch(typeof(ParseHelper))]
-		[HarmonyPatch(nameof(ParseHelper.FromString))]
-		[HarmonyPatch(new[] { typeof(string), typeof(Type) })]
-		static class ParseHelper_FromString_Patch
-		{
-			[HarmonyPriority(Priority.First)]
-			static void Prefix(ref string str, Type itemType)
-			{
-				if (itemType == typeof(AreaRiskMode))
-				{
-					if (str == "IfInside")
-						str = nameof(AreaRiskMode.ColonistInside);
-					if (str == "IfOutside")
-						str = nameof(AreaRiskMode.ColonistOutside);
-				}
-			}
-		}
-
-		[HarmonyPatch(typeof(MainMenuDrawer))]
-		[HarmonyPatch(nameof(MainMenuDrawer.Init))]
-		static class MainMenuDrawer_Init_Patch
-		{
-			static void Postfix()
-			{
-				if (errors.Any())
-				{
-					LongEventHandler.ExecuteWhenFinished(() =>
-					{
-						var message = errors.Join(error => error, "\n\n");
-						errors.Clear();
-						Find.WindowStack?.Add(new Dialog_ErrorMessage($"Zombieland encountered an unexpected error and might not work as expected. Either RimWorld has been updated or you have a mod conflict:\n\n{message}"));
-					});
-				}
-			}
 		}
 
 		// patch for debugging: show pheromone grid as overlay
@@ -3194,18 +3160,6 @@ namespace ZombieLand
 			}
 		}
 
-		// use default mod settings for quick test play
-		//
-		[HarmonyPatch(typeof(Root_Play))]
-		[HarmonyPatch(nameof(Root_Play.SetupForQuickTestPlay))]
-		static class Root_Play_SetupForQuickTestPlay_Patch
-		{
-			static void Postfix()
-			{
-				ZombieSettings.ApplyDefaults();
-			}
-		}
-
 		[HarmonyPatch(typeof(PawnRenderer))]
 		[HarmonyPatch(nameof(PawnRenderer.RenderPawnAt))]
 		[HarmonyPatch(new Type[] { typeof(Vector3), typeof(Rot4?), typeof(bool) })]
@@ -5464,48 +5418,6 @@ namespace ZombieLand
 			{
 				var grid = __instance.GetGrid();
 				grid.IterateCellsQuick(cell => cell.zombieCount = 0);
-			}
-		}
-
-		// patches to keep track of frame time
-		//
-		[HarmonyPatch(typeof(Root))]
-		[HarmonyPatch(nameof(Root.Update))]
-		static class Root_Update_Patch
-		{
-			static void Prefix()
-			{
-				ZombielandMod.frameWatch.Restart();
-			}
-		}
-
-		// patches to clean up after us
-		//
-		[HarmonyPatch(typeof(Root))]
-		[HarmonyPatch(nameof(Root.Shutdown))]
-		static class Root_Shutdown_Patch
-		{
-			static void Prefix()
-			{
-				ZombieBlob.ReleaseAllRenderResources();
-				Tools.avoider.running = false;
-
-				// var maps = Find.Maps;
-				// if (maps != null)
-				// 	foreach (var map in maps)
-				// 		map?.GetComponent<TickManager>()?.MapRemoved();
-				//
-				// MemoryUtility.ClearAllMapsAndWorld();
-			}
-		}
-
-		[HarmonyPatch(typeof(GameDataSaveLoader))]
-		[HarmonyPatch(nameof(GameDataSaveLoader.LoadGame), typeof(string))]
-		static class GameDataSaveLoader_LoadGame_Patch
-		{
-			static void Prefix()
-			{
-				ZombieBlob.ReleaseAllRenderResources();
 			}
 		}
 

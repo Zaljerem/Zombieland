@@ -1240,12 +1240,34 @@ namespace ZombieLand
 			if (errorsField?.GetValue(null) is System.Collections.ICollection errors)
 				errorCount = errors.Count;
 			var errorDialogOpen = Find.WindowStack?.IsOpen(typeof(Dialog_ErrorMessage)) == true;
+			var patchFailureDialogOpen = Find.WindowStack?.IsOpen(typeof(Dialog_PatchGroupFailures)) == true;
+			var patchGroups = PatchGroups.Current
+				.Select(result => new
+				{
+					result.Id,
+					result.Label,
+					state = result.State.ToString(),
+					result.Order,
+					result.IsFailure,
+					patchTypeCount = result.PatchTypes.Count,
+					failedPatchTypes = result.FailedPatchTypes.ToArray(),
+					result.Summary
+				})
+				.OrderBy(result => result.Order)
+				.ToArray();
+			var patchGroupFailures = patchGroups
+				.Where(result => result.IsFailure)
+				.ToArray();
 
 			return new
 			{
-				success = errorCount == 0 && errorDialogOpen == false,
+				success = errorCount == 0 && errorDialogOpen == false && patchFailureDialogOpen == false && patchGroupFailures.Length == 0,
 				errorCount,
 				errorDialogOpen,
+				patchFailureDialogOpen,
+				patchGroupFailureCount = patchGroupFailures.Length,
+				patchGroups,
+				patchGroupFailures,
 				windowStackAvailable = Find.WindowStack != null
 			};
 		}

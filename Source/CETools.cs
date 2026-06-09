@@ -24,11 +24,20 @@ namespace ZombieLand
 		public static void Init(Harmony harmony)
 		{
 			latePatching = true;
-			_ = new PatchClassProcessor(harmony, typeof(CETools_Patch1)).Patch();
-			_ = new PatchClassProcessor(harmony, typeof(CETools_Patch2)).Patch();
-			_ = new PatchClassProcessor(harmony, typeof(CETools_Patch3)).Patch();
-			_ = new PatchClassProcessor(harmony, typeof(CETools_Patch4)).Patch();
-			latePatching = false;
+			try
+			{
+				PatchGroups.ApplyLateGroup(harmony, PatchGroups.Optional, new[]
+				{
+					typeof(CETools_Patch1),
+					typeof(CETools_Patch2),
+					typeof(CETools_Patch3),
+					typeof(CETools_Patch4)
+				});
+			}
+			finally
+			{
+				latePatching = false;
+			}
 		}
 	}
 

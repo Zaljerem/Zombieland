@@ -19,7 +19,7 @@ Use `scripts/coverage-inventory.sh --dependency-gates` as the compact current-st
 - negative_space: 1
 - patch: 296
 - scenario: 18
-- supporting_infra: 27
+- supporting_infra: 29
 
 ### By owner_cluster
 
@@ -39,19 +39,19 @@ Use `scripts/coverage-inventory.sh --dependency-gates` as the compact current-st
 - save_load: 14
 - settings: 16
 - social: 12
-- startup: 17
+- startup: 19
 - supporting_infra: 3
 - ui: 20
 
 ## 3. Source files covered vs unassigned
 
-Original generated source inventory size: 136 files. Local reconciliation on 2026-05-31 with `find Source -type f -name '*.cs' -not -path '*/obj/*'` found 160 non-obj source files in the current checkout after the focused Anomaly, Awareness Cues, Death Pall, skip-abduction, and paralysis support slices were added.
+Original generated source inventory size: 136 files. Local reconciliation on 2026-05-31 with `find Source -type f -name '*.cs' -not -path '*/obj/*'` found 163 non-obj source files in the current checkout after the focused Anomaly, Awareness Cues, Death Pall, skip-abduction, paralysis support, patch-group infrastructure, and startup patch split slices were added.
 
-Original backstop source rows created: 14. The broad `Constants` and `Tools` rows were split into named source sub-surface rows on 2026-05-31, the debug-action source received an explicit source/decompiler disposition on 2026-06-01, and the 2026-06-06 reconciliation added source rows for Anomaly targeting, Awareness Cues, ZombieCorpseAppearance, and ZombieDeathPallUtility, so the current index has 26 `SRC.*` rows after obsolete `Gas` and unused `DistanceComparer` were deleted. These are not meant to inflate behavior coverage; they are guardrails for files or helper sub-surfaces that were discovered but not otherwise named by a feature, patch, integration, or bridge row.
+Original backstop source rows created: 14. The broad `Constants` and `Tools` rows were split into named source sub-surface rows on 2026-05-31, the debug-action source received an explicit source/decompiler disposition on 2026-06-01, the 2026-06-06 reconciliation added source rows for Anomaly targeting, Awareness Cues, ZombieCorpseAppearance, and ZombieDeathPallUtility, and the 2026-06-09 patch-grouping slice added source rows for `PatchGroups` and `Dialog_PatchGroupFailures`, so the current index has 28 `SRC.*` rows after obsolete `Gas` and unused `DistanceComparer` were deleted. These are not meant to inflate behavior coverage; they are guardrails for files or helper sub-surfaces that were discovered but not otherwise named by a feature, patch, integration, or bridge row.
 
-The 2026-05-31 source-backstop cleanup resolved all 23 then-current `SRC.*` rows, the 2026-06-01 debug-action pass resolved `SRC.DebugActions`, and the 2026-06-06 reconciliation assigned the current Anomaly targeting, Awareness Cues, corpse-appearance, and Death Pall helper files. `BrainzThought`, `ColonyEvaluation`, `ColorData`, `CountingCache`, `Debouncer`, `DebugActions`, `Dialog_ErrorMessage`, `DisposableMaterial`, `Rubble`, `VictimHead`, `ZombieRemover`, all `Constants.*` rows, all `Tools.*` rows, and the new helper rows now point at existing feature/scenario owners or, for `SRC.Tools.HarmonyIL`, the patch-inventory owner. The remaining uncertainty is patch-row granularity, not unassigned source ownership.
+The 2026-05-31 source-backstop cleanup resolved all 23 then-current `SRC.*` rows, the 2026-06-01 debug-action pass resolved `SRC.DebugActions`, the 2026-06-06 reconciliation assigned the current Anomaly targeting, Awareness Cues, corpse-appearance, and Death Pall helper files, and the 2026-06-09 reconciliation assigned the patch-group runner and grouped-failure dialog. `BrainzThought`, `ColonyEvaluation`, `ColorData`, `CountingCache`, `Debouncer`, `DebugActions`, `Dialog_ErrorMessage`, `Dialog_PatchGroupFailures`, `PatchGroups`, `DisposableMaterial`, `Rubble`, `VictimHead`, `ZombieRemover`, all `Constants.*` rows, all `Tools.*` rows, and the new helper rows now point at existing feature/scenario owners or, for `SRC.Tools.HarmonyIL` and `SRC.PatchGroups`, the patch-inventory owner. The remaining uncertainty is patch-row granularity, not unassigned source ownership.
 
-The local reconciliation removed the original "possible undiscovered source" uncertainty. A follow-up exact-path reconciliation assigned every non-obj `Source/*.cs` file to `ZL_COVERAGE_INDEX.tsv` either through a feature row, bridge row, integration row, or supporting-infra/source-backstop row. `scripts/coverage-inventory.sh --source-paths` now verifies this directly; the 2026-06-07 refresh reports 160 covered source paths and 0 unassigned paths.
+The local reconciliation removed the original "possible undiscovered source" uncertainty. A follow-up exact-path reconciliation assigned every non-obj `Source/*.cs` file to `ZL_COVERAGE_INDEX.tsv` either through a feature row, bridge row, integration row, or supporting-infra/source-backstop row. `scripts/coverage-inventory.sh --source-paths` now verifies this directly; the 2026-06-09 refresh reports 163 covered source paths and 0 unassigned paths.
 
 ## 4. Harmony patch count and coverage state
 
