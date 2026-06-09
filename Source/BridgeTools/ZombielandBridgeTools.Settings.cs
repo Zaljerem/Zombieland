@@ -960,7 +960,7 @@ namespace ZombieLand
 				var beforeGizmos = priorityWork?.GetGizmos().ToArray() ?? Array.Empty<Gizmo>();
 				var beforeCommands = beforeGizmos.OfType<Command_Action>().ToArray();
 				var beforeAvoid = FindSettingsCommand(beforeCommands, "Ignore zombies", "Automatically avoid zombies");
-				var beforeExtract = FindSettingsCommand(beforeCommands, "zombie serum");
+				var beforeExtract = FindSettingsCommand(beforeCommands, "zombie extract", "zombie serum");
 				var beforeDoubleTap = FindSettingsCommand(beforeCommands, "double tap");
 				var vanillaPriorityCommandCount = beforeGizmos.OfType<Command>().Count(command => IsSettingsCommand(command) == false);
 
@@ -977,7 +977,7 @@ namespace ZombieLand
 				var afterGizmos = priorityWork?.GetGizmos().ToArray() ?? Array.Empty<Gizmo>();
 				var afterCommands = afterGizmos.OfType<Command_Action>().ToArray();
 				var afterAvoid = FindSettingsCommand(afterCommands, "Ignore zombies", "Automatically avoid zombies");
-				var afterExtract = FindSettingsCommand(afterCommands, "zombie serum");
+				var afterExtract = FindSettingsCommand(afterCommands, "zombie extract", "zombie serum");
 				var afterDoubleTap = FindSettingsCommand(afterCommands, "double tap");
 
 				var beforeHasCommands = beforeAvoid?.disabled == false
@@ -987,7 +987,7 @@ namespace ZombieLand
 					&& config.autoDoubleTap
 					&& config.autoExtractZombieSerum;
 				var afterDescriptionsUpdated = (afterAvoid?.defaultDesc?.Contains("Automatically avoid zombies") ?? false)
-					&& (afterExtract?.defaultDesc?.Contains("Automatically extract zombie serum") ?? false)
+						&& DescriptionContainsAny(afterExtract, "Automatically harvest zombie extract", "Automatically extract zombie serum")
 					&& (afterDoubleTap?.defaultDesc?.Contains("Automatically double tap corpses") ?? false);
 
 				return new
@@ -1228,8 +1228,8 @@ namespace ZombieLand
 				pawn.Name = new NameSingle("ZL_Settings_Gizmo_Colonist");
 				GenSpawn.Spawn(pawn, cell, map, Rot4.South);
 				pawn.workSettings?.EnableAndInitializeIfNotAlreadyInitialized();
-				pawn.workSettings?.SetPriority(WorkTypeDefOf.Doctor, 3);
-				pawn.workSettings?.SetPriority(WorkTypeDefOf.Hunting, 3);
+				SetWorkPriorityIfEnabled(pawn, WorkTypeDefOf.Doctor, 3);
+				SetWorkPriorityIfEnabled(pawn, WorkTypeDefOf.Hunting, 3);
 				if (pawn.CanDoctor() && pawn.CanHunt() && Customization.DoesAttractsZombies(pawn))
 					return pawn;
 
@@ -1238,6 +1238,14 @@ namespace ZombieLand
 					pawn.Destroy(DestroyMode.Vanish);
 			}
 			return null;
+		}
+
+		static void SetWorkPriorityIfEnabled(Pawn pawn, WorkTypeDef workType, int priority)
+		{
+			if (pawn?.workSettings == null || workType == null || pawn.WorkTypeIsDisabled(workType))
+				return;
+
+			pawn.workSettings.SetPriority(workType, priority);
 		}
 
 		static object VerifyApparelBlacklistModal(SettingsGroup settings)
@@ -1674,19 +1682,18 @@ namespace ZombieLand
 
 		static Command_Action FindSettingsCommand(IEnumerable<Command_Action> commands, params string[] fragments)
 		{
-			return commands.FirstOrDefault(command =>
-			{
-				var description = command.defaultDesc ?? string.Empty;
-				return fragments.Any(fragment => description.IndexOf(fragment, StringComparison.OrdinalIgnoreCase) >= 0);
-			});
+			return commands.FirstOrDefault(command => DescriptionContainsAny(command, fragments));
+		}
+
+		static bool DescriptionContainsAny(Command command, params string[] fragments)
+		{
+			var description = command?.defaultDesc ?? string.Empty;
+			return fragments.Any(fragment => description.IndexOf(fragment, StringComparison.OrdinalIgnoreCase) >= 0);
 		}
 
 		static bool IsSettingsCommand(Command command)
 		{
-			var description = command.defaultDesc ?? string.Empty;
-			return description.IndexOf("zombies", StringComparison.OrdinalIgnoreCase) >= 0
-				|| description.IndexOf("zombie serum", StringComparison.OrdinalIgnoreCase) >= 0
-				|| description.IndexOf("double tap", StringComparison.OrdinalIgnoreCase) >= 0;
+			return DescriptionContainsAny(command, "zombies", "zombie extract", "zombie serum", "double tap");
 		}
 
 		static object[] DescribeSettingsGizmos(IEnumerable<Gizmo> gizmos)

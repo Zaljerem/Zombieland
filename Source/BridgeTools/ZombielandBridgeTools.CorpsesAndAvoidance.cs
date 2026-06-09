@@ -565,7 +565,7 @@ namespace ZombieLand
 				if (TryFindClearSpawnCell(map, root, 16f, out var actorCell, out var actorSpawnError) == false)
 					return actorSpawnError;
 
-				var actor = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
+				var actor = GenerateAreaWorkflowPawn(Faction.OfPlayer, false);
 				GenSpawn.Spawn(actor, actorCell, map, WipeMode.Vanish);
 				DisablePawnWork(actor);
 

@@ -221,7 +221,7 @@ reference_columns = [
 ]
 
 print("location\tclass\ttargeting\texact_patch_id\tdisposition_hint\trepresented_by\taudit_mentions")
-for line in patch_inventory.read_text().splitlines():
+for line in patch_inventory.read_bytes().decode(errors="ignore").replace("\r", "").splitlines():
 	if not line.strip():
 		continue
 	location, class_name, targeting, attrs = line.split("\t", 3)
@@ -287,7 +287,7 @@ reference_columns = [
 counts = collections.Counter()
 unrepresented = []
 
-for line in patch_inventory.read_text().splitlines():
+for line in patch_inventory.read_bytes().decode(errors="ignore").replace("\r", "").splitlines():
 	if not line.strip():
 		continue
 	location, class_name, targeting, attrs = line.split("\t", 3)
