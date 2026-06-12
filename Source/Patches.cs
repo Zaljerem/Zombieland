@@ -2765,6 +2765,13 @@ namespace ZombieLand
 					firstTime = false;
 				}
 			}
+
+			static void Postfix(Pawn ___pawn, ref float __result)
+			{
+				var factor = ZombieBlob.SymbioteBenefitFactor(___pawn);
+				if (factor > 0f)
+					__result = Mathf.Lerp(__result, Mathf.Max(__result, 1f), factor);
+			}
 		}
 
 		// patch to reduce instant zombie infections for pawns in incidents
@@ -3828,12 +3835,6 @@ namespace ZombieLand
 					Error("Unexpected code in patch " + MethodBase.GetCurrentMethod().DeclaringType);
 			}
 
-			static void Postfix(Pawn ___pawn, ref float __result)
-			{
-				var factor = ZombieBlob.SymbioteBenefitFactor(___pawn);
-				if (factor > 0f)
-					__result = Mathf.Lerp(__result, Mathf.Max(__result, 1f), factor);
-			}
 		}
 
 		[HarmonyPatch(typeof(SkillRecord))]
