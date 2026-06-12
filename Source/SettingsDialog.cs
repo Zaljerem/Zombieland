@@ -8,7 +8,7 @@ namespace ZombieLand
 {
 	static class SettingsDialog
 	{
-		public static readonly float totalEstimatedHeight = 4350f;
+		public static readonly float totalEstimatedHeight = 4510f;
 		public static Vector2 scrollPosition = Vector2.zero;
 
 		public static void DoWindowContentsInternal(ref SettingsGroup settings, ref List<SettingsKeyFrame> settingsOverTime, Rect inRect)
@@ -195,6 +195,34 @@ namespace ZombieLand
 					list.Dialog_FloatSlider("ChildZombieChance", _ => "{0:0.00%}", true, ref settings.childChance, 0f, 1f);
 					list.Gap(8f);
 					list.Dialog_FloatSlider("SpitterThreat", f => f == 0f ? "Off".TranslateSimple() : "{0:0%}", false, ref settings.spitterThreat, 0f, 5f);
+					list.Gap(24f);
+				}
+
+				if (DialogExtensions.Section<string>(":ZombieBlobTitle", ":BlobEnabled", ":BlobSpawnCooldownDays", ":BlobExpansionIntervalHours", ":BlobPostFeedPauseHours", ":BlobMaxCells", ":BlobFullBenefitRoomCoverage", ":BlobSeveranceMaturityCoverage", ":BlobSeveranceMaturityMinCells", ":BlobSeveranceMaturityMaxCells", ":BlobSeveranceReserveCoverage", ":BlobSeveranceReserveMin", ":BlobSeveranceReserveMax", ":BlobZombieIgnoreMinBenefit", ":BlobDecouplingFeedPulsesPerDay", ":BlobSymbioteMaxSkillBonus", ":BlobPathCost", ":BlobCanBreakConstructedWalls", ":BlobCoagulantPotency"))
+				{
+					list.Dialog_Label("ZombieBlobTitle", headerColor);
+					list.Dialog_Checkbox("BlobEnabled", ref settings.blobEnabled);
+					if (settings.blobEnabled)
+					{
+						list.Gap(8f);
+						list.Dialog_FloatSlider("BlobSpawnCooldownDays", _ => "{0:0.0} days", false, ref settings.blobSpawnCooldownDays, 1f, 60f);
+						list.Dialog_TimeSlider("BlobExpansionIntervalHours", ref settings.blobExpansionIntervalHours, 1, 72);
+						list.Dialog_TimeSlider("BlobPostFeedPauseHours", ref settings.blobPostFeedPauseHours, 0, 72);
+						list.Dialog_IntSlider("BlobMaxCells", value => value.ToString(), ref settings.blobMaxCells, 10, ZombieBlob.MAX_METABALLS);
+						list.Dialog_FloatSlider("BlobFullBenefitRoomCoverage", _ => "{0:0%}", false, ref settings.blobFullBenefitRoomCoverage, 0.05f, 0.50f);
+						list.Dialog_FloatSlider("BlobSeveranceMaturityCoverage", _ => "{0:0%}", false, ref settings.blobSeveranceMaturityCoverage, 0.10f, 1f);
+						list.Dialog_IntSlider("BlobSeveranceMaturityMinCells", value => value.ToString(), ref settings.blobSeveranceMaturityMinCells, 1, 100);
+						list.Dialog_IntSlider("BlobSeveranceMaturityMaxCells", value => value.ToString(), ref settings.blobSeveranceMaturityMaxCells, 10, 200);
+						list.Dialog_FloatSlider("BlobSeveranceReserveCoverage", _ => "{0:0%}", false, ref settings.blobSeveranceReserveCoverage, 0.05f, 0.50f);
+						list.Dialog_IntSlider("BlobSeveranceReserveMin", value => value.ToString(), ref settings.blobSeveranceReserveMin, 1, 100);
+						list.Dialog_IntSlider("BlobSeveranceReserveMax", value => value.ToString(), ref settings.blobSeveranceReserveMax, 10, 200);
+						list.Dialog_FloatSlider("BlobZombieIgnoreMinBenefit", _ => "{0:0%}", false, ref settings.blobZombieIgnoreMinBenefit, 0f, 1f);
+						list.Dialog_IntSlider("BlobDecouplingFeedPulsesPerDay", value => value.ToString(), ref settings.blobDecouplingFeedPulsesPerDay, 1, 8);
+						list.Dialog_IntSlider("BlobSymbioteMaxSkillBonus", value => "+" + value, ref settings.blobSymbioteMaxSkillBonus, 0, 10);
+						list.Dialog_IntSlider("BlobPathCost", value => value.ToString(), ref settings.blobPathCost, 0, 800);
+						list.Dialog_Checkbox("BlobCanBreakConstructedWalls", ref settings.blobCanBreakConstructedWalls);
+						list.Dialog_EnumSlider("BlobCoagulantPotency", ref settings.blobCoagulantPotency);
+					}
 					list.Gap(24f);
 				}
 

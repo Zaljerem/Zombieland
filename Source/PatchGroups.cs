@@ -585,6 +585,8 @@ namespace ZombieLand
 			"ZombieLand.Patches+DamageWorker_Bite_ChooseHitPart_Patch",
 			"ZombieLand.Patches+HediffSet_CalculatePain_Patch",
 			"ZombieLand.Patches+PawnCapacitiesHandler_GetLevel_Patch",
+			"ZombieLand.Patches+SkillRecord_GetLevel_Patch",
+			"ZombieLand.Patches+SkillRecord_GetLevelForUI_Patch",
 			"ZombieLand.Patches+HealthUtility_DamageUntilDowned_Patch",
 			"ZombieLand.Patches+Pawn_GeneTracker_AddGene_Gene_Patch",
 			"ZombieLand.Patches+Pawn_GeneTracker_AddGene_GeneDef_Patch",

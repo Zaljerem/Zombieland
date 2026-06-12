@@ -50,6 +50,49 @@
 		<workerClass>ZombieLand.ZombieSerumFilterWorker</workerClass>
 	</SpecialThingFilterDef>
 
+	<RecipeDef ParentName="SurgeryFlesh">
+		<defName>SeverBlobSymbiosis</defName>
+		<label>sever blob symbiosis</label>
+		<description>Safely separates a prepared colonist from their linked zombie blob. Requires a full decoupling reserve and a blob reduced to three visible cells or fewer.</description>
+		<workerClass>ZombieLand.Recipe_SeverBlobSymbiosis</workerClass>
+		<jobString>Severing blob symbiosis.</jobString>
+		<targetsBodyPart>true</targetsBodyPart>
+		<anesthetize>true</anesthetize>
+		<workAmount>2600</workAmount>
+		<effectWorking>Surgery</effectWorking>
+		<soundWorking>Recipe_Surgery</soundWorking>
+		<workSpeedStat>MedicalOperationSpeed</workSpeedStat>
+		<workSkill>Medicine</workSkill>
+		<workSkillLearnFactor>32</workSkillLearnFactor>
+		<hideBodyPartNames>false</hideBodyPartNames>
+		<ingredients>
+			<li>
+				<filter>
+					<thingDefs>
+						<li>BlobCoagulantPack</li>
+					</thingDefs>
+				</filter>
+				<count>1</count>
+			</li>
+			<li>
+				<filter>
+					<categories>
+						<li>Medicine</li>
+					</categories>
+				</filter>
+				<count>1</count>
+			</li>
+		</ingredients>
+		<fixedIngredientFilter>
+			<thingDefs>
+				<li>BlobCoagulantPack</li>
+			</thingDefs>
+			<categories>
+				<li>Medicine</li>
+			</categories>
+		</fixedIngredientFilter>
+	</RecipeDef>
+
 	<RecipeDef>
 		<defName>MakeZombieSerum</defName>
 		<label>make zombie serum from zombie extract</label>
@@ -104,6 +147,44 @@
 		</recipeUsers>
 		<products>
 			<ZombieSerumSimple>1</ZombieSerumSimple>
+		</products>
+	</RecipeDef>
+
+	<RecipeDef>
+		<defName>MakeBlobCoagulantPack</defName>
+		<label>make blob coagulant pack</label>
+		<description>Craft one blob coagulant pack from zombie extract and chemfuel. Feed it to a zombie blob to build decoupling reserve and trigger a strong recession pulse.</description>
+		<jobString>Making blob coagulant pack.</jobString>
+		<workAmount>900</workAmount>
+		<ingredients>
+			<li>
+				<filter>
+					<thingDefs>
+						<li>ZombieExtract</li>
+					</thingDefs>
+				</filter>
+				<count>5</count>
+			</li>
+			<li>
+				<filter>
+					<thingDefs>
+						<li>Chemfuel</li>
+					</thingDefs>
+				</filter>
+				<count>10</count>
+			</li>
+		</ingredients>
+		<fixedIngredientFilter>
+			<thingDefs>
+				<li>ZombieExtract</li>
+				<li>Chemfuel</li>
+			</thingDefs>
+		</fixedIngredientFilter>
+		<recipeUsers>
+			<li>CraftingSpot</li>
+		</recipeUsers>
+		<products>
+			<BlobCoagulantPack>1</BlobCoagulantPack>
 		</products>
 	</RecipeDef>
 

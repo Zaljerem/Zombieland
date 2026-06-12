@@ -565,3 +565,36 @@ Each scenario definition should include:
 - Required source/decompiler checks for the RimWorld 1.6 APIs involved.
 - Runtime assertions and visual/log/performance artifacts.
 - Prior commits that already cover the primitives so the scenario does not duplicate them.
+
+## Zombie Blob Symbiosis
+
+Code surface: `Source/ZombieBlob.cs`, `Source/Hediff_BlobSymbiosis.cs`, `Source/Recipe_SeverBlobSymbiosis.cs`, `Source/JobDriver_Blob.cs`, `Source/JobDriver_FeedZombieBlob.cs`, `Source/WorkGivers.cs`, `Source/TickManager.cs`, `Source/Patches.cs`, blob/coagulant/hediff/surgery defs, and `zombieland/blob_infestation_state`.
+
+Implementation state:
+- Source implementation added 2026-06-11 and redesigned as blob symbiosis 2026-06-12, with review-driven plan updates after that. The blob has ordered persisted cells, a configurable max-cells gameplay cap that defaults to 400 with an 800-cell render/buffer ceiling, a dedicated expansion clock, feed pause timing, feed request state, source-side metaball count support, an authoritative linked-host reference/id, decoupling reserve, peak/maturity state, and daily feed-pulse counters.
+- Natural spawning is one active blob per map with its own cooldown and a used indoor room selector. Host selection is independent from the spawn room and requires an eligible free adult colonist; no eligible host means natural spawning is skipped. Debug hostless slime remains allowed as a lesser cleanup/test case. The `BlobSymbiosis` hediff is display/sync state only and is recreated while the authoritative blob link remains active.
+- Expansion adds one cell per pulse, spreads through room/door cells, and can destroy one constructed player wall when boxed in. Natural rock is not breached.
+- Colonists can be ordered to feed a selected blob. The workgiver consumes one humanlike non-Zombieland corpse or one `BlobCoagulantPack`, adds bounded severance reserve, may shrink cells only above the safe visible minimum, plays feedback, pauses growth, respects the per-day feed-pulse cap, and suppresses the next wall breach opportunity. Reserve is not fully effective until the symbiosis has matured from historical peak integrated goo.
+- Safe removal is surgery-only: `SeverBlobSymbiosis` is available on the linked host only when symbiosis maturity is reached, severance reserve is full, and the blob is reduced to three visible cells or fewer. Unsafe blob destruction reflects trauma to the linked host and can kill the host when effective reserve is insufficient; host death collapses the blob messily without reward drops.
+- Linked-host benefits scale from integrated visible blob size only: active colony-room goo counts fully, remote abandoned containment goo counts reduced, and reserve never fakes presence. Skill bonus, pain/capacity/need/mental-state support, and zombie targeting protection are weak or absent for small blobs; hard zombie ignore is only allowed at medium benefit or better.
+- `Pawn_PathFollower.CostToMoveIntoCell` now applies the dedicated blob movement cost to non-Zombieland pawns on blob cells without direct injury/hediff/mood/filth effects.
+- Blob-occupied rooms lose beauty and cannot score as impressive while goo remains in the room. Pawns standing on goo have reduced medical tend speed and general work speed, keeping hospital/kitchen/work-room disruption positional and non-lethal.
+- `BlobCoagulantPack` and the normal crafting recipe are defined. The Cheap/Normal/Expensive coagulant setting is implemented as potency, not recipe cost: it changes decoupling/recession pulse strength while XML recipe cost stays normal for v1. Existing `blobCoagulantRecipeCost` saves migrate to `blobCoagulantPotency`.
+
+Required runtime evidence:
+- Build and cold-load def resolution.
+- Spawn in a real used bedroom/kitchen-style room with letter and linked host when an eligible colonist exists; natural spawn skips cleanly when no eligible host exists.
+- Host eligibility rejects children, prisoners, slaves, guests, temporary joiners, quest lodgers, caravaning/unavailable pawns, holograms, non-flesh optional-mod pawns, existing blob hosts, and late/active zombie infection cases.
+- Heddiff removal resilience: removing `BlobSymbiosis` while the blob link remains active causes the blob to recreate it.
+- Expansion through room cells and under a closed door.
+- Wall-cage breakout through one constructed wall and natural-rock non-breach.
+- Path-cost slowdown without health/hediff side effects.
+- Room beauty/impressiveness disruption and standing-on-goo work/tend speed penalties.
+- Feed with ordinary/fresh/large humanlike corpses and with `BlobCoagulantPack`; verify reserve gain, safe-visible-minimum shrink behavior, daily feed-pulse cap, maturity-limited effective reserve, and wall-breach suppression.
+- Prepared-player exploit evidence: keeping a brand-new one-cell blob fed twice per day does not enable safe severance before maturity.
+- Linked-host benefit evidence: integrated visible blob size changes benefit factor, skill bonus, pain/capacity/need/mental-state support, and zombie targeting protection; hard zombie ignore is absent at one cell and present only at medium benefit or better.
+- Safe severance evidence: maturity plus full bounded severance reserve plus three-or-fewer visible cells enables surgery, successful surgery removes the blob/link/hediff, and failure consumes reserve and injures through surgery failure behavior.
+- Unsafe destruction evidence: effective reserve absorbs direct blob damage first, insufficient effective reserve harms/kills the host, and host death collapses the blob without recursion, reward drops, or random splash damage.
+- Save/load preservation for ordered cells, host link, hediff recreation, reserve, daily feed counter, timers, and feed request.
+- Stress default 400-cell cap, then raise the setting and stress the 800-cell render/buffer ceiling.
+- Warning-or-higher logs clean after runtime actions.

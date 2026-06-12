@@ -2581,7 +2581,7 @@ namespace ZombieLand
 
 			static bool ShouldBeAverageNeed(Pawn pawn)
 			{
-				return infectedColonists.Contains(pawn);
+				return infectedColonists.Contains(pawn) || ZombieBlob.HasZombieTargetingProtection(pawn);
 			}
 
 			[HarmonyPriority(Priority.First)]
@@ -2675,7 +2675,7 @@ namespace ZombieLand
 		{
 			static bool NoMentalState(Pawn pawn)
 			{
-				return Need_CurLevel_Patch.infectedColonists.Contains(pawn);
+				return Need_CurLevel_Patch.infectedColonists.Contains(pawn) || ZombieBlob.HasZombieTargetingProtection(pawn);
 			}
 
 			[HarmonyPriority(Priority.First)]
@@ -2721,6 +2721,13 @@ namespace ZombieLand
 					return false;
 				}
 				return true;
+			}
+
+			static void Postfix(HediffSet __instance, ref float __result)
+			{
+				var factor = ZombieBlob.SymbioteBenefitFactor(__instance.pawn);
+				if (factor > 0f)
+					__result *= 1f - 0.75f * factor;
 			}
 		}
 
@@ -3820,6 +3827,33 @@ namespace ZombieLand
 				if (!found)
 					Error("Unexpected code in patch " + MethodBase.GetCurrentMethod().DeclaringType);
 			}
+
+			static void Postfix(Pawn ___pawn, ref float __result)
+			{
+				var factor = ZombieBlob.SymbioteBenefitFactor(___pawn);
+				if (factor > 0f)
+					__result = Mathf.Lerp(__result, Mathf.Max(__result, 1f), factor);
+			}
+		}
+
+		[HarmonyPatch(typeof(SkillRecord))]
+		[HarmonyPatch(nameof(SkillRecord.GetLevel))]
+		static class SkillRecord_GetLevel_Patch
+		{
+			static void Postfix(SkillRecord __instance, ref int __result)
+			{
+				ZombieBlob.ApplySymbioteSkillBonus(__instance, ref __result);
+			}
+		}
+
+		[HarmonyPatch(typeof(SkillRecord))]
+		[HarmonyPatch(nameof(SkillRecord.GetLevelForUI))]
+		static class SkillRecord_GetLevelForUI_Patch
+		{
+			static void Postfix(SkillRecord __instance, ref int __result)
+			{
+				ZombieBlob.ApplySymbioteSkillBonus(__instance, ref __result);
+			}
 		}
 
 		// patch for variable zombie stats (speed, pain, melee, dodge)
@@ -3829,6 +3863,7 @@ namespace ZombieLand
 		static class StatExtension_GetStatValue_Patch
 		{
 			static readonly float defaultHumanMoveSpeed = ThingDefOf.Human.statBases.First(mod => mod.stat == StatDefOf.MoveSpeed).value;
+			static readonly StatDef cookingSpeed = DefDatabase<StatDef>.GetNamedSilentFail("CookingSpeed");
 			static readonly HashSet<StatDef> ignoredStats = new StatDef[]
 			{
 				DefDatabase<StatDef>.GetNamed("SmokeSensitivity", false),
@@ -4008,6 +4043,45 @@ namespace ZombieLand
 				}
 
 				return true;
+			}
+
+			static void Postfix(Thing thing, StatDef stat, ref float __result)
+			{
+				if (thing is not Pawn pawn || pawn.Spawned == false || IsZombielandPawn(pawn))
+					return;
+				if (ZombieBlob.IsBlobCell(pawn.Map, pawn.Position, out _) == false)
+					return;
+				if (stat == StatDefOf.MedicalTendSpeed)
+					__result *= 0.65f;
+				else if (stat == StatDefOf.WorkSpeedGlobal || stat == StatDefOf.GeneralLaborSpeed || stat == StatDefOf.CleaningSpeed || stat == cookingSpeed)
+					__result *= 0.80f;
+			}
+		}
+
+		// patch so blob-infested rooms feel disrupted without direct pawn damage
+		//
+		[HarmonyPatch(typeof(RoomStatWorker_Beauty))]
+		[HarmonyPatch(nameof(RoomStatWorker_Beauty.GetScore))]
+		static class RoomStatWorker_Beauty_GetScore_Patch
+		{
+			static void Postfix(Room room, ref float __result)
+			{
+				var blobCells = ZombieBlob.CountCellsInRoom(room);
+				if (blobCells <= 0)
+					return;
+				__result -= Mathf.Min(40f, 4f + blobCells * 2f);
+			}
+		}
+
+		[HarmonyPatch(typeof(RoomStatWorker_Impressiveness))]
+		[HarmonyPatch(nameof(RoomStatWorker_Impressiveness.GetScore))]
+		static class RoomStatWorker_Impressiveness_GetScore_Patch
+		{
+			static void Postfix(Room room, ref float __result)
+			{
+				if (ZombieBlob.CountCellsInRoom(room) <= 0)
+					return;
+				__result = Mathf.Min(__result, 0f);
 			}
 		}
 
@@ -4803,6 +4877,7 @@ namespace ZombieLand
 				}
 
 				var pawn = __instance;
+				ZombieBlob.NotifyHostKilled(pawn);
 				var raceProps = pawn.RaceProps;
 
 				if (raceProps.Humanlike == false || raceProps.IsFlesh == false)
@@ -5814,12 +5889,15 @@ namespace ZombieLand
 		{
 			static void Postfix(Pawn pawn, IntVec3 c, ref float __result)
 			{
-				if (pawn.Map.thingGrid.ThingAt<TarSlime>(c) == null)
-					return;
-				if (IsZombielandPawn(pawn))
-					__result = GenMath.LerpDouble(0, 5, 150, 14, Tools.Difficulty());
-				else
-					__result = GenMath.LerpDouble(0, 5, 14, 400, Tools.Difficulty());
+				if (pawn.Map.thingGrid.ThingAt<TarSlime>(c) != null)
+				{
+					if (IsZombielandPawn(pawn))
+						__result = GenMath.LerpDouble(0, 5, 150, 14, Tools.Difficulty());
+					else
+						__result = GenMath.LerpDouble(0, 5, 14, 400, Tools.Difficulty());
+				}
+				if (IsZombielandPawn(pawn) == false && ZombieBlob.IsBlobCell(pawn.Map, c, out _))
+					__result = Mathf.Max(__result, ZombieSettings.Values.blobPathCost);
 			}
 		}
 
@@ -5922,6 +6000,12 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(Pawn_HealthTracker.PreApplyDamage))]
 		static class Pawn_HealthTracker_PreApplyDamage_Patch
 		{
+			static void Prefix(Pawn ___pawn, ref DamageInfo dinfo)
+			{
+				if (___pawn is ZombieBlob blob)
+					blob.PreApplyLinkedDamage(ref dinfo);
+			}
+
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
 			{
 				var m_TryGainMemory = typeof(MemoryThoughtHandler).MethodNamed(nameof(MemoryThoughtHandler.TryGainMemory), new Type[] { typeof(ThoughtDef), typeof(Pawn), typeof(Precept) });

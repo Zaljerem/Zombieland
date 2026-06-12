@@ -27,8 +27,21 @@
 	<LetterLabelZombiesRisingNearYourBase>Direct zombie attack</LetterLabelZombiesRisingNearYourBase>
 	<ZombiesRisingNearYourBase>A group of zombies appears near your base</ZombiesRisingNearYourBase>
 
-	<LetterLabelZombiesSpitter>Zombie spitter attack</LetterLabelZombiesSpitter>
-	<ZombiesSpitter>A zombie spitter has entered the map and will lay siege to you</ZombiesSpitter>
+		<LetterLabelZombiesSpitter>Zombie spitter attack</LetterLabelZombiesSpitter>
+		<ZombiesSpitter>A zombie spitter has entered the map and will lay siege to you</ZombiesSpitter>
+
+		<LetterLabelZombieBlob>Zombie blob infestation</LetterLabelZombieBlob>
+		<ZombieBlob>A wet green seep has pushed up through cracks in one of your rooms. It has linked itself to {0}; the more visible slime remains, the stronger the bond becomes.</ZombieBlob>
+		<ZombieBlobNoHost>A wet green seep has pushed up through cracks in one of your rooms. It has not linked to a colonist yet, but it will keep searching.</ZombieBlobNoHost>
+		<ZombieBlobInspect>Zombie blob cells: {0}/{1}\nLinked host: {2}\nSymbiosis strength: {3}%\nDecoupling reserve: {4}/{5}\nFeed pulses left today: {6}</ZombieBlobInspect>
+		<FeedZombieBlob>Feed blob</FeedZombieBlob>
+		<CancelFeedZombieBlob>Cancel blob feeding</CancelFeedZombieBlob>
+		<FeedZombieBlobDesc>Colonists will feed the blob with a humanlike corpse or a blob coagulant pack. Each feeding builds decoupling reserve, may shrink excess slime, pauses growth, and cannot remove the final cells.</FeedZombieBlobDesc>
+		<FeedingZombieBlob>feeding zombie blob</FeedingZombieBlob>
+		<NoBlobFeed>No humanlike corpse or blob coagulant pack available</NoBlobFeed>
+		<BlobFeedLimitReached>Blob feed pulse limit reached today</BlobFeedLimitReached>
+		<BlobFedMote>squelch +{0} reserve, -{1} cells</BlobFedMote>
+		<SeverBlobSymbiosis>sever blob symbiosis</SeverBlobSymbiosis>
 
 	<LetterLabelXDaysUntilZombies>{0} until zombies come</LetterLabelXDaysUntilZombies>
 	<XDaysUntilZombies>Zombies will appear where there is soft soil, dirt, sand, or gravel. Building floors prevents zombies from emerging from those cells.</XDaysUntilZombies>
@@ -178,10 +191,32 @@
 	<HealerChance>Healer zombies</HealerChance>
 	<NormalZombieChance>Ordinary zombies: {0}</NormalZombieChance>
 	<ChildZombieChance>Zombie children</ChildZombieChance>
-	<SpitterThreat>Zombie spitter difficulty</SpitterThreat>
-	<WallPushing>Number of zombies that will push other zombies over walls</WallPushing>
+		<SpitterThreat>Zombie spitter difficulty</SpitterThreat>
+		<WallPushing>Number of zombies that will push other zombies over walls</WallPushing>
+		<ZombieBlobTitle>Zombie blob</ZombieBlobTitle>
+		<BlobEnabled>Enable zombie blob infestation</BlobEnabled>
+		<BlobSpawnCooldownDays>Days between blob infestations</BlobSpawnCooldownDays>
+		<BlobExpansionIntervalHours>Hours between blob growth</BlobExpansionIntervalHours>
+		<BlobPostFeedPauseHours>Hours after feeding before growth resumes</BlobPostFeedPauseHours>
+		<BlobMaxCells>Blob max cells</BlobMaxCells>
+		<BlobFullBenefitRoomCoverage>Room coverage for full symbiosis</BlobFullBenefitRoomCoverage>
+		<BlobSeveranceMaturityCoverage>Severance maturity coverage</BlobSeveranceMaturityCoverage>
+		<BlobSeveranceMaturityMinCells>Severance maturity min cells</BlobSeveranceMaturityMinCells>
+		<BlobSeveranceMaturityMaxCells>Severance maturity max cells</BlobSeveranceMaturityMaxCells>
+		<BlobSeveranceReserveCoverage>Severance reserve coverage</BlobSeveranceReserveCoverage>
+		<BlobSeveranceReserveMin>Severance reserve min pulses</BlobSeveranceReserveMin>
+		<BlobSeveranceReserveMax>Severance reserve max pulses</BlobSeveranceReserveMax>
+		<BlobZombieIgnoreMinBenefit>Zombie ignore benefit threshold</BlobZombieIgnoreMinBenefit>
+		<BlobDecouplingFeedPulsesPerDay>Decoupling feed pulses per day</BlobDecouplingFeedPulsesPerDay>
+		<BlobSymbioteMaxSkillBonus>Max symbiote skill bonus</BlobSymbioteMaxSkillBonus>
+		<BlobPathCost>Blob movement cost</BlobPathCost>
+		<BlobCanBreakConstructedWalls>Blob can break constructed walls</BlobCanBreakConstructedWalls>
+		<BlobCoagulantPotency>Blob coagulant potency</BlobCoagulantPotency>
+		<BlobCoagulantPotency_Cheap>Cheap</BlobCoagulantPotency_Cheap>
+		<BlobCoagulantPotency_Normal>Normal</BlobCoagulantPotency_Normal>
+		<BlobCoagulantPotency_Expensive>Expensive</BlobCoagulantPotency_Expensive>
 
-	<ZombieMiscTitle>Miscellaneous</ZombieMiscTitle>
+		<ZombieMiscTitle>Miscellaneous</ZombieMiscTitle>
 	<UseCustomTextures>Use custom textures</UseCustomTextures>
 	<ReplaceTwinkie>Change survival meals to Twinkies</ReplaceTwinkie>
 	<Zombieland_Twinkie_Label>Twinkie</Zombieland_Twinkie_Label>

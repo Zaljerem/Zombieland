@@ -1020,6 +1020,8 @@ namespace ZombieLand
 
 				if (target.InfectionState() == InfectionState.Infecting)
 					return false;
+				if (ZombieBlob.HasZombieTargetingProtection(target))
+					return false;
 
 				if (AnomalyTargeting.IsForcedTarget(target))
 					return true;

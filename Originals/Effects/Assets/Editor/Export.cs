@@ -434,29 +434,32 @@ public class CreateAssetBundles
 			#pragma vertex vert_img
 			#pragma fragment frag
 
-			struct Metaball
-			{
-				float radius;
-				float power;
-				float2 position;
-				float2 direction;
-				float4 color;
-			};
+				struct Metaball
+				{
+					float radius;
+					float size;
+					float power;
+					float2 position;
+					float2 direction;
+					float4 color;
+				};
 
-			StructuredBuffer<Metaball> _MetaballBuffer;
+				StructuredBuffer<Metaball> _MetaballBuffer;
+				int _MetaballCount;
 
 			float4 frag(v2f_img input) : SV_Target
 			{
 				float field = 0.0;
 				float3 color = 0.0;
-				for (int i = 0; i < 64; i++)
-				{
-					Metaball ball = _MetaballBuffer[i];
-					if (ball.radius <= 0.0001)
-						continue;
+					for (int i = 0; i < _MetaballCount; i++)
+					{
+						Metaball ball = _MetaballBuffer[i];
+						if (ball.radius <= 0.0001)
+							continue;
 
-					float2 delta = input.uv - ball.position;
-					float contribution = (ball.radius * ball.radius) / max(dot(delta, delta), 0.00001);
+						float2 delta = input.uv - ball.position;
+						float effectiveRadius = ball.radius * max(ball.size, 0.05);
+						float contribution = (effectiveRadius * effectiveRadius) / max(dot(delta, delta), 0.00001);
 					contribution *= max(ball.power, 0.0);
 					field += contribution;
 					color += ball.color.rgb * contribution;

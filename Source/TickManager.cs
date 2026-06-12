@@ -127,6 +127,8 @@ namespace ZombieLand
 		public int lastZombieContact = 0;
 		public int lastZombieSpitter = 0;
 		public bool zombieSpitterInited = false;
+		public int lastZombieBlob = 0;
+		public bool zombieBlobInited = false;
 
 		public TickManager(Map map) : base(map)
 		{
@@ -243,6 +245,8 @@ namespace ZombieLand
 			Scribe_Values.Look(ref lastZombieContact, "lastZombieContact");
 			Scribe_Values.Look(ref lastZombieSpitter, "lastZombieSpitter");
 			Scribe_Values.Look(ref zombieSpitterInited, "zombieSpitterInited");
+			Scribe_Values.Look(ref lastZombieBlob, "lastZombieBlob");
+			Scribe_Values.Look(ref zombieBlobInited, "zombieBlobInited");
 
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
 			{
@@ -263,7 +267,13 @@ namespace ZombieLand
 					lastZombieSpitter = ticks;
 					zombieSpitterInited = true;
 				}
+				if (zombieBlobInited == false)
+				{
+					lastZombieBlob = GenTicks.TicksGame;
+					zombieBlobInited = true;
+				}
 			}
+
 		}
 
 		static Mesh headMesh;
@@ -516,6 +526,20 @@ namespace ZombieLand
 
 		void HandleIncidents()
 		{
+			if (ZombieSettings.Values.blobEnabled && zombieBlobInited)
+			{
+				var ticks = GenTicks.TicksGame;
+				var cooldownTicks = Mathf.Max(1f, ZombieSettings.Values.blobSpawnCooldownDays) * GenDate.TicksPerDay;
+				if (NewMapZombieDelay(ticks) == false
+					&& ticks - lastZombieBlob > cooldownTicks
+					&& ZombieBlob.ActiveBlob(map) == null
+					&& ZombieWeather.GetThreatLevel(map) > 0f)
+				{
+					if (ZombieBlob.TrySpawnInBestRoom(map))
+						lastZombieBlob = ticks;
+				}
+			}
+
 			if (ZombieSettings.Values.spitterThreat > 0f && zombieSpitterInited)
 			{
 				var ticks = GenTicks.TicksGame;

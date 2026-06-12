@@ -213,4 +213,82 @@ namespace ZombieLand
 			return GenClosest.ClosestThingReachable(pawn.Position, pawn.Map, thingReq, PathEndMode.InteractionCell, traverseParms, 9999f, predicate);
 		}
 	}
+
+	public class WorkGiver_FeedZombieBlob : WorkGiver_Scanner
+	{
+		static readonly string NoBlobFeedTrans = "NoBlobFeed".Translate();
+		static readonly string BlobFeedLimitReachedTrans = "BlobFeedLimitReached".Translate();
+
+		public override ThingRequest PotentialWorkThingRequest => ThingRequest.ForDef(CustomDefs.ZombieBlob);
+		public override PathEndMode PathEndMode => PathEndMode.Touch;
+		public override bool Prioritized => true;
+		public override int MaxRegionsToScanBeforeGlobalSearch => 8;
+
+		public override IEnumerable<Thing> PotentialWorkThingsGlobal(Pawn pawn)
+		{
+			if (pawn.IsColonist == false)
+				return Enumerable.Empty<Thing>();
+			return pawn.Map.mapPawns.AllPawns
+				.OfType<ZombieBlob>()
+				.Where(blob => blob.DestroyedOrNull() == false && blob.Spawned && blob.FeedRequested && blob.FeedPulsesRemaining > 0)
+				.Cast<Thing>();
+		}
+
+		public override bool HasJobOnThing(Pawn pawn, Thing t, bool forced = false)
+		{
+			if (pawn.IsColonist == false || t is not ZombieBlob blob)
+				return false;
+			if (blob.FeedRequested == false)
+				return false;
+			if (blob.FeedPulsesRemaining <= 0)
+			{
+				JobFailReason.Is(BlobFeedLimitReachedTrans, null);
+				return false;
+			}
+			if (pawn.CanReach(blob, PathEndMode.Touch, forced ? Danger.Deadly : pawn.NormalMaxDanger()) == false)
+				return false;
+			var feed = FindClosestFeed(pawn, blob);
+			if (feed == null)
+			{
+				JobFailReason.Is(NoBlobFeedTrans, null);
+				return false;
+			}
+			return true;
+		}
+
+		public override Job JobOnThing(Pawn pawn, Thing t, bool forced = false)
+		{
+			if (t is not ZombieBlob blob)
+				return null;
+			var feed = FindClosestFeed(pawn, blob);
+			if (feed == null)
+				return null;
+			var job = JobMaker.MakeJob(CustomDefs.FeedZombieBlob, blob, feed);
+			job.count = 1;
+			return job;
+		}
+
+		public static Thing FindClosestFeed(Pawn pawn, ZombieBlob blob)
+		{
+			if (pawn?.Map == null)
+				return null;
+
+			bool Valid(Thing thing)
+			{
+				return thing.DestroyedOrNull() == false
+					&& thing.Spawned
+					&& thing.IsForbidden(pawn) == false
+					&& ZombieBlob.IsValidFeed(thing)
+					&& pawn.CanReserve(thing)
+					&& pawn.CanReach(thing, PathEndMode.Touch, pawn.NormalMaxDanger());
+			}
+
+			var map = pawn.Map;
+			var candidates = map.listerThings.ThingsInGroup(ThingRequestGroup.Corpse)
+				.Concat(map.listerThings.ThingsOfDef(CustomDefs.BlobCoagulantPack))
+				.Where(Valid)
+				.OrderBy(thing => thing.Position.DistanceToSquared(blob.Position));
+			return candidates.FirstOrDefault();
+		}
+	}
 }

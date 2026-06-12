@@ -37,6 +37,13 @@ namespace ZombieLand
 		Allow
 	}
 
+	public enum BlobCoagulantPotency
+	{
+		Cheap,
+		Normal,
+		Expensive
+	}
+
 	public enum SmashMode
 	{
 		Nothing,
@@ -260,6 +267,24 @@ namespace ZombieLand
 		public bool floatingZombies = true;
 		public float childChance = 0.02f;
 		public float spitterThreat = 1f;
+		public bool blobEnabled = true;
+		public float blobSpawnCooldownDays = 12f;
+		public int blobExpansionIntervalHours = 16;
+		public int blobPostFeedPauseHours = 16;
+		public int blobMaxCells = 400;
+		public float blobFullBenefitRoomCoverage = 0.20f;
+		public float blobSeveranceMaturityCoverage = 0.50f;
+		public int blobSeveranceMaturityMinCells = 10;
+		public int blobSeveranceMaturityMaxCells = 80;
+		public float blobSeveranceReserveCoverage = 0.25f;
+		public int blobSeveranceReserveMin = 12;
+		public int blobSeveranceReserveMax = 60;
+		public float blobZombieIgnoreMinBenefit = 0.50f;
+		public int blobDecouplingFeedPulsesPerDay = 2;
+		public int blobSymbioteMaxSkillBonus = 6;
+		public int blobPathCost = 220;
+		public bool blobCanBreakConstructedWalls = true;
+		public BlobCoagulantPotency blobCoagulantPotency = BlobCoagulantPotency.Normal;
 		public int minimumZombiesForWallPushing = 18;
 		public List<string> blacklistedApparel = new();
 		public float contaminationBaseFactor = 1f;
@@ -330,6 +355,14 @@ namespace ZombieLand
 				}
 				return true;
 			});
+
+			if (Scribe.mode == LoadSaveMode.LoadingVars)
+			{
+				var savedPotency = blobCoagulantPotency.ToString();
+				Scribe_Values.Look(ref savedPotency, "blobCoagulantRecipeCost", blobCoagulantPotency.ToString());
+				if (Enum.TryParse<BlobCoagulantPotency>(savedPotency, true, out var potency))
+					blobCoagulantPotency = potency;
+			}
 
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
 				Tools.UpdateBiomeBlacklist(biomesWithoutZombies);

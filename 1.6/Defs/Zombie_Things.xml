@@ -201,6 +201,29 @@
 		<resourceReadoutPriority>First</resourceReadoutPriority>
 	</ThingDef>
 
+	<ThingDef ParentName="ResourceBase">
+		<defName>BlobCoagulantPack</defName>
+		<label>blob coagulant pack</label>
+		<description>A sealed packet of zombie extract and volatile fuel that makes zombie blob tissue coagulate. Feeding one pack to a zombie blob triggers a strong recession pulse.</description>
+		<graphicData>
+			<graphicClass>Graphic_Single</graphicClass>
+			<texPath>ZombieExtract</texPath>
+			<color>(0.5, 1, 0.55)</color>
+		</graphicData>
+		<stackLimit>25</stackLimit>
+		<statBases>
+			<MarketValue>28</MarketValue>
+			<Mass>0.15</Mass>
+			<MaxHitPoints>20</MaxHitPoints>
+			<Flammability>0.8</Flammability>
+			<Nutrition>0</Nutrition>
+			<WorkToMake>900</WorkToMake>
+		</statBases>
+		<thingCategories>
+			<li>ResourcesRaw</li>
+		</thingCategories>
+	</ThingDef>
+
 	<ThingDef ParentName="UnfinishedBase">
 		<defName>UnfinishedZombieSerum</defName>
 		<label>unfinished zombie serum</label>

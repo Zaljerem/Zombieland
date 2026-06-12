@@ -42,6 +42,16 @@
 		</stages>
 	</HediffDef>
 
+	<HediffDef>
+		<defName>BlobSymbiosis</defName>
+		<label>blob symbiosis</label>
+		<description>A zombie blob has linked itself to this colonist. The visible slime mass grants protection and heightened ability, but destroying the blob without a prepared decoupling reserve can traumatize or kill the host.</description>
+		<hediffClass>ZombieLand.Hediff_BlobSymbiosis</hediffClass>
+		<isBad>false</isBad>
+		<scenarioCanAdd>false</scenarioCanAdd>
+		<everCurableByItem>false</everCurableByItem>
+	</HediffDef>
+
 	<HediffDef ParentName="DiseaseBase">
 		<defName>ContaminationEffect</defName>
 		<label>contamination</label>

@@ -30,8 +30,8 @@
 		<canBeDoneWhileDrafted>true</canBeDoneWhileDrafted>
 	</WorkGiverDef>
 
-	<WorkGiverDef>
-		<defName>FixBrokenChainsaw</defName>
+		<WorkGiverDef>
+			<defName>FixBrokenChainsaw</defName>
 		<label>fix broken-down chainsaw</label>
 		<giverClass>ZombieLand.WorkGiver_FixBrokenChainsaw</giverClass>
 		<workType>Construction</workType>
@@ -42,6 +42,20 @@
 			<li>Manipulation</li>
 		</requiredCapacities>
 		<prioritizeSustains>true</prioritizeSustains>
-	</WorkGiverDef>
+		</WorkGiverDef>
 
-</Defs>
+		<WorkGiverDef>
+			<defName>FeedZombieBlob</defName>
+			<label>feed zombie blob</label>
+			<giverClass>ZombieLand.WorkGiver_FeedZombieBlob</giverClass>
+			<workType>Hauling</workType>
+			<verb>feed</verb>
+			<gerund>feeding</gerund>
+			<priorityInType>80</priorityInType>
+			<requiredCapacities>
+				<li>Manipulation</li>
+			</requiredCapacities>
+			<canBeDoneWhileDrafted>false</canBeDoneWhileDrafted>
+		</WorkGiverDef>
+
+	</Defs>

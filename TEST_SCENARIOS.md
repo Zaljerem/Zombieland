@@ -874,3 +874,46 @@ Current runtime evidence:
 
 Completion:
 - Covered when there is a repeatable local baseline after correctness scenarios pass.
+
+## S-Blob-Symbiosis
+
+Status:
+- Planned and partially implemented 2026-06-11; redesigned as blob symbiosis 2026-06-12 and review-adjusted with maturity, bounded severance reserve, stricter host eligibility, integrated-goo benefits, and coagulant potency naming. Runtime evidence is still pending.
+
+Fixture:
+- Start from `EMPTY.rws` or a small colony room fixture with one enclosed bedroom/kitchen-style room, one closed door, one constructed wall cage variant, one natural-rock blocker, at least one eligible free adult colonist, one ineligible host set, one remote unused containment room, one humanlike corpse quality/body-size set, medicine, and one crafted or spawned `BlobCoagulantPack`.
+
+Bridge contract:
+- `zombieland/blob_infestation_state` supports `read`, `spawn`, `expand`, `feedCoagulant`, and `stress` modes.
+- The bridge read state must report host identity, hediff presence, benefit factor, integrated visible cells, peak cells, maturity state, eligible room cells, full-benefit cells, severance maturity cells, decoupling reserve, effective reserve, severance reserve requirement, safe visible minimum, feed pulses today/per-day/remaining, and safe-severance readiness.
+
+Required checks:
+- `scripts/build-quiet.sh`.
+- Cold-load warning-or-higher logs clean.
+- Natural or bridge spawn creates one blob, one initial cell, a player letter, and a linked eligible host when one exists.
+- Natural spawn with no eligible host is skipped without consuming cooldown; debug hostless slime uses the lesser cleanup path and has no surgery/host trauma.
+- Host selection rejects children, prisoners, slaves, guests, temporary joiners, quest lodgers, caravaning/unavailable pawns, holograms, non-flesh optional-mod pawns, existing blob hosts, and late/active zombie infection cases.
+- Host selection is independent from spawn-room steering; moving one colonist into a disposable room must not deterministically choose that pawn.
+- `BlobSymbiosis` is display/sync state: external hediff removal while the authoritative link remains active causes the blob to recreate it.
+- Expansion pulse adds exactly one cell or destroys one constructed wall and occupies it.
+- Door cells can be occupied while the door remains a door.
+- Natural rock blocks expansion.
+- Feeding with coagulant and a humanlike non-Zombieland corpse triggers the expected decoupling reserve pulse, may remove newest excess cells above the safe visible minimum, pauses growth, and suppresses the next constructed-wall breach opportunity.
+- Ordinary corpse, fresh corpse, large corpse, normal coagulant, and expensive coagulant pulse strengths are verified for reserve gain and recession amount.
+- Feed pulses per day are capped, so stockpiled corpses/coagulant cannot instantly neutralize a newly spawned blob.
+- Prepared-player case is covered: feeding a one-cell blob twice per day cannot enable safe severance before maturity.
+- Symbiosis maturity triggers only after peak integrated goo reaches `severanceMaturityCells` or medium benefit once, and persists after shrinkage.
+- Feeding cannot remove the final cell and cannot shrink below `safeVisibleMinimum`.
+- Integrated visible blob size, not reserve, controls linked-host benefit factor and skill bonus; remote abandoned containment goo counts reduced.
+- Linked host receives the intended non-lethal benefit set: skill bonus, pain reduction, capacity stabilization, need averaging, mental-break dampening at medium strength, and zombie targeting protection only at medium benefit or better.
+- Maturity plus full bounded severance reserve plus three-or-fewer visible cells enables `SeverBlobSymbiosis`; successful surgery removes blob, link, and hediff without host trauma.
+- Failed severance consumes reserve and injures through the surgery-failure path while keeping the link active.
+- Unsafe direct blob damage consumes reserve first, reflects leftover trauma to the host, and insufficient reserve can kill the host.
+- Host death by ordinary damage, player action, despawn/deletion edge cases, and caravan/map-leave edges collapses the linked blob without recursive host-kill behavior, reward drops, or random splash damage.
+- Blob-occupied bedrooms/dining/rec rooms lose beauty/impressiveness value, and a pawn standing on goo has reduced work/tend speed without damage, hediffs, disease, filth, or item destruction.
+- Save/load keeps ordered cells, host link/id, recreated hediff, peak/maturity state, decoupling reserve, effective reserve behavior, daily feed counter, feed timing, and feed request.
+- Disabling blob events while a blob already exists stops future spawns without silently deleting the active blob.
+- Lowering `blobMaxCells` below current cell count stops further growth without deleting existing cells.
+- Multi-map behavior keeps one active blob per map and prevents cross-map host selection.
+- Default 400-cell stress reaches the configured cap without growth beyond it.
+- Raised-setting 800-cell stress reaches the render/buffer ceiling without shader buffer or save/load errors.

@@ -9,11 +9,12 @@ namespace ZombieLand
 {
 	public class ZombieBlobRenderer : System.IDisposable
 	{
-		public const int MAX_METABALLS = 64;
+		public const int MAX_METABALLS = ZombieBlob.MAX_METABALLS;
 
 		public struct Metaball
 		{
 			public float radius;
+			public float size;
 			public float power;
 			public Vector2 position;
 			public Vector2 direction;
@@ -53,7 +54,7 @@ namespace ZombieLand
 			var max_x = cells.Max(c => c.x) + 0.5f;
 			var max_y = cells.Max(c => c.z) + 0.5f;
 
-			cells.Do(cell =>
+				cells.Take(MAX_METABALLS).Do(cell =>
 			{
 				Add(new Vector2(cell.x, cell.z), min_x, min_y, max_x, max_y, 0.035f);
 				// map.designationManager.AddDesignation(new Designation(cell, DesignationDefOf.Plan, null));
@@ -88,8 +89,9 @@ namespace ZombieLand
 			var y = GenMath.LerpDouble(min_y, max_y, 0, 1, cell.y);
 			metaballs.Add(new Metaball
 			{
-				radius = radius,
-				power = 1,
+					radius = radius,
+					size = 1f,
+					power = 1,
 				position = new Vector2(x, y),
 				direction = Vector2.zero,
 				color = color,
@@ -105,8 +107,9 @@ namespace ZombieLand
 
 		public void Update()
 		{
-			metaballBuffer.SetData(metaballs, 0, 0, metaballs.Count);
-			metaballMaterial.SetBuffer("_MetaballBuffer", metaballBuffer);
-		}
+				metaballBuffer.SetData(metaballs, 0, 0, Mathf.Min(metaballs.Count, MAX_METABALLS));
+				metaballMaterial.SetBuffer("_MetaballBuffer", metaballBuffer);
+				metaballMaterial.SetInt("_MetaballCount", Mathf.Min(metaballs.Count, MAX_METABALLS));
+			}
 	}
 }

@@ -15,15 +15,22 @@
 		<suspendable>false</suspendable>
 	</JobDef>
 
-	<JobDef>
-		<defName>Blob</defName>
-		<driverClass>ZombieLand.JobDriver_Blob</driverClass>
-		<reportString>blubbering.</reportString>
-		<suspendable>false</suspendable>
-	</JobDef>
+		<JobDef>
+			<defName>Blob</defName>
+			<driverClass>ZombieLand.JobDriver_Blob</driverClass>
+			<reportString>blubbering.</reportString>
+			<suspendable>false</suspendable>
+		</JobDef>
 
-	<JobDef>
-		<defName>Spitter</defName>
+		<JobDef>
+			<defName>FeedZombieBlob</defName>
+			<driverClass>ZombieLand.JobDriver_FeedZombieBlob</driverClass>
+			<reportString>feeding TargetB to TargetA.</reportString>
+			<allowOpportunisticPrefix>false</allowOpportunisticPrefix>
+		</JobDef>
+
+		<JobDef>
+			<defName>Spitter</defName>
 		<driverClass>ZombieLand.JobDriver_Spitter</driverClass>
 		<reportString>spitting.</reportString>
 		<suspendable>false</suspendable>

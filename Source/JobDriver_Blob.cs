@@ -15,6 +15,7 @@ namespace ZombieLand
 
 		void TickAction()
 		{
+			blob?.BlobTick();
 		}
 
 		public override void Notify_PatherArrived()

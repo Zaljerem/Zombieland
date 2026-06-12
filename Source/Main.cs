@@ -56,14 +56,17 @@ namespace ZombieLand
 		public static JobDef Sabotage;
 		public static JobDef Spitter;
 		public static JobDef Blob;
+		public static JobDef FeedZombieBlob;
 		public static JobDef ExtractZombieSerum;
 		public static JobDef DoubleTap;
 		public static JobDef RopeZombie;
 		public static JobDef ZapZombies;
 		public static JobDef FixBrokenChainsaw;
 		public static RecipeDef CureZombieInfection;
+		public static RecipeDef SeverBlobSymbiosis;
 		public static ThingDef Zombie;
 		public static ThingDef ZombieExtract;
+		public static ThingDef BlobCoagulantPack;
 		public static ThingDef Corpse_Zombie;
 		public static ThingDef TarSlime;
 		public static ThingDef TarSmoke;
@@ -79,6 +82,7 @@ namespace ZombieLand
 		public static ThingDef Mote_Block;
 		public static ThingDef Ghost;
 		public static HediffDef ZombieInfection;
+		public static HediffDef BlobSymbiosis;
 		public static LetterDef ColonistTurnedZombie;
 		public static LetterDef OtherTurnedZombie;
 		public static LetterDef DangerousSituation;
