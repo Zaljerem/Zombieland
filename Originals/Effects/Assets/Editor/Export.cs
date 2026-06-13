@@ -8,6 +8,7 @@ using System.Linq;
 public class CreateAssetBundles
 {
 	static readonly string[] Architectures = { "Win64", "Linux", "MacOS" };
+	const string BundleName = "zombieland";
 	const string GeneratedAssetDir = "Assets/_Zombieland";
 	static readonly string[] ExpectedAssetNames =
 	{
@@ -32,18 +33,49 @@ public class CreateAssetBundles
 	[MenuItem("Assets/Export Zombieland")]
 	public static void BuildStandaloneAssetBundles()
 	{
+		BuildAssetBundles(Architectures);
+	}
+
+	[MenuItem("Assets/Export Zombieland Current Platform")]
+	public static void BuildCurrentMachineAssetBundle()
+	{
+		BuildSingleAssetBundle(CurrentArchitecture());
+	}
+
+	public static void BuildWin64AssetBundle()
+	{
+		BuildSingleAssetBundle("Win64");
+	}
+
+	public static void BuildLinuxAssetBundle()
+	{
+		BuildSingleAssetBundle("Linux");
+	}
+
+	public static void BuildMacOSAssetBundle()
+	{
+		BuildSingleAssetBundle("MacOS");
+	}
+
+	static void BuildSingleAssetBundle(string arch)
+	{
+		BuildAssetBundles(new[] { arch });
+	}
+
+	static void BuildAssetBundles(IEnumerable<string> architectures)
+	{
+		var selectedArchitectures = architectures.ToArray();
 		EnsureGeneratedBundleAssets();
-		Build("Win64", BuildTarget.StandaloneWindows64);
-		Build("Linux", BuildTarget.StandaloneLinux64);
-		Build("MacOS", BuildTarget.StandaloneOSX);
-		ValidateDeployedAssetBundles();
+		foreach (var arch in selectedArchitectures)
+			Build(arch);
+		ValidateDeployedAssetBundles(selectedArchitectures);
 	}
 
 	public static void ListDeployedAssetBundles()
 	{
 		foreach (var arch in Architectures)
 		{
-			var path = Path.Combine(DeploymentDir(), arch, "zombieland");
+			var path = Path.Combine(DeploymentDir(), arch, BundleName);
 			Debug.Log($"Zombieland bundle {arch}: {path}");
 			var bundle = AssetBundle.LoadFromFile(path);
 			if (bundle == null)
@@ -61,7 +93,7 @@ public class CreateAssetBundles
 	{
 		foreach (var arch in Architectures)
 		{
-			var path = Path.Combine(DeploymentDir(), arch, "zombieland");
+			var path = Path.Combine(DeploymentDir(), arch, BundleName);
 			var bundle = AssetBundle.LoadFromFile(path);
 			if (bundle == null)
 			{
@@ -88,9 +120,14 @@ public class CreateAssetBundles
 
 	public static void ValidateDeployedAssetBundles()
 	{
-		foreach (var arch in Architectures)
+		ValidateDeployedAssetBundles(Architectures);
+	}
+
+	static void ValidateDeployedAssetBundles(IEnumerable<string> architectures)
+	{
+		foreach (var arch in architectures)
 		{
-			var path = Path.Combine(DeploymentDir(), arch, "zombieland");
+			var path = Path.Combine(DeploymentDir(), arch, BundleName);
 			var bundle = AssetBundle.LoadFromFile(path);
 			if (bundle == null)
 				throw new System.Exception($"Could not load asset bundle {path}");
@@ -129,7 +166,7 @@ public class CreateAssetBundles
 	static void LogMaterial(string arch, string assetName, Material material)
 	{
 		Debug.Log($"Zombieland bundle inspect {arch}: material={assetName}, shader={material.shader?.name ?? "null"}, renderQueue={material.renderQueue}, color={GetMaterialColor(material)}");
-		foreach (var property in new[] { "_MainTex", "_BumpMap", "_Mode", "_SrcBlend", "_DstBlend", "_ZWrite", "_Cull" })
+		foreach (var property in new[] { "_MainTex", "_BumpMap", "_Mode", "_SrcBlend", "_DstBlend", "_ZWrite", "_Cull", "_BlobOpacityMin", "_BlobOpacityMax", "_BlobNoiseScale", "_BlobNoiseDrift", "_BlobNoiseTime" })
 		{
 			if (material.HasProperty(property) == false)
 				continue;
@@ -395,7 +432,49 @@ public class CreateAssetBundles
 		UnityEngine.Object.DestroyImmediate(texture);
 	}
 
-	static void Build(string arch, BuildTarget target)
+	static string CurrentArchitecture()
+	{
+		switch (Application.platform)
+		{
+			case RuntimePlatform.WindowsEditor:
+				return "Win64";
+			case RuntimePlatform.LinuxEditor:
+				return "Linux";
+			case RuntimePlatform.OSXEditor:
+				return "MacOS";
+			default:
+				throw new Exception($"Unsupported Unity editor platform for Zombieland asset bundle build: {Application.platform}");
+		}
+	}
+
+	static BuildTarget TargetForArchitecture(string arch)
+	{
+		switch (arch)
+		{
+			case "Win64":
+				return BuildTarget.StandaloneWindows64;
+			case "Linux":
+				return BuildTarget.StandaloneLinux64;
+			case "MacOS":
+				return BuildTarget.StandaloneOSX;
+			default:
+				throw new Exception($"Unknown Zombieland asset bundle architecture: {arch}");
+		}
+	}
+
+	static string DeployBundle(string arch, string bundlePath)
+	{
+		var dest = Path.Combine(DeploymentDir(), arch);
+		if (!Directory.Exists(dest))
+			Directory.CreateDirectory(dest);
+
+		var destPath = Path.Combine(dest, BundleName);
+		File.Copy(bundlePath, destPath, true);
+		Debug.Log($"Zombieland bundle deployed {arch}: path={destPath}");
+		return destPath;
+	}
+
+	static void Build(string arch)
 	{
 		var src = $"Assets/AssetBundles/{arch}";
 		if (Directory.Exists(src))
@@ -403,17 +482,13 @@ public class CreateAssetBundles
 		Directory.CreateDirectory(src);
 		AssetDatabase.Refresh();
 
-		BuildPipeline.BuildAssetBundles(src, BuildAssetBundleOptions.None, target);
+		BuildPipeline.BuildAssetBundles(src, BuildAssetBundleOptions.None, TargetForArchitecture(arch));
 
-		var bundlePath = Path.Combine(src, "zombieland");
+		var bundlePath = Path.Combine(src, BundleName);
 		if (File.Exists(bundlePath) == false)
-			throw new Exception($"Unity did not produce {bundlePath}. No source asset is currently labelled for the zombieland asset bundle.");
+			throw new Exception($"Unity did not produce {bundlePath}. No source asset is currently labelled for the {BundleName} asset bundle.");
 
-		var dest = Path.Combine(DeploymentDir(), arch);
-		if (!Directory.Exists(dest))
-			Directory.CreateDirectory(dest);
-
-		File.Copy(bundlePath, Path.Combine(dest, "zombieland"), true);
+		DeployBundle(arch, bundlePath);
 	}
 
 	const string MetaballsShaderSource = @"Shader ""Custom/Metaballs""
@@ -436,12 +511,9 @@ public class CreateAssetBundles
 
 				struct Metaball
 				{
-					float radius;
-					float size;
-					float power;
-					float2 position;
-					float2 direction;
-					float4 color;
+					float4 shape;
+					float4 motion;
+					float4 tint;
 				};
 
 				StructuredBuffer<Metaball> _MetaballBuffer;
@@ -454,15 +526,16 @@ public class CreateAssetBundles
 					for (int i = 0; i < _MetaballCount; i++)
 					{
 						Metaball ball = _MetaballBuffer[i];
-						if (ball.radius <= 0.0001)
+						float radius = ball.shape.x;
+						if (radius <= 0.0001)
 							continue;
 
-						float2 delta = input.uv - ball.position;
-						float effectiveRadius = ball.radius * max(ball.size, 0.05);
+						float2 delta = input.uv - ball.motion.xy;
+						float effectiveRadius = radius * max(ball.shape.y, 0.05);
 						float contribution = (effectiveRadius * effectiveRadius) / max(dot(delta, delta), 0.00001);
-					contribution *= max(ball.power, 0.0);
+					contribution *= max(ball.shape.z, 0.0);
 					field += contribution;
-					color += ball.color.rgb * contribution;
+					color += ball.tint.rgb * contribution;
 				}
 
 				float alpha = smoothstep(0.45, 0.75, field);

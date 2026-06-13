@@ -1176,11 +1176,13 @@ namespace ZombieLand
 			{
 				success = Assets.initialized
 					&& Assets.MetaballShader != null
+					&& Assets.ZombieBlobShader != null
 					&& dustInstantiated
 					&& dustHasParticleSystem
 					&& dustHasRenderer,
 				Assets.initialized,
 				metaballShader = Assets.MetaballShader?.name,
+				zombieBlobShader = Assets.ZombieBlobShader?.name,
 				dust = new
 				{
 					instantiated = dustInstantiated,

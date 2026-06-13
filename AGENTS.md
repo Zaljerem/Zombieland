@@ -30,6 +30,14 @@ Commit policy:
 - Release/version-bump commits are the exception: include the rebuilt `ZombieLand.dll` files together with the version files changed by the bump, currently `Directory.Build.props`, `About/About.xml`, and `About/Manifest.xml`.
 - Do not use `.gitignore` or `git update-index --skip-worktree` as the shared policy for these DLLs. They are tracked files and release commits must remain able to update them intentionally.
 
+Asset bundle workflow:
+
+- Use `./scripts/build-assetbundles.sh` for Unity shader and asset bundle builds from `Originals/Effects`; do not re-invent manual Unity command lines or rely on the GUI for routine bundle work.
+- For quick local shader/material iteration, use `./scripts/build-assetbundles.sh --current` or `--quick`; on this Mac it rebuilds only `Resources/MacOS/zombieland`.
+- For release-like validation, use `./scripts/build-assetbundles.sh --full`; it rebuilds and validates `Resources/Win64/zombieland`, `Resources/Linux/zombieland`, and `Resources/MacOS/zombieland`.
+- The bundle output path is always `Resources/{OS}/zombieland`. If Unity generates files under `Originals/Effects/Assets/AssetBundles` or `Originals/Effects/Assets/_Zombieland`, treat them as intermediates; the mod consumes the copied files under `Resources`.
+- Read `scripts/README.md` before changing the Unity asset bundle workflow. It documents the script parameters, Unity methods, Rosetta requirement on Apple Silicon, validation output, and generated cache cleanup expectations.
+
 Operating model:
 
 - Static/decompiler pass first. For every Harmony patch group, prove the target exists, the signature still matches, closure/delegate targets still have the same role, and the patch still makes semantic sense in RimWorld 1.6 before launching the game. This catches stale targets and 1.4-era assumptions early.

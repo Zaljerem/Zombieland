@@ -522,7 +522,9 @@ namespace ZombieLand
 				assets = new
 				{
 					Assets.initialized,
-					hasMetaballShader = Assets.MetaballShader != null
+					hasMetaballShader = Assets.MetaballShader != null,
+					hasZombieBlobShader = Assets.ZombieBlobShader != null,
+					zombieBlobShader = Assets.ZombieBlobShader?.name
 				}
 			};
 		}

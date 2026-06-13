@@ -4048,9 +4048,17 @@ namespace ZombieLand
 
 			static void Postfix(Thing thing, StatDef stat, ref float __result)
 			{
-				if (thing is not Pawn pawn || pawn.Spawned == false || IsZombielandPawn(pawn))
+				if (ZombieBlob.DebugDisableCellStatEffects)
 					return;
-				if (ZombieBlob.IsBlobCell(pawn.Map, pawn.Position, out _) == false)
+				if (stat != StatDefOf.MedicalTendSpeed
+					&& stat != StatDefOf.WorkSpeedGlobal
+					&& stat != StatDefOf.GeneralLaborSpeed
+					&& stat != StatDefOf.CleaningSpeed
+					&& stat != cookingSpeed)
+					return;
+				if (thing is not Pawn pawn)
+					return;
+				if (ZombieBlob.IsBlobCellForAffectedPawn(pawn, pawn.Position, out _) == false)
 					return;
 				if (stat == StatDefOf.MedicalTendSpeed)
 					__result *= 0.65f;
@@ -5639,6 +5647,27 @@ namespace ZombieLand
 
 		// patch to prevent thoughts on zombies
 		//
+		static List<Pawn> AllAlivePawnsSnapshot()
+		{
+			return PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive.ToList();
+		}
+
+		static List<Pawn> AllAliveColonistsSnapshot()
+		{
+			return PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive_Colonists.ToList();
+		}
+
+		[HarmonyPatch(typeof(PawnDiedOrDownedThoughtsUtility), "AppendThoughts_ForHumanlike")]
+		static class PawnDiedOrDownedThoughtsUtility_AppendThoughts_ForHumanlike_Patch
+		{
+			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+			{
+				var from = AccessTools.PropertyGetter(typeof(PawnsFinder), nameof(PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive));
+				var to = SymbolExtensions.GetMethodInfo(() => AllAlivePawnsSnapshot());
+				return Transpilers.MethodReplacer(instructions, from, to);
+			}
+		}
+
 		[HarmonyPatch(typeof(PawnDiedOrDownedThoughtsUtility))]
 		[HarmonyPatch(nameof(PawnDiedOrDownedThoughtsUtility.TryGiveThoughts))]
 		[HarmonyPatch(new Type[] { typeof(Pawn), typeof(DamageInfo?), typeof(PawnDiedOrDownedThoughtsKind) })]
@@ -5648,6 +5677,13 @@ namespace ZombieLand
 			static bool Prefix(Pawn victim)
 			{
 				return victim is not Zombie || (victim is Zombie zombie && zombie.DevelopmentalStage.Child());
+			}
+
+			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+			{
+				var from = AccessTools.PropertyGetter(typeof(PawnsFinder), nameof(PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive_Colonists));
+				var to = SymbolExtensions.GetMethodInfo(() => AllAliveColonistsSnapshot());
+				return Transpilers.MethodReplacer(instructions, from, to);
 			}
 		}
 
@@ -5890,14 +5926,18 @@ namespace ZombieLand
 		{
 			static void Postfix(Pawn pawn, IntVec3 c, ref float __result)
 			{
-				if (pawn.Map.thingGrid.ThingAt<TarSlime>(c) != null)
+				var map = pawn?.Map;
+				if (map == null)
+					return;
+				var isZombielandPawn = IsZombielandPawn(pawn);
+				if (map.thingGrid.ThingAt<TarSlime>(c) != null)
 				{
-					if (IsZombielandPawn(pawn))
+					if (isZombielandPawn)
 						__result = GenMath.LerpDouble(0, 5, 150, 14, Tools.Difficulty());
 					else
 						__result = GenMath.LerpDouble(0, 5, 14, 400, Tools.Difficulty());
 				}
-				if (IsZombielandPawn(pawn) == false && ZombieBlob.IsBlobCell(pawn.Map, c, out _))
+				if (ZombieBlob.DebugDisablePathCost == false && ZombieBlob.IsBlobCellForAffectedPawn(pawn, c, out _))
 					__result = Mathf.Max(__result, ZombieSettings.Values.blobPathCost);
 			}
 		}

@@ -1,142 +1,111 @@
-﻿Shader "Custom/ZombieBlob"
+Shader "Custom/ZombieBlob"
 {
-   SubShader
-   {
-      Tags { "Queue"="Transparent" }
-      Blend SrcAlpha OneMinusSrcAlpha
-      ZWrite off
-      
-      Pass
-      {
-         CGPROGRAM
+	Properties
+	{
+		_MainTex ("Blob Mask", 2D) = "white" {}
+		_Color ("Tint", Color) = (1, 1, 1, 1)
+		_BlobOpacityMin ("Blob Opacity Min", Range(0, 1)) = 0.28
+		_BlobOpacityMax ("Blob Opacity Max", Range(0, 1)) = 0.78
+		_BlobNoiseScale ("Blob Noise Scale", Float) = 0.96
+		_BlobNoiseDrift ("Blob Noise Drift", Float) = 0.05
+		_BlobNoiseTime ("Blob Noise Time", Float) = 0
+	}
 
-         #include "UnityCG.cginc"
-        
-         #pragma target 5.0
-         #pragma vertex vert_img
-         #pragma fragment frag
-         
-         static const float4 color_bg = float4(0.0, 0.0, 0.0, 0.0);
-         static const float4 color_inner = float4(0.0, 0.3, 0.1, 1.0);
-         static const float4 color_highlight = float4(1.0, 1.0, 0.0, 1.0);
-         static const float4 color_outer = float4(0.0, 0.0, 0.0, 0.8);
+	SubShader
+	{
+		Tags { "Queue" = "Transparent" "RenderType" = "Transparent" }
+		Blend SrcAlpha OneMinusSrcAlpha
+		ZWrite Off
+		Cull Off
 
-         static const float2 cellSize = float2(0.058, 0.08);
+		Pass
+		{
+			CGPROGRAM
+			#include "UnityCG.cginc"
 
-         static const float tMax = 0.35;
-         static const float tMin = tMax - 0.1;
+			#pragma target 3.0
+			#pragma vertex vert
+			#pragma fragment frag
 
-         static const float2 powerExponent = float2(1.0, 3.0);
+			sampler2D _MainTex;
+			float4 _MainTex_ST;
+			fixed4 _Color;
+			float _BlobOpacityMin;
+			float _BlobOpacityMax;
+			float _BlobNoiseScale;
+			float _BlobNoiseDrift;
+			float _BlobNoiseTime;
 
-         static const int cellCount = 18;
-         static const float2 positions[cellCount] = 
-         {
-             // bottom left
-             float2(0.45, 0.5),
-             float2(0.6, 0.5),
-             float2(0.75, 0.5),
-             float2(0.9, 0.5),
-    
-             // bottom right
-             float2(1.35, 0.5),
-             float2(1.35, 0.65),
-             float2(1.5, 0.5),
-             float2(1.65, 0.5),
-             float2(1.65, 0.65),
-    
-             // top left
-             float2(0.45, 1.5),
-             float2(0.6, 1.5),
-             float2(0.6, 1.35),
-             float2(0.75, 1.35),
-             float2(0.9, 1.35),
-             float2(1.05, 1.35),
-             float2(0.9, 1.5),
-             float2(1.05, 1.5),
-    
-             // top right
-             float2(1.5, 1.5)
-         };
+			struct appdata
+			{
+				float4 vertex : POSITION;
+				float2 uv : TEXCOORD0;
+			};
 
-         float2 cellPower(int idx, float2 coord, float2 pos)
-         {
-             // test jiggle
-             float offset1 = 300.0 * idx;
-             float offset2 = 700.0 * idx;
-             pos.x += sin(_Time * 60.0 + offset1) / 200.0;
-             pos.y += cos(_Time * 60.0 + offset2) / 200.0;
+			struct v2f
+			{
+				float4 vertex : SV_POSITION;
+				float2 uv : TEXCOORD0;
+				float2 worldXZ : TEXCOORD1;
+			};
 
-             float2 len = coord - pos;
-             float2 power = cellSize * cellSize / dot(len, len);
-             power *= pow(power, powerExponent);
-             return power;
-         }
+			v2f vert(appdata input)
+			{
+				v2f output;
+				output.vertex = UnityObjectToClipPos(input.vertex);
+				output.uv = TRANSFORM_TEX(input.uv, _MainTex);
+				output.worldXZ = mul(unity_ObjectToWorld, input.vertex).xz;
+				return output;
+			}
 
-         float2 powerAt(float2 coord)
-         {
-            float2 pos;
-            float2 power = float2(0.0, 0.0);
-            
-            for(int idx = 0; idx != cellCount; ++idx)
-            {
-               pos = positions[idx];
-               power += cellPower(idx, coord, pos);
-            }
+			float Hash21(float2 p)
+			{
+				p = frac(p * float2(123.34, 456.21));
+				p += dot(p, p + 45.32);
+				return frac(p.x * p.y);
+			}
 
-            /* test simulate expansion
-            float f = sin(_Time * 30.0);
-            if (f >= 0.0)
-            {
-               f = min(1.0, 1.5 * f);
-               float step = f * 0.15;
-        
-               // bottom left
-               pos = float2(0.45 - step, 0.5);
-    	         power += cellPower(cellCount, coord, pos) * f;
-               
-               // bottom right
-               pos = float2(1.5, 0.5 + step);
-    	         power += cellPower(cellCount + 1, coord, pos) * f;
-               
-               // top left
-               pos = float2(0.75, 1.35 - step);
-    	         power += cellPower(cellCount + 2, coord, pos) * f;
-               
-               // top right
-               pos = float2(1.5 + step, 1.5);
-    	         power += cellPower(cellCount + 3, coord, pos) * f;
-            }
-            */
+			float SmoothValueNoise(float2 p)
+			{
+				float2 i = floor(p);
+				float2 f = frac(p);
+				f = f * f * (3.0 - 2.0 * f);
 
-            return power;
-         }
+				float a = Hash21(i);
+				float b = Hash21(i + float2(1.0, 0.0));
+				float c = Hash21(i + float2(0.0, 1.0));
+				float d = Hash21(i + float2(1.0, 1.0));
+				return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+			}
 
-         float4 colorAt(float2 coord)
-         {
-            float2 power = powerAt(coord);
-            float2 power2 = powerAt(coord - float2(0.01, 0.02));
+			float ClusteredNoise(float2 p)
+			{
+				float n = SmoothValueNoise(p);
+				n += SmoothValueNoise(p * 1.73 + float2(19.17, -7.31)) * 0.22;
+				n += SmoothValueNoise(p * 3.31 + float2(-3.43, 29.79)) * 0.08;
+				n /= 1.30;
 
-            float4 color = lerp(color_bg, color_outer, smoothstep(tMin, tMax, power.y));
-            color = lerp(color, color_inner, smoothstep(tMin, tMax, power.x));
-    
-            if (power.x > 0.25 && power.y > 0.25)
-            {
-               float f = 1.0 / dot(power, power);
-               float f2 = 1.0 / dot(power2, power2);
-               color -= color * 0.7 * pow(f, 0.1);
-               color += lerp(color_highlight, color, pow(f2, 0.03)) * 0.25;
-               color.w = lerp(0.2, 0.65, pow(f, 0.01));
-            }
-    
-            return color;
-         }
+				return smoothstep(0.32, 0.68, n);
+			}
 
-         fixed4 frag (v2f_img input) : SV_Target
-         {
-            float2 coord = lerp(float2(0.0, 0.0), float2(2.0, 2.0), input.uv);
-            return colorAt(coord);
-         }
-         ENDCG
-      }
-   }
+			fixed4 frag(v2f input) : SV_Target
+			{
+				fixed4 color = tex2D(_MainTex, input.uv) * _Color;
+				if (color.a <= 0.001)
+					return color;
+
+				float scale = max(_BlobNoiseScale, 0.001);
+				float drift = _BlobNoiseTime * _BlobNoiseDrift;
+				float2 p = input.worldXZ * scale;
+				float cluster = ClusteredNoise(p + float2(drift, -drift * 0.73));
+				cluster = lerp(cluster, ClusteredNoise(p * 0.47 + float2(37.1, 11.8) - drift * 0.31), 0.18);
+
+				float minOpacity = saturate(min(_BlobOpacityMin, _BlobOpacityMax));
+				float maxOpacity = saturate(max(_BlobOpacityMin, _BlobOpacityMax));
+				color.a *= lerp(minOpacity, maxOpacity, cluster);
+				return color;
+			}
+			ENDCG
+		}
+	}
 }

@@ -1,6 +1,7 @@
 ﻿using RimBridgeServer.Annotations;
 using RimWorld;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Verse;
 
@@ -13,17 +14,28 @@ namespace ZombieLand
 			[ToolParameter(Description = "Mode: read, spawn, expand, feedCoagulant, stress.", Required = false, DefaultValue = "read")] string mode = "read",
 			[ToolParameter(Description = "Target x coordinate for spawn/stress. Use -1 with z -1 for automatic placement.", Required = false, DefaultValue = -1)] int x = -1,
 			[ToolParameter(Description = "Target z coordinate for spawn/stress. Use -1 with x -1 for automatic placement.", Required = false, DefaultValue = -1)] int z = -1,
-			[ToolParameter(Description = "Number of expansion pulses or stress cells.", Required = false, DefaultValue = 1)] int count = 1)
+			[ToolParameter(Description = "Number of expansion pulses or stress cells.", Required = false, DefaultValue = 1)] int count = 1,
+			[ToolParameter(Description = "Bridge-only debug performance profile: default, inert, renderOnly, pathOnly, symbiosisOnly, noRender, noPath, noCellStats, or noTick.", Required = false, DefaultValue = "")] string perfProfile = "",
+			[ToolParameter(Description = "Bridge-only max-cell override for stress testing. Use 0 to keep normal settings.", Required = false, DefaultValue = 0)] int maxCellsOverride = 0)
 		{
+			object perfAction = null;
+			if (perfProfile.NullOrEmpty() == false)
+				perfAction = ZombieBlob.SetDebugPerfProfile(perfProfile);
+			object maxCellsOverrideAction = null;
+			if (maxCellsOverride >= 0)
+				maxCellsOverrideAction = ZombieBlob.SetDebugMaxCellsOverride(maxCellsOverride);
+
 			var map = CurrentMap;
 			if (map == null)
-				return new { success = false, error = "No current map is loaded." };
+				return new { success = false, error = "No current map is loaded.", perf = ZombieBlob.DebugPerfState(), perfAction, maxCellsOverrideAction };
 
 			mode = (mode ?? "read").Trim();
 			var blob = ZombieBlob.ActiveBlob(map);
 			object action = null;
 
-			if (mode.Equals("spawn", StringComparison.OrdinalIgnoreCase))
+			if (mode.Equals("profile", StringComparison.OrdinalIgnoreCase))
+				action = ZombieBlob.DebugPerfState();
+			else if (mode.Equals("spawn", StringComparison.OrdinalIgnoreCase))
 			{
 				if (blob == null)
 				{
@@ -79,10 +91,46 @@ namespace ZombieLand
 					blob = ZombieBlob.ActiveBlob(map);
 				}
 				var before = blob?.CellCount ?? 0;
-				foreach (var cell in GenRadial.RadialCellsAround(blob.Position, 30f, true).Take(Math.Max(1, count)))
-					if (cell.InBounds(map) && cell.Walkable(map))
-						ZombieBlob.AddCell(map, cell);
-				action = new { before, requested = count, after = blob?.CellCount ?? 0 };
+				var requested = Math.Max(1, count);
+				var targetBudget = Math.Max(requested, requested + before);
+				var targetCells = new List<IntVec3>(targetBudget);
+				var seen = new HashSet<IntVec3>();
+				var stressRadius = Math.Max(30d, Math.Sqrt(requested / Math.PI) + 8d);
+				foreach (var cell in GenRadial.RadialCellsAround(blob.Position, (float)stressRadius, true))
+				{
+					if (targetCells.Count >= targetBudget)
+						break;
+					if (cell.InBounds(map) && cell.Walkable(map) && seen.Add(cell))
+						targetCells.Add(cell);
+				}
+				var radialCells = targetCells.Count;
+				var squareRadius = Math.Max((int)Math.Ceiling(stressRadius), (int)Math.Ceiling(Math.Sqrt(requested)) / 2 + 8);
+				if (targetCells.Count < targetBudget)
+				{
+					foreach (var cell in CellRect.CenteredOn(blob.Position, squareRadius).ClipInsideMap(map).Cells)
+					{
+						if (targetCells.Count >= targetBudget)
+							break;
+						if (cell.Walkable(map) && seen.Add(cell))
+							targetCells.Add(cell);
+					}
+				}
+				var squareCells = targetCells.Count - radialCells;
+				var added = ZombieBlob.AddCells(map, targetCells);
+				action = new
+				{
+					before,
+					requested = count,
+					targetBudget,
+					added,
+					after = blob?.CellCount ?? 0,
+					stressRadius,
+					radialCells,
+					squareRadius,
+					squareCells,
+					targetCells = targetCells.Count,
+					shape = radialCells >= targetBudget ? "circle" : "squareFill"
+				};
 			}
 
 			blob = ZombieBlob.ActiveBlob(map);
@@ -100,13 +148,31 @@ namespace ZombieLand
 				success = true,
 				mode,
 				action,
+				perf = ZombieBlob.DebugPerfState(),
+				perfAction,
+				maxCellsOverrideAction,
 				blob = blob == null ? null : new
 				{
 					id = ZombieRuntimeActions.StableThingId(blob),
 					position = ZombieRuntimeActions.DescribeCell(blob.Position),
+					drawSize = new { x = blob.DrawSize.x, z = blob.DrawSize.y },
+					occupiedDrawRect = ZombieRuntimeActions.DescribeCellRect(blob.OccupiedDrawRect()),
+					renderWorldSize = new { x = blob.RenderWorldSize.x, z = blob.RenderWorldSize.y },
+					renderTextureSize = new { x = blob.RenderTextureWidth, y = blob.RenderTextureHeight },
+					renderShader = blob.RenderShaderName,
+					renderUsesBlobShader = blob.RenderUsesBlobShader,
+					renderOpacity = new
+					{
+						min = ZombieBlob.RenderOpacityMin,
+						max = ZombieBlob.RenderOpacityMax,
+						noiseScale = ZombieBlob.RenderNoiseScale,
+						noiseDrift = ZombieBlob.RenderNoiseDrift,
+						noiseTickScale = ZombieBlob.RenderNoiseTickScale
+					},
 					cellCount = blob.CellCount,
 					maxCells = ZombieBlob.MaxCells,
 					technicalMaxCells = ZombieBlob.MAX_METABALLS,
+					debugMaxCellsOverride = ZombieBlob.DebugMaxCellsOverride,
 					capped = blob.CellCount >= ZombieBlob.MaxCells,
 					host = host == null ? null : new
 					{

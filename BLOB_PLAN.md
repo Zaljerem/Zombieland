@@ -42,7 +42,7 @@ The blob is not a second spitter and not a normal combat target. The interesting
 - `blobPathCost = 220`
 - `blobCanBreakConstructedWalls = true`
 - `blobCoagulantPotency = Normal`
-- Technical render/buffer ceiling stays `ZombieBlob.MAX_METABALLS = 800`; the gameplay default cap is 400 and can be raised up to that ceiling.
+- Technical render/buffer ceiling is `ZombieBlob.MAX_METABALLS = 4000`; the gameplay default cap remains 400. Larger values are for stress testing or later balancing, not the v1 default.
 
 ## Spawn And Host Link
 
@@ -185,9 +185,96 @@ The blob is not a second spitter and not a normal combat target. The interesting
 
 ## Rendering
 
-- Source-side blob render/buffer capacity is raised to 800.
-- The shader must use `_MetaballCount` instead of a fixed loop bound, and the C# `Metaball` struct layout must match the shader layout.
-- Rebuild and validate the Unity asset bundle after shader source changes. Runtime source validation alone does not prove the shipped shader is updated.
+- Source-side blob capacity remains `ZombieBlob.MAX_METABALLS = 4000`; gameplay defaults still cap visible growth at `blobMaxCells = 400`.
+- V1 runtime rendering uses a CPU-generated transparent metaball mask texture drawn on a bounds mesh. The preferred material is the bundled non-compute `Custom/ZombieBlob` shader; if that shader is missing, the renderer falls back to RimWorld's built-in transparent shader and bridge state must expose the fallback.
+- The runtime renderer must not depend on Unity compute shaders, `StructuredBuffer`, or the asset-bundle `Metaballs` shader. Current macOS RimWorld starts with `-disable-compute-shaders`, and the prior compute-buffer path produced magenta/green full-rectangle artifacts from shader/buffer interpretation. `Metaballs` remains a dormant legacy bundle asset only.
+- Recompute the texture only when the blob cell set changes, not on game ticks or rendered frames. The texture resolution is dynamic and based on render bounds, not cell count: long 400-cell strips can require a wider texture than a 4000-cell circle. Use bucketed/capped dimensions so texture allocation changes only when the blob crosses meaningful size thresholds.
+- The CPU texture should be rectangular when the blob bounds are rectangular. Do not stretch a fixed square texture over long thin blobs; the mesh, render-world dimensions, and texture dimensions should track the current padded bounds.
+- Texture fill must use local spatial sampling, not an all-metaballs-for-every-pixel loop. Higher adaptive resolutions are only acceptable because each pixel samples nearby blob cells from a precomputed cell-radius map.
+- Bulk cell changes, including bridge stress setup and future fixture setup, must batch coordinate changes and rebuild the render mesh/texture once. Never add hundreds or thousands of cells through a loop that rebuilds the CPU texture for every cell.
+- Runtime motion must be render-parameter-only. Do not mutate gameplay cells, metaball coordinates, or texture pixels for jiggle or opacity animation; per-cell in/out tweening is deferred until it can be shader- or mesh-parameter-driven without hurting max dev-speed TPS.
+- The `Custom/ZombieBlob` shader samples the CPU mask and applies a stable, blurred, clustered noise field in world X/Z to vary alpha. C# passes `_BlobOpacityMin`, `_BlobOpacityMax`, `_BlobNoiseScale`, `_BlobNoiseDrift`, and a slow game-tick `_BlobNoiseTime`; the texture remains unchanged while the visual opacity drifts.
+- Opacity modulation is multiplicative over the CPU mask, not a new opaque decal. Current visual-tuning trial values are min 0.28 and max 0.78: the low end stays visible, and the high end is pulled down so variation reads as thickness rather than bright solid plastic.
+- Spatial noise frequency is currently in a 4x follow-up test: scale 0.96, exactly 4x the original 0.24 broad-patch trial. The 6x test made the variation clearly visible but too busy, so this pass keeps the learning while backing off the frequency.
+- Temporal noise response is also in a 4x failure-friendly test: `_BlobNoiseTime` advances at `4 / 2500` per game tick instead of the prior `1 / 2500`. Bridge render state exposes `noiseTickScale` so live tests can confirm the loaded DLL is using the faster time parameter.
+- Alpha and edge thresholds should preserve the original translucent transfer look from the first working CPU-rendered blob. Do not fix hole artifacts by filling the whole field into an opaque decal; real holes should be addressed through draw order, altitude, geometry, or cell-field shape.
+- Per-cell metaball radius tuning currently uses a slightly fatter join profile: radius factor 0.45, minimum radius 0.55, max radius 0.95. This is meant to close small gaps between specks without making isolated outliers much larger.
+- The blob mesh is drawn below walls, doors, buildings, items, pawns, and overlays. RimWorld 1.6 places `Item` above all building layers, so v1 chooses correct wall/building ordering over half-submerged floor items.
+- Suppress RimWorld 1.6 pawn render-tree body drawing for `ZombieBlob`; the CPU blob mesh is the only blob body render. This removes the extra body-shaped artifact while preserving selection and UI overlays.
+- When cell bounds change, render bounds, mesh dimensions, texture dimensions, and the cell-radius map must be rebuilt before the CPU mask update. The current runtime should not keep stale normalized metaball positions at all.
+- RimWorld's dynamic draw cull must see the blob's full visual footprint. `ZombieBlob.DrawSize` is therefore derived from relative blob bounds plus render padding, and bridge state exposes `occupiedDrawRect` so tests can verify camera/view overlap even when the pawn anchor cell is offscreen.
+- Keep the dormant Unity asset-bundle `Metaballs` shader source aligned with the old C# layout only as a legacy reference if it is revived later. It is not the runtime renderer.
+- Rebuild asset bundles through `scripts/build-assetbundles.sh`. Use `--current` for fast local macOS visual iteration, `--os Win64|Linux|MacOS` for one explicit target, and `--full` before any release or cross-platform validation. The script writes directly to `Resources/{OS}/zombieland`.
+
+## Performance Guardrails
+
+- A 400-cell blob must be lightweight at max dev speed. The target is parity with the same-session no-blob baseline; anything substantially below that baseline requires profiling before adding more mechanics.
+- The bridge can temporarily override the effective max-cell cap up to the technical ceiling for stress tests. This must not mutate the player's `blobMaxCells` setting, whose accepted default is still 400.
+- 4000-cell tests are diagnostic worst-case rendering/load tests, not a gameplay target. Run them both framed around the blob and zoomed out far enough to stress the visible draw path.
+- Use bridge-only perf profiles before guessing at bottlenecks:
+  - `inert`: blob pawn exists, but rendering, blob tick, path cost, cell stat effects, hediff sync, and symbiosis benefits are disabled.
+  - `renderOnly`: only blob rendering is active.
+  - `pathOnly`: only blob path cost is active.
+  - `symbiosisOnly`: blob tick, host hediff sync, and symbiosis benefits are active, while rendering/path/cell stat effects are disabled.
+  - `noCellStats`, `noPath`, `noRender`, and `noTick`: interaction splits for the default profile.
+- Hot Harmony hooks must reject unrelated calls before touching blob state. In particular, the `StatExtension.GetStatValue` postfix must first check whether the stat is one of the blob-disrupted stats, then check pawn/blob membership. Calling `IsBlobCell` for every pawn stat query is not acceptable.
+- Assume high-pawn-count maps as the normal case: zombies, enemies, animals, guests, caravans, world pawns, and pawns on other active maps can multiply any pawn-side hook cost.
+- Separate cheap predicates by interaction:
+  - host-only symbiosis checks reject anything that can never be the linked host before blob lookup,
+  - cell-effect checks reject unspawned pawns, pawns without a current map, Zombieland pawns, non-player pawns, non-player-controlled pawns, and pawns not on the queried map before blob lookup.
+- Be conservative with limbo pawns: capsules, mothballed pawns, world pawns, generated pawns during world/faction setup, and badly initialized modded pawns are unaffected unless they are clearly spawned on a real map and in a supported interaction category.
+- Do not call logging global helpers such as `Faction.OfPlayer` from early pawn predicates. Use null-safe pawn-owned state such as `pawn.Faction?.IsPlayer == true` only after null/destroyed/dead/spawned/map checks.
+- Never scan `map.mapPawns.AllPawns` from hot paths. Use cached RimWorld groups such as free colonists when selecting hosts, and maintain a map-keyed active-blob cache for runtime interactions.
+- The active-blob cache must key by the actual `Map` object, not only `map.uniqueID`. RimWorld save/load can reuse `uniqueID = 0`; a numeric-keyed static cache can otherwise report a stale blob on a freshly loaded no-blob map.
+- `IsBlobCell` and `ContainsCell` must remain pure, allocation-free membership checks. They must not normalize blob data, rebuild render state, scan rooms, or touch symbiosis metrics.
+- Blob cell membership should reject by map and blob bounds before hash lookup. Room-stat disruption should reject by room/blob bounds overlap before walking blob cells.
+- Current verified measurement on 2026-06-12, MacBook Air M2 with low power mode off, dev map, 400-cell stress blob visible at Ultrafast:
+  - no-blob baseline: 2189 ticks / 5108 ms, about 429 TPS,
+  - pre-fix default 400-cell blob: 625 ticks / 5135 ms, about 122 TPS,
+  - fixed default 400-cell blob: 2258 ticks / 5128 ms, about 440 TPS,
+  - after high-pawn-count filters: first sample was polluted by an unrelated attack/death event, clean follow-up sample was 4515 ticks / 5050 ms, about 894 TPS,
+  - logs clean at warning-or-higher after the fixed retest.
+- Current 4000-cell stress measurement on 2026-06-12, same MacBook Air M2 power state, fresh dev map, bridge-only `maxCellsOverride = 4000`, saved `blobMaxCells` still 400:
+  - no-blob baseline: 4515 ticks / 5066 ms, about 891 TPS,
+  - 4000-cell setup: 3999 cells added, final 4000 cells, radial circle filled all requested cells without square fallback, one-time setup/render rebuild took about 7.7 seconds,
+  - closer visible blob sample: 4530 ticks / 5075 ms, about 893 TPS,
+  - furthest vanilla zoom sample: 4515 ticks / 5056 ms, about 893 TPS,
+  - logs clean at warning-or-higher after the 4000-cell retest.
+- Current high-map-pawn stress measurement on 2026-06-13 local time, MacBook Air M2 with low power mode off, save `ZL_BlobPawnStress_00`, furthest vanilla zoom:
+  - fixture: 160 free colonists, 600 player animals using `Chicken`, and a 10000-point `RaidEnemy` with `ImmediateAttack` plus `EdgeWalkIn`; setup spawned 157 colonists, 599 animals, and 120 hostile raiders, then saved paused at tick 13/14,
+  - setup used a real RimWorld raid incident, not manually spawned fake hostiles; raid faction was `TribeRoughNeanderthal`, spawn center was edge cell `(0,193)`,
+  - the first repeat exposed and fixed a stale active-blob cache bug where loading the no-blob save after a blob map could still return the previous blob from the static cache,
+  - preliminary 3-second pair after fixture load: no blob 273 ticks / 3128 ms, about 87 TPS; 4000-cell blob 284 ticks / 3149 ms, about 90 TPS,
+  - final 5-second pair after the cache fix: no blob 472 ticks / 5116 ms, about 92 TPS; 4000-cell blob 475 ticks / 5116 ms, about 93 TPS,
+  - both timed windows ended with no downed/dead player pawns and no downed/dead hostiles,
+  - warning-or-higher logs contained only repeated vanilla/Ideology-style load noise: `A hidden ritual precept was missing, adding: Funeral (no corpse)`.
+- Current inside-blob high-map-pawn stress measurement on 2026-06-13 local time, MacBook Air M2 with low power mode off, save `ZL_BlobPawnStress_InsideBlob_00`, furthest vanilla zoom:
+  - fixture was created with bridge-only `zombieland/blob_pawn_stress_state` parameter `colonistsInsideBlob = true`, blob center `(125,125)`, and cluster radius 16; setup relocated 3 existing colonists, spawned 157 colonists, spawned 599 chickens, triggered a real 10000-point `RaidEnemy` with `ImmediateAttack` plus `EdgeWalkIn`, and saved paused at tick 256/257,
+  - the stress readback now reports blob occupancy counts; before the timed blob sample, all 160 player colonists were on blob cells, with 2 player animals and 0 hostile humanlikes on blob cells,
+  - 4000-cell setup used bridge-only `maxCellsOverride = 4000`, added 3999 cells for a final 4000-cell radial circle, and kept the saved gameplay setting `blobMaxCells = 400`,
+  - no-blob baseline: 1734 ticks / 5005 ms, about 346 TPS,
+  - 4000-cell blob with all colonists inside: 821 ticks / 5005 ms, about 164 TPS; this is not acceptable and needs profiling/fixing before treating the blob as lightweight under colonist-interaction stress,
+  - both valid timed windows ended with no downed/dead player pawns and no downed/dead hostiles,
+  - attempted bridge-only `noRender` and fresh `noPath` attribution probes were invalid because the stress blob disappeared during the short probe and free colonists dropped from 160 to 159; warning-or-higher logs still only contained the repeated hidden ritual precept warning, so the next performance step should first stabilize or bypass the stress-linked-host lifecycle before using perf profiles as evidence.
+- Current adaptive-texture render measurement on 2026-06-13 local time, same inside-blob fixture:
+  - 4000-cell radial stress blob reports render world size 76x75, draw/cull size 77x77, `occupiedDrawRect` x84..160 and z82..158, and adaptive texture size 512x512,
+	- one-time 4000-cell stress setup/render rebuild was about 1.85 seconds after switching texture fill to nearby-cell spatial sampling; the earlier all-metaballs-per-pixel CPU texture path took about 7.7 seconds,
+	- warning-or-higher logs after the adaptive-texture rebuild contained only the repeated hidden ritual precept warning.
+- Current GPU opacity shader validation on 2026-06-13 local time:
+  - `scripts/build-assetbundles.sh --current` rebuilt and validated the MacOS bundle with `ZombieBlob=Custom/ZombieBlob`,
+  - a second `dotnet build Source/ZombieLand.csproj -v:minimal` deployed the rebuilt MacOS bundle to the copied RimWorld mod; repo and active-mod bundle hashes matched,
+  - live dev-map stress blob at 26 cells reported `renderShader = Custom/ZombieBlob`, `renderUsesBlobShader = true`, opacity min 0.58, opacity max 1.00, noise scale 0.36, and noise drift 0.16,
+  - a 5-second Ultrafast sanity window kept the custom shader active and produced no warning-or-higher logs,
+  - focused screenshot `zl_blob_shader_noise_smoke__cell_rect.png` showed clustered translucent green goo with no pink shader failure and no full-rectangle artifact.
+- Current 6x opacity-frequency test on 2026-06-13 local time:
+  - `blob rendering minimal` save loads centered and visual-ready with the extended zoom range from RimBridgeServer,
+  - live bridge state reports 60 blob cells, draw size 11x11, `renderShader = Custom/ZombieBlob`, `renderUsesBlobShader = true`, opacity min 0.15, opacity max 1.00, noise scale 1.44, and noise drift 0.05,
+  - focused screenshot `zl_blob_noise_6x_blob_rendering_minimal__cell_rect.png` shows the opacity variation clearly; this is useful as an extreme-frequency reference, not necessarily the final frequency,
+  - warning-or-higher logs contain only `[RimBridge] GABS environment differs from bridge config at /Users/ap/.gabs/rimworld/bridge.json; using bridge config.`, with no shader or blob errors.
+- Current 4x opacity-frequency plus 4x temporal-response test on 2026-06-13 local time:
+  - live bridge state in `blob rendering minimal` confirmed opacity min 0.28, opacity max 0.78, noise scale 0.96, noise drift 0.05, and noise tick scale 0.0016,
+  - static screenshot `zl_blob_noise_4x_time_4x_blob_rendering_minimal__cell_rect.png` shows a calmer pattern than the 6x pass,
+  - the attempted unpaused temporal-response run hit unrelated save pawn ticking errors in `Verse.Pawn_AgeTracker.AgeTickInterval` for Jake/Jackalope, so this pass has not yet produced a clean moving-shader validation.
 
 ## Implementation Checklist
 
@@ -197,7 +284,7 @@ The blob is not a second spitter and not a normal combat target. The interesting
 - Feeding: pulse strength, severance reserve cap, effective reserve maturity factor, daily pulse cap, safe visible minimum, growth pause, breach cancellation.
 - Surgery: defs, recipe worker, language, failure behavior.
 - Unsafe damage/collapse: reserve absorption, host trauma, host-death messy collapse, safe-destroy guard.
-- Bridge state: expose host, benefit factor, integrated visible cells, peak cells, maturity state, full-benefit cells, severance maturity cells, safe visible minimum, reserve, effective reserve, reserve required, feed cap, severance readiness.
+- Bridge state: expose host, benefit factor, integrated visible cells, peak cells, maturity state, full-benefit cells, severance maturity cells, safe visible minimum, reserve, effective reserve, reserve required, feed cap, severance readiness, and stress-test blob occupancy counts.
 - Docs: keep this file, `TEST_COVERAGE.md`, `TEST_SCENARIOS.md`, and `coverage/ZL_COVERAGE_INDEX.tsv` aligned with the symbiote design.
 
 ## Implementation Stages
@@ -209,7 +296,7 @@ The blob is not a second spitter and not a normal combat target. The interesting
 5. Host benefits using integrated visible goo.
 6. Safe severance surgery.
 7. Unsafe damage reflection and host-death messy collapse.
-8. Rendering cap, shader asset bundle, and balancing passes.
+8. Rendering cap, CPU metaball mask polish, GPU opacity shader polish, dormant renderer cleanup, and balancing passes.
 
 ## Validation Checklist
 
@@ -242,7 +329,13 @@ The blob is not a second spitter and not a normal combat target. The interesting
 - Verify zombie targeting behavior at low, medium, and high benefit; hard ignore must not apply to a one-cell blob.
 - Verify disabling blob events while a blob already exists stops future spawns but does not silently delete the active blob.
 - Verify lowering `blobMaxCells` below the current cell count prevents further expansion without deleting existing cells.
-- Verify multi-map behavior: one active blob per map, no cross-map host selection, and bridge state reports the intended map.
+- Verify multi-map and save/load behavior: one active blob per map, no cross-map host selection, bridge state reports the intended map, and loading a no-blob save after a blob map does not return stale static-cache blob state.
+- Runtime render smoke: stress a 15-20 cell blob, capture the map, and verify it renders as connected translucent goo with no magenta shader failure and no full-square bounds artifact.
+- Shader activation smoke: bridge state for the active blob must report `renderShader = Custom/ZombieBlob` and `renderUsesBlobShader = true` after rebuilding the current-platform asset bundle and restarting RimWorld.
+- In the `blob rendering` save, verify walls are above the blob, the old body-shaped artifact near the meal is gone, and items/overlays render consistently above the blob.
+- Large-blob culling smoke: move the camera so the pawn anchor cell is outside the screen but the blob `occupiedDrawRect` still overlaps the camera view; the blob must remain rendered until its bounds leave the view.
+- Max dev-speed performance smoke: compare TPS with and without a blob in the same session and power state. If the blob scene is substantially below the no-blob baseline, especially around 240 TPS when that is the baseline, the renderer is not acceptable.
+- If max-speed performance fails, use the bridge-only perf profiles to split rendering, path cost, cell stat effects, blob tick, hediff sync, and symbiosis benefits before optimizing.
 - Stress default 400-cell cap and confirm expansion stops.
-- Raise `blobMaxCells` to 800, stress 800 cells, and confirm no buffer/cap errors.
+- Use the bridge-only max-cell override to stress 4000 cells without changing the saved `blobMaxCells` setting. Prefer a circle; if the map cannot supply enough walkable cells in the circle, fill from a centered square and record which shape was used.
 - `rimbridge/list_logs minimumLevel=warning` remains clean after runtime scenarios.

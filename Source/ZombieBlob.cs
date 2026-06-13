@@ -3,7 +3,6 @@ using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using UnityEngine;
 using Verse;
 using Verse.AI;
@@ -14,33 +13,58 @@ namespace ZombieLand
 	[StaticConstructorOnStartup]
 	public class ZombieBlob : Pawn
 	{
-		public const int MAX_METABALLS = 800;
+		public const int MAX_METABALLS = 4000;
 		static readonly Color color = new(0, 0.8f, 0);
 		static readonly float elementPower = 1f;
 		static readonly float elementRadius = 0.011f;
 		static readonly float[] elementSizes = [2.5f, 2.4f, 1.6f, 1.2f, 1f, 0.9f, 0.9f, 1f, 1f];
 		static readonly HashSet<ZombieBlob> renderResourceOwners = [];
+		static readonly Dictionary<Map, ZombieBlob> activeBlobByMap = [];
+		static readonly HashSet<Map> mapsWithoutActiveBlob = [];
+		internal static string DebugPerfProfile { get; private set; } = "default";
+		internal static bool DebugDisableRendering { get; private set; }
+		internal static bool DebugDisableBlobTick { get; private set; }
+		internal static bool DebugDisablePathCost { get; private set; }
+		internal static bool DebugDisableCellStatEffects { get; private set; }
+		internal static bool DebugDisableHostHediffSync { get; private set; }
+		internal static bool DebugDisableSymbiosisBenefits { get; private set; }
+		internal static int DebugMaxCellsOverride { get; private set; }
+		const int MetaballTextureMinSize = 256;
+		const int MetaballTextureMaxSize = 1024;
+		const float MetaballTexturePixelsPerCell = 6f;
+		const float MetaballInfluenceRadiusCells = 4.5f;
+		const float MetaballCellRadiusFactor = 0.45f;
+		const float MetaballCellRadiusMin = 0.55f;
+		const float MetaballCellRadiusMax = 0.95f;
+		const float MetaballAlphaStart = 0.45f;
+		const float MetaballAlphaFull = 1.20f;
+		const float MetaballMaxAlpha = 0.40f;
+		const float MetaballEdgeStart = 0.45f;
+		const float MetaballEdgeFull = 1.80f;
+		const float BlobOpacityMin = 0.28f;
+		const float BlobOpacityMax = 0.78f;
+		const float BlobNoiseScale = 0.96f;
+		const float BlobNoiseDrift = 0.05f;
+		const float BlobNoiseTickScale = 4f / 2500f;
+		const float BlobRenderAltitudeOffset = -0.25f;
+		const int SymbiosisMetricRefreshInterval = 250;
+		static readonly int BlobOpacityMinId = Shader.PropertyToID("_BlobOpacityMin");
+		static readonly int BlobOpacityMaxId = Shader.PropertyToID("_BlobOpacityMax");
+		static readonly int BlobNoiseScaleId = Shader.PropertyToID("_BlobNoiseScale");
+		static readonly int BlobNoiseDriftId = Shader.PropertyToID("_BlobNoiseDrift");
+		static readonly int BlobNoiseTimeId = Shader.PropertyToID("_BlobNoiseTime");
 		// static readonly float[] elementSizes = [1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f];
-
-		struct Metaball
-		{
-			public float radius;
-			public float size;
-			public float power;
-			public Vector2 position;
-			public Vector2 direction;
-			public Vector4 color;
-		}
 
 		HashSet<IntVec3> cells = [];
 		List<IntVec3> orderedCells = [];
-		readonly List<Metaball> metaballs = [];
-		ComputeBuffer metaballBuffer;
+		readonly Dictionary<IntVec3, float> metaballRadiusByCell = [];
+		Texture2D metaballTexture;
 
 		Mesh mesh = null;
 		Material metaballMaterial;
 
-		float radius, power, centerX, centerZ;
+		float radius, power, centerX, centerZ, renderMinX, renderMinZ, renderWidth = 1f, renderHeight = 1f;
+		Vector2 drawCullSize = Vector2.one;
 		int nextExpansionTick;
 		int feedPausedUntilTick;
 		int lastRecessionPulseCells;
@@ -58,6 +82,15 @@ namespace ZombieLand
 		bool safeSeveranceInProgress;
 		bool hostCollapseInProgress;
 		bool uncontrolledDestroyHandled;
+		int lastSymbiosisMetricTick = int.MinValue;
+		int cachedEligibleColonyRoomCells;
+		int cachedFullBenefitCells = 20;
+		float cachedIntegratedVisibleCells;
+		float cachedBenefitFactor;
+		int cachedSeveranceMaturityCells = 10;
+		int cachedSeveranceReserveRequired = 12;
+		CellRect relativeCellBounds;
+		bool hasCellBounds;
 
 		public int CellCount => cells?.Count ?? 0;
 		public int NextExpansionTick => nextExpansionTick;
@@ -66,22 +99,34 @@ namespace ZombieLand
 		public bool CancelNextBreach => cancelNextBreach;
 		public bool FeedRequested => feedRequested;
 		public IEnumerable<IntVec3> AbsoluteCells => orderedCells.Select(cell => Position + cell);
-		public static int MaxCells => Mathf.Clamp(ZombieSettings.Values?.blobMaxCells ?? 400, 1, MAX_METABALLS);
+		CellRect AbsoluteCellBounds => relativeCellBounds.MovedBy(Position);
+		public override Vector2 DrawSize => hasCellBounds ? drawCullSize : base.DrawSize;
+		public int RenderTextureWidth => metaballTexture?.width ?? 0;
+		public int RenderTextureHeight => metaballTexture?.height ?? 0;
+		public Vector2 RenderWorldSize => new(renderWidth, renderHeight);
+		public string RenderShaderName => metaballMaterial?.shader?.name;
+		public bool RenderUsesBlobShader => Assets.ZombieBlobShader != null && metaballMaterial?.shader == Assets.ZombieBlobShader;
+		public static float RenderOpacityMin => BlobOpacityMin;
+		public static float RenderOpacityMax => BlobOpacityMax;
+		public static float RenderNoiseScale => BlobNoiseScale;
+		public static float RenderNoiseDrift => BlobNoiseDrift;
+		public static float RenderNoiseTickScale => BlobNoiseTickScale;
+		public static int MaxCells => Mathf.Clamp(DebugMaxCellsOverride > 0 ? DebugMaxCellsOverride : (ZombieSettings.Values?.blobMaxCells ?? 400), 1, MAX_METABALLS);
 		Map BlobMap => Spawned ? Map : host?.MapHeld ?? MapHeld;
 		public Pawn LinkedHost => ResolveHost();
 		public string HostThingId => hostThingId;
-		public int EligibleColonyRoomCells => EligibleColonyRoomCellCount(BlobMap);
-		public int FullBenefitCells => CalculateFullBenefitCells(BlobMap);
-		public float IntegratedVisibleCells => CalculateIntegratedVisibleCells(BlobMap);
+		public int EligibleColonyRoomCells { get { RefreshSymbiosisMetrics(); return cachedEligibleColonyRoomCells; } }
+		public int FullBenefitCells { get { RefreshSymbiosisMetrics(); return cachedFullBenefitCells; } }
+		public float IntegratedVisibleCells { get { RefreshSymbiosisMetrics(); return cachedIntegratedVisibleCells; } }
 		public int PeakVisibleCells => peakVisibleCells;
 		public float PeakIntegratedVisibleCells => peakIntegratedVisibleCells;
 		public float PeakBenefitFactor => peakBenefitFactor;
-		public int SeveranceMaturityCells => CalculateSeveranceMaturityCells(BlobMap);
+		public int SeveranceMaturityCells { get { RefreshSymbiosisMetrics(); return cachedSeveranceMaturityCells; } }
 		public bool HasMaturedForSeverance => maturedForSeverance || PeakMeetsSeveranceMaturity();
-		public int SeveranceReserveRequired => CalculateSeveranceReserveRequired(BlobMap);
+		public int SeveranceReserveRequired { get { RefreshSymbiosisMetrics(); return cachedSeveranceReserveRequired; } }
 		public float ReserveMaturityFactor => HasMaturedForSeverance ? 1f : Mathf.Clamp01(peakIntegratedVisibleCells / Mathf.Max(1f, SeveranceMaturityCells));
 		public float EffectiveDecouplingReserve => Mathf.Min(decouplingReserve, DecouplingReserveMax * ReserveMaturityFactor);
-		public float BenefitFactor => CalculateBenefitFactor(BlobMap);
+		public float BenefitFactor { get { RefreshSymbiosisMetrics(); return cachedBenefitFactor; } }
 		public float DecouplingReserve => decouplingReserve;
 		public int DecouplingReserveMax => SeveranceReserveRequired;
 		public int SafeVisibleMinimum
@@ -107,6 +152,110 @@ namespace ZombieLand
 		public bool CanSafelySever => LinkedHost != null && HasMaturedForSeverance && decouplingReserve >= DecouplingReserveMax - 0.01f && CellCount <= 3;
 		public static float ZombieIgnoreMinBenefit => Mathf.Clamp(ZombieSettings.Values?.blobZombieIgnoreMinBenefit ?? 0.5f, 0f, 1f);
 
+		internal static object SetDebugPerfProfile(string profile)
+		{
+			var normalized = (profile ?? "default").Trim().ToLowerInvariant();
+			DebugDisableRendering = false;
+			DebugDisableBlobTick = false;
+			DebugDisablePathCost = false;
+			DebugDisableCellStatEffects = false;
+			DebugDisableHostHediffSync = false;
+			DebugDisableSymbiosisBenefits = false;
+
+			switch (normalized)
+			{
+				case "":
+				case "default":
+				case "all":
+					normalized = "default";
+					break;
+				case "inert":
+					DebugDisableRendering = true;
+					DebugDisableBlobTick = true;
+					DebugDisablePathCost = true;
+					DebugDisableCellStatEffects = true;
+					DebugDisableHostHediffSync = true;
+					DebugDisableSymbiosisBenefits = true;
+					break;
+				case "renderonly":
+				case "render-only":
+					normalized = "renderOnly";
+					DebugDisableBlobTick = true;
+					DebugDisablePathCost = true;
+					DebugDisableCellStatEffects = true;
+					DebugDisableHostHediffSync = true;
+					DebugDisableSymbiosisBenefits = true;
+					break;
+				case "pathonly":
+				case "path-only":
+					normalized = "pathOnly";
+					DebugDisableRendering = true;
+					DebugDisableBlobTick = true;
+					DebugDisableCellStatEffects = true;
+					DebugDisableHostHediffSync = true;
+					DebugDisableSymbiosisBenefits = true;
+					break;
+				case "symbiosisonly":
+				case "symbiosis-only":
+					normalized = "symbiosisOnly";
+					DebugDisableRendering = true;
+					DebugDisablePathCost = true;
+					DebugDisableCellStatEffects = true;
+					break;
+				case "norender":
+				case "no-render":
+					normalized = "noRender";
+					DebugDisableRendering = true;
+					break;
+				case "nopath":
+				case "no-path":
+					normalized = "noPath";
+					DebugDisablePathCost = true;
+					break;
+				case "nocellstats":
+				case "no-cell-stats":
+					normalized = "noCellStats";
+					DebugDisableCellStatEffects = true;
+					break;
+				case "notick":
+				case "no-tick":
+					normalized = "noTick";
+					DebugDisableBlobTick = true;
+					DebugDisableHostHediffSync = true;
+					DebugDisableSymbiosisBenefits = true;
+					break;
+				default:
+					normalized = "default";
+					break;
+			}
+
+			DebugPerfProfile = normalized;
+			return DebugPerfState();
+		}
+
+		internal static object DebugPerfState()
+		{
+			return new
+			{
+				profile = DebugPerfProfile,
+				rendering = DebugDisableRendering == false,
+				blobTick = DebugDisableBlobTick == false,
+				pathCost = DebugDisablePathCost == false,
+				cellStatEffects = DebugDisableCellStatEffects == false,
+				hostHediffSync = DebugDisableHostHediffSync == false,
+				symbiosisBenefits = DebugDisableSymbiosisBenefits == false,
+				maxCellsOverride = DebugMaxCellsOverride,
+				effectiveMaxCells = MaxCells,
+				technicalMaxCells = MAX_METABALLS
+			};
+		}
+
+		internal static object SetDebugMaxCellsOverride(int maxCells)
+		{
+			DebugMaxCellsOverride = Mathf.Clamp(maxCells, 0, MAX_METABALLS);
+			return DebugPerfState();
+		}
+
 		public static void Spawn(Map map, IntVec3 cell)
 		{
 			var blob = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieBlob, null) as ZombieBlob;
@@ -118,6 +267,7 @@ namespace ZombieLand
 
 			blob.SetFactionDirect(Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies));
 			GenSpawn.Spawn(blob, cell, map, Rot4.Random, WipeMode.Vanish, false);
+			RegisterActiveBlob(blob, map);
 
 			blob.jobs.StartJob(JobMaker.MakeJob(CustomDefs.Blob));
 			_ = blob.TryAssignRandomHost();
@@ -180,9 +330,89 @@ namespace ZombieLand
 				&& room.Cells.Any(cell => home.TrueCount == 0 || home[cell]));
 		}
 
+		static bool CanEverBeLinkedHostFast(Pawn pawn, bool allowDead = false)
+		{
+			if (pawn == null || pawn.Destroyed)
+				return false;
+			if (allowDead == false && pawn.Dead)
+				return false;
+			if (allowDead == false && (pawn.Spawned == false || pawn.Map == null))
+				return false;
+			if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+				return false;
+			if (pawn.RaceProps?.Humanlike != true || pawn.RaceProps.IsFlesh == false)
+				return false;
+			if (pawn.Faction?.IsPlayer != true || pawn.IsColonistPlayerControlled == false || pawn.IsPrisoner)
+				return false;
+			if (pawn.DevelopmentalStage == DevelopmentalStage.Newborn || pawn.DevelopmentalStage == DevelopmentalStage.Baby || pawn.DevelopmentalStage == DevelopmentalStage.Child)
+				return false;
+			return true;
+		}
+
+		internal static bool CanBeAffectedByBlobCellFast(Pawn pawn)
+		{
+			return pawn != null
+				&& pawn.Destroyed == false
+				&& pawn.Dead == false
+				&& pawn.Spawned
+				&& pawn.Map != null
+				&& pawn is not Zombie
+				&& pawn is not ZombieBlob
+				&& pawn is not ZombieSpitter
+				&& pawn.RaceProps?.Humanlike == true
+				&& pawn.Faction?.IsPlayer == true
+				&& pawn.IsColonistPlayerControlled;
+		}
+
+		static bool IsActiveBlobOnMap(ZombieBlob blob, Map map)
+		{
+			return blob != null && blob.Destroyed == false && blob.Spawned && blob.Dead == false && blob.Map == map;
+		}
+
+		static void RegisterActiveBlob(ZombieBlob blob, Map map)
+		{
+			if (blob == null || map == null)
+				return;
+			activeBlobByMap[map] = blob;
+			mapsWithoutActiveBlob.Remove(map);
+		}
+
+		static void ForgetActiveBlob(ZombieBlob blob)
+		{
+			foreach (var map in activeBlobByMap
+				.Where(pair => ReferenceEquals(pair.Value, blob))
+				.Select(pair => pair.Key)
+				.ToArray())
+				activeBlobByMap.Remove(map);
+		}
+
 		public static ZombieBlob ActiveBlob(Map map)
 		{
-			return map?.mapPawns?.AllPawns?.OfType<ZombieBlob>().FirstOrDefault(blob => blob.Destroyed == false && blob.Spawned && blob.Dead == false);
+			if (map == null)
+				return null;
+			if (activeBlobByMap.TryGetValue(map, out var cached))
+			{
+				if (IsActiveBlobOnMap(cached, map))
+					return cached;
+				activeBlobByMap.Remove(map);
+			}
+			if (mapsWithoutActiveBlob.Contains(map))
+				return null;
+
+			var pawns = map.mapPawns?.AllPawns;
+			if (pawns != null)
+			{
+				for (var i = 0; i < pawns.Count; i++)
+				{
+					if (pawns[i] is ZombieBlob blob && IsActiveBlobOnMap(blob, map))
+					{
+						RegisterActiveBlob(blob, map);
+						return blob;
+					}
+				}
+			}
+			mapsWithoutActiveBlob.Add(map);
+			return null;
 		}
 
 		static IEnumerable<ZombieBlob> ActiveBlobs()
@@ -191,30 +421,57 @@ namespace ZombieLand
 				yield break;
 			foreach (var map in Find.Maps)
 			{
-				var pawns = map?.mapPawns?.AllPawns;
-				if (pawns == null)
-					continue;
-				foreach (var blob in pawns.OfType<ZombieBlob>())
-					if (blob.Destroyed == false && blob.Spawned && blob.Dead == false)
-						yield return blob;
+				var blob = ActiveBlob(map);
+				if (blob != null)
+					yield return blob;
 			}
+		}
+
+		bool IsLinkedTo(Pawn pawn)
+		{
+			if (pawn == null)
+				return false;
+			if (ReferenceEquals(host, pawn))
+			{
+				hostThingId ??= pawn.ThingID;
+				return true;
+			}
+			return hostThingId.NullOrEmpty() == false && hostThingId == pawn.ThingID;
 		}
 
 		public static ZombieBlob LinkedBlobFor(Pawn pawn)
 		{
-			if (pawn == null)
+			return LinkedBlobFor(pawn, false);
+		}
+
+		static ZombieBlob LinkedBlobFor(Pawn pawn, bool allowDead)
+		{
+			if (CanEverBeLinkedHostFast(pawn, allowDead) == false)
 				return null;
-			return ActiveBlobs()
-				.FirstOrDefault(blob => blob.ResolveHost() == pawn || (blob.hostThingId.NullOrEmpty() == false && blob.hostThingId == pawn.ThingID));
+			if (pawn.Spawned)
+			{
+				var mapBlob = ActiveBlob(pawn.Map);
+				if (mapBlob != null && mapBlob.IsLinkedTo(pawn))
+					return mapBlob;
+			}
+			return ActiveBlobs().FirstOrDefault(blob => blob.IsLinkedTo(pawn) || blob.ResolveHost() == pawn);
 		}
 
 		public static bool HasZombieTargetingProtection(Pawn pawn)
 		{
+			if (pawn?.Spawned != true || pawn.Map == null)
+				return false;
+			if (DebugDisableSymbiosisBenefits || CanEverBeLinkedHostFast(pawn) == false)
+				return false;
 			return SymbioteBenefitFactor(pawn) >= ZombieIgnoreMinBenefit;
 		}
 
 		public static float SymbioteBenefitFactor(Pawn pawn)
 		{
+			if (pawn?.Spawned != true || pawn.Map == null)
+				return 0f;
+			if (DebugDisableSymbiosisBenefits || CanEverBeLinkedHostFast(pawn) == false)
+				return 0f;
 			return LinkedBlobFor(pawn)?.BenefitFactor ?? 0f;
 		}
 
@@ -231,12 +488,16 @@ namespace ZombieLand
 
 		public static bool CanSeverSymbiosis(Pawn pawn)
 		{
+			if (CanEverBeLinkedHostFast(pawn) == false)
+				return false;
 			return LinkedBlobFor(pawn)?.CanSafelySever == true;
 		}
 
 		public static void NotifyHostKilled(Pawn pawn)
 		{
-			var blob = LinkedBlobFor(pawn);
+			if (CanEverBeLinkedHostFast(pawn, true) == false)
+				return;
+			var blob = LinkedBlobFor(pawn, true);
 			if (blob == null)
 				return;
 			blob.CollapseFromHostDeath();
@@ -251,6 +512,20 @@ namespace ZombieLand
 			return blob != null && blob.ContainsCell(cell);
 		}
 
+		public static bool IsBlobCellForAffectedPawn(Pawn pawn, IntVec3 cell, out ZombieBlob blob)
+		{
+			blob = null;
+			if (CanBeAffectedByBlobCellFast(pawn) == false)
+				return false;
+			var map = pawn.Map;
+			if (cell.InBounds(map) == false)
+				return false;
+			blob = ActiveBlob(map);
+			if (blob == null)
+				return false;
+			return blob.ContainsCell(cell);
+		}
+
 		public static int CountCellsInRoom(Room room)
 		{
 			var map = room?.Map;
@@ -259,7 +534,22 @@ namespace ZombieLand
 			var blob = ActiveBlob(map);
 			if (blob == null)
 				return 0;
-			return blob.AbsoluteCells.Count(cell => cell.InBounds(map) && cell.GetRoom(map) == room);
+			return blob.CountCellsInRoomInternal(room);
+		}
+
+		int CountCellsInRoomInternal(Room room)
+		{
+			if (room == null || hasCellBounds == false || AbsoluteCellBounds.Overlaps(room.ExtentsClose) == false)
+				return 0;
+			var map = room.Map;
+			var count = 0;
+			for (var i = 0; i < orderedCells.Count; i++)
+			{
+				var cell = Position + orderedCells[i];
+				if (cell.InBounds(map) && cell.GetRoom(map) == room)
+					count++;
+			}
+			return count;
 		}
 
 		static int EligibleColonyRoomCellCount(Map map)
@@ -271,20 +561,29 @@ namespace ZombieLand
 
 		static int CalculateFullBenefitCells(Map map)
 		{
+			return CalculateFullBenefitCells(EligibleColonyRoomCellCount(map));
+		}
+
+		static int CalculateFullBenefitCells(int eligibleCells)
+		{
 			var maxCells = Mathf.Max(1, MaxCells);
 			var coverage = Mathf.Clamp(ZombieSettings.Values?.blobFullBenefitRoomCoverage ?? 0.20f, 0.01f, 1f);
-			var eligibleCells = EligibleColonyRoomCellCount(map);
 			var target = Mathf.Max(20, Mathf.CeilToInt(eligibleCells * coverage));
 			return Mathf.Clamp(target, 1, maxCells);
 		}
 
 		int CalculateSeveranceMaturityCells(Map map)
 		{
+			return CalculateSeveranceMaturityCells(CalculateFullBenefitCells(map));
+		}
+
+		int CalculateSeveranceMaturityCells(int fullBenefitCells)
+		{
 			var settings = ZombieSettings.Values;
 			var coverage = Mathf.Clamp(settings?.blobSeveranceMaturityCoverage ?? 0.50f, 0.01f, 1f);
 			var min = Mathf.Max(1, settings?.blobSeveranceMaturityMinCells ?? 10);
 			var max = Mathf.Max(min, settings?.blobSeveranceMaturityMaxCells ?? 80);
-			var target = Mathf.CeilToInt(CalculateFullBenefitCells(map) * coverage);
+			var target = Mathf.CeilToInt(fullBenefitCells * coverage);
 			var upper = Mathf.Max(1, Mathf.Min(max, MaxCells));
 			var lower = Mathf.Min(min, upper);
 			return Mathf.Clamp(target, lower, upper);
@@ -292,11 +591,16 @@ namespace ZombieLand
 
 		int CalculateSeveranceReserveRequired(Map map)
 		{
+			return CalculateSeveranceReserveRequired(CalculateFullBenefitCells(map));
+		}
+
+		int CalculateSeveranceReserveRequired(int fullBenefitCells)
+		{
 			var settings = ZombieSettings.Values;
 			var coverage = Mathf.Clamp(settings?.blobSeveranceReserveCoverage ?? 0.25f, 0.01f, 1f);
 			var min = Mathf.Max(1, settings?.blobSeveranceReserveMin ?? 12);
 			var max = Mathf.Max(min, settings?.blobSeveranceReserveMax ?? 60);
-			var target = Mathf.CeilToInt(CalculateFullBenefitCells(map) * coverage);
+			var target = Mathf.CeilToInt(fullBenefitCells * coverage);
 			var upper = Mathf.Max(1, Mathf.Min(max, MaxCells));
 			var lower = Mathf.Min(min, upper);
 			return Mathf.Clamp(target, lower, upper);
@@ -348,17 +652,33 @@ namespace ZombieLand
 			return peakIntegratedVisibleCells >= SeveranceMaturityCells || peakBenefitFactor >= ZombieIgnoreMinBenefit;
 		}
 
-		void UpdateSymbiosisState()
+		void RefreshSymbiosisMetrics(bool force = false)
+		{
+			var ticks = GenTicks.TicksGame;
+			if (force == false && lastSymbiosisMetricTick != int.MinValue && ticks - lastSymbiosisMetricTick < SymbiosisMetricRefreshInterval)
+				return;
+			var map = BlobMap;
+			cachedEligibleColonyRoomCells = EligibleColonyRoomCellCount(map);
+			cachedFullBenefitCells = CalculateFullBenefitCells(cachedEligibleColonyRoomCells);
+			cachedIntegratedVisibleCells = CalculateIntegratedVisibleCells(map);
+			cachedBenefitFactor = Mathf.Clamp01(cachedIntegratedVisibleCells / Mathf.Max(1f, cachedFullBenefitCells));
+			cachedSeveranceMaturityCells = CalculateSeveranceMaturityCells(cachedFullBenefitCells);
+			cachedSeveranceReserveRequired = CalculateSeveranceReserveRequired(cachedFullBenefitCells);
+			lastSymbiosisMetricTick = ticks;
+		}
+
+		void UpdateSymbiosisState(bool forceMetricRefresh = true)
 		{
 			if (Destroyed)
 				return;
+			RefreshSymbiosisMetrics(forceMetricRefresh);
 			peakVisibleCells = Mathf.Max(peakVisibleCells, CellCount);
-			var integratedVisibleCells = IntegratedVisibleCells;
+			var integratedVisibleCells = cachedIntegratedVisibleCells;
 			peakIntegratedVisibleCells = Mathf.Max(peakIntegratedVisibleCells, integratedVisibleCells);
-			peakBenefitFactor = Mathf.Max(peakBenefitFactor, BenefitFactor);
+			peakBenefitFactor = Mathf.Max(peakBenefitFactor, cachedBenefitFactor);
 			if (PeakMeetsSeveranceMaturity())
 				maturedForSeverance = true;
-			decouplingReserve = Mathf.Min(decouplingReserve, DecouplingReserveMax);
+			decouplingReserve = Mathf.Min(decouplingReserve, cachedSeveranceReserveRequired);
 		}
 
 		static Pawn ResolvePawnByThingId(string thingId)
@@ -410,15 +730,9 @@ namespace ZombieLand
 
 		static bool IsEligibleHost(Pawn pawn, ZombieBlob blob)
 		{
-			if (pawn == null || pawn.Destroyed || pawn.Dead || pawn.Spawned == false)
+			if (pawn?.Spawned != true)
 				return false;
-			if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
-				return false;
-			if (pawn.Faction != Faction.OfPlayer || pawn.IsColonistPlayerControlled == false || pawn.IsPrisoner)
-				return false;
-			if (pawn.DevelopmentalStage == DevelopmentalStage.Newborn || pawn.DevelopmentalStage == DevelopmentalStage.Baby || pawn.DevelopmentalStage == DevelopmentalStage.Child)
-				return false;
-			if (pawn.RaceProps?.Humanlike != true || pawn.RaceProps.IsFlesh == false)
+			if (CanEverBeLinkedHostFast(pawn) == false)
 				return false;
 			if (AlienTools.IsFleshPawn(pawn) == false || SoSTools.IsHologram(pawn))
 				return false;
@@ -450,6 +764,8 @@ namespace ZombieLand
 
 		void EnsureHostHediff()
 		{
+			if (DebugDisableHostHediffSync)
+				return;
 			var pawn = ResolveHost();
 			if (pawn?.health?.hediffSet == null || CustomDefs.BlobSymbiosis == null)
 				return;
@@ -479,10 +795,17 @@ namespace ZombieLand
 
 		public static void AddCell(Map map, IntVec3 cell)
 		{
-			var blob = map.mapPawns.AllPawns.OfType<ZombieBlob>()
-				.OrderBy(blob => blob.Position.DistanceTo(cell))
-				.FirstOrDefault();
-			blob?.AddCell(cell);
+			ActiveBlob(map)?.AddCell(cell);
+		}
+
+		public static int AddCells(Map map, IEnumerable<IntVec3> newCells)
+		{
+			if (map == null)
+				return 0;
+			var newCellArray = newCells?.ToArray() ?? Array.Empty<IntVec3>();
+			if (newCellArray.Length == 0)
+				return 0;
+			return ActiveBlob(map)?.AddCells(newCellArray) ?? 0;
 		}
 
 		internal static void ReleaseAllRenderResources()
@@ -499,10 +822,10 @@ namespace ZombieLand
 				UnityEngine.Object.Destroy(metaballMaterial);
 				metaballMaterial = null;
 			}
-			if (metaballBuffer != null)
+			if (metaballTexture != null)
 			{
-				metaballBuffer.Dispose();
-				metaballBuffer = null;
+				UnityEngine.Object.Destroy(metaballTexture);
+				metaballTexture = null;
 			}
 			if (mesh != null)
 			{
@@ -513,39 +836,117 @@ namespace ZombieLand
 				renderResourceOwners.Remove(this);
 		}
 
+		public override void SpawnSetup(Map map, bool respawningAfterLoad)
+		{
+			base.SpawnSetup(map, respawningAfterLoad);
+			EnsureBlobDefaults();
+			RegisterActiveBlob(this, map);
+		}
+
 		public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
 		{
+			ForgetActiveBlob(this);
 			ReleaseRenderResources();
 			base.DeSpawn(mode);
 		}
 
 		public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
 		{
+			ForgetActiveBlob(this);
 			if (safeSeveranceInProgress == false && hostCollapseInProgress == false)
 				HandleUncontrolledDestroy();
 			ReleaseRenderResources();
 			base.Destroy(mode);
 		}
 
-		void AddRelativeCell(IntVec3 relative)
+		bool AddRelativeCell(IntVec3 relative)
 		{
-			if (cells.Add(relative))
-				orderedCells.Add(relative);
+			if (cells.Add(relative) == false)
+				return false;
+			orderedCells.Add(relative);
+			ExpandCellBounds(relative);
+			return true;
+		}
+
+		void ExpandCellBounds(IntVec3 relative)
+		{
+			if (hasCellBounds)
+				relativeCellBounds = relativeCellBounds.Encapsulate(relative);
+			else
+			{
+				relativeCellBounds = CellRect.SingleCell(relative);
+				hasCellBounds = true;
+			}
+		}
+
+		void RebuildCellBounds()
+		{
+			hasCellBounds = false;
+			if (cells == null)
+				return;
+			foreach (var cell in cells)
+				ExpandCellBounds(cell);
+			UpdateDrawCullSize();
+		}
+
+		void UpdateDrawCullSize()
+		{
+			if (hasCellBounds == false)
+			{
+				drawCullSize = Vector2.one;
+				return;
+			}
+
+			var minX = relativeCellBounds.minX - 1f;
+			var maxX = relativeCellBounds.maxX + 1f;
+			var minZ = relativeCellBounds.minZ - 1f;
+			var maxZ = relativeCellBounds.maxZ + 1f;
+			var width = Mathf.Max(Mathf.Abs(minX), Mathf.Abs(maxX)) * 2f + 1f;
+			var height = Mathf.Max(Mathf.Abs(minZ), Mathf.Abs(maxZ)) * 2f + 1f;
+			drawCullSize = new Vector2(Mathf.Max(1f, width), Mathf.Max(1f, height));
+		}
+
+		int AddRelativeCells(IEnumerable<IntVec3> relatives)
+		{
+			var added = 0;
+			foreach (var relative in relatives)
+			{
+				if (CellCount >= MaxCells)
+					break;
+				if (AddRelativeCell(relative))
+					added++;
+			}
+			return added;
+		}
+
+		int AddCells(IEnumerable<IntVec3> newCells)
+		{
+			var added = AddRelativeCells(newCells.Select(cell => cell - Position));
+			if (added > 0)
+			{
+				UpdateAll();
+				UpdateSymbiosisState();
+			}
+			return added;
 		}
 
 		void AddCell(IntVec3 newCell)
 		{
 			if (CellCount >= MaxCells)
 				return;
-			AddRelativeCell(newCell - Position);
-			UpdateAll();
-			UpdateSymbiosisState();
+			if (AddRelativeCell(newCell - Position))
+			{
+				UpdateAll();
+				UpdateSymbiosisState();
+			}
 		}
 
 		public bool ContainsCell(IntVec3 absoluteCell)
 		{
-			EnsureBlobDefaults();
-			return cells.Contains(absoluteCell - Position);
+			if (hasCellBounds == false)
+				return false;
+			var relative = absoluteCell - Position;
+			return relativeCellBounds.Contains(relative) && cells?.Contains(relative) == true;
 		}
 
 		public bool CanExpand()
@@ -665,11 +1066,16 @@ namespace ZombieLand
 
 		public void BlobTick()
 		{
-			EnsureHostLink();
-			UpdateSymbiosisState();
-			if (CanExpand() == false)
+			if (DebugDisableBlobTick)
 				return;
 			var ticks = GenTicks.TicksGame;
+			if (ticks % SymbiosisMetricRefreshInterval == Mathf.Abs(thingIDNumber % SymbiosisMetricRefreshInterval))
+			{
+				EnsureHostLink();
+				UpdateSymbiosisState(false);
+			}
+			if (CanExpand() == false)
+				return;
 			if (ticks < nextExpansionTick || ticks < feedPausedUntilTick)
 				return;
 			_ = TryExpansionPulse();
@@ -951,37 +1357,37 @@ namespace ZombieLand
 				return removed;
 			}
 			if (removed > 0)
+			{
+				RebuildCellBounds();
 				UpdateAll();
+			}
 			return removed;
 		}
 
 		void UpdateAll()
 		{
 			EnsureRenderResources();
+			if (hasCellBounds == false)
+				return;
 
-			var min_x = cells.Min(c => c.x) - 1f;
-			var min_z = cells.Min(c => c.z) - 1f;
-			var max_x = cells.Max(c => c.x) + 1f;
-			var max_z = cells.Max(c => c.z) + 1f;
+			var min_x = relativeCellBounds.minX - 1f;
+			var min_z = relativeCellBounds.minZ - 1f;
+			var max_x = relativeCellBounds.maxX + 1f;
+			var max_z = relativeCellBounds.maxZ + 1f;
 
 			centerX = (min_x + max_x) / 2;
 			centerZ = (min_z + max_z) / 2;
+			UpdateDrawCullSize();
 
 			var dx = max_x - min_x;
 			var dz = max_z - min_z;
-			var totalSize = Mathf.Max(dx, dz);
-			if (dx < totalSize)
-			{
-				min_x -= (totalSize - dx) / 2;
-				max_x += (totalSize - dx) / 2;
-			}
-			if (dz < totalSize)
-			{
-				min_z -= (totalSize - dz) / 2;
-				max_z += (totalSize - dz) / 2;
-			}
+			renderMinX = min_x;
+			renderMinZ = min_z;
+			renderWidth = Mathf.Max(1f, dx);
+			renderHeight = Mathf.Max(1f, dz);
+			EnsureMetaballTextureResolution(renderWidth, renderHeight);
 
-			var size2 = new Vector2(totalSize, totalSize);
+			var size2 = new Vector2(renderWidth, renderHeight);
 
 			if (mesh != null)
 				UnityEngine.Object.Destroy(mesh);
@@ -989,34 +1395,112 @@ namespace ZombieLand
 
 			var allCells = cells.ToArray();
 			var cellCount = Mathf.Min(allCells.Length, MAX_METABALLS);
-
-			while (metaballs.Count < cellCount)
-			{
-				var cell = allCells[metaballs.Count];
-				var x = GenMath.LerpDouble(min_x, max_x, 0, 1, cell.x);
-				var y = GenMath.LerpDouble(min_z, max_z, 0, 1, cell.z);
-				metaballs.Add(new()
-				{
-					position = new Vector2(x, y),
-					direction = Vector2.zero,
-					color = color,
-				});
-			}
-			while (metaballs.Count > cellCount)
-				metaballs.RemoveLast();
+			metaballRadiusByCell.Clear();
 
 			for (var i = 0; i < cellCount; i++)
 			{
-				var mb = metaballs[i];
-				mb.radius = radius;
-				mb.power = power;
-				mb.size = GetSize(allCells[i]) / totalSize;
-				metaballs[i] = mb;
+				var cell = allCells[i];
+				var cellRadius = Mathf.Clamp(GetSize(cell) * MetaballCellRadiusFactor, MetaballCellRadiusMin, MetaballCellRadiusMax);
+				metaballRadiusByCell[cell] = cellRadius;
 			}
 
-			metaballBuffer?.SetData(metaballs, 0, 0, metaballs.Count);
-			metaballMaterial?.SetBuffer("_MetaballBuffer", metaballBuffer);
-			metaballMaterial?.SetInt("_MetaballCount", metaballs.Count);
+			UpdateMetaballTexture();
+		}
+
+		void UpdateMetaballTexture()
+		{
+			if (metaballTexture == null)
+				return;
+
+			var textureWidth = metaballTexture.width;
+			var textureHeight = metaballTexture.height;
+			var pixels = new Color[textureWidth * textureHeight];
+			var influenceRadius = MetaballInfluenceRadiusCells;
+			for (var y = 0; y < textureHeight; y++)
+			{
+				var worldZ = renderMinZ + (y + 0.5f) / textureHeight * renderHeight;
+				var minCellZ = Mathf.FloorToInt(worldZ - influenceRadius);
+				var maxCellZ = Mathf.CeilToInt(worldZ + influenceRadius);
+				for (var x = 0; x < textureWidth; x++)
+				{
+					var worldX = renderMinX + (x + 0.5f) / textureWidth * renderWidth;
+					var minCellX = Mathf.FloorToInt(worldX - influenceRadius);
+					var maxCellX = Mathf.CeilToInt(worldX + influenceRadius);
+					var field = 0f;
+					var r = 0f;
+					var g = 0f;
+					var b = 0f;
+
+					for (var cellZ = minCellZ; cellZ <= maxCellZ; cellZ++)
+					{
+						for (var cellX = minCellX; cellX <= maxCellX; cellX++)
+						{
+							var cell = new IntVec3(cellX, 0, cellZ);
+							if (metaballRadiusByCell.TryGetValue(cell, out var cellRadius) == false || cellRadius <= 0.0001f)
+								continue;
+							var dx = worldX - cellX;
+							var dy = worldZ - cellZ;
+							var distanceSq = Mathf.Max(dx * dx + dy * dy, 0.0001f);
+							var contribution = cellRadius * cellRadius / distanceSq;
+							contribution *= contribution;
+							contribution *= Mathf.Max(power, 0f);
+							field += contribution;
+							r += color.r * contribution;
+							g += color.g * contribution;
+							b += color.b * contribution;
+						}
+					}
+
+					var alpha = SmoothStep(MetaballAlphaStart, MetaballAlphaFull, field) * MetaballMaxAlpha;
+					if (alpha <= 0.001f || field <= 0.0001f)
+					{
+						pixels[y * textureWidth + x] = Color.clear;
+						continue;
+					}
+
+					var edge = SmoothStep(MetaballEdgeStart, MetaballEdgeFull, field);
+					pixels[y * textureWidth + x] = new Color(
+						Mathf.Clamp01(r / field * edge),
+						Mathf.Clamp01(g / field * edge),
+						Mathf.Clamp01(b / field * edge),
+						alpha);
+				}
+			}
+
+			metaballTexture.SetPixels(pixels);
+			metaballTexture.Apply(false, false);
+		}
+
+		static int DesiredMetaballTextureSize(float worldSize)
+		{
+			var desired = Mathf.CeilToInt(Mathf.Max(1f, worldSize) * MetaballTexturePixelsPerCell);
+			return Mathf.Clamp(Mathf.NextPowerOfTwo(desired), MetaballTextureMinSize, MetaballTextureMaxSize);
+		}
+
+		void EnsureMetaballTextureResolution(float worldWidth, float worldHeight)
+		{
+			var textureWidth = DesiredMetaballTextureSize(worldWidth);
+			var textureHeight = DesiredMetaballTextureSize(worldHeight);
+			if (metaballTexture != null && metaballTexture.width == textureWidth && metaballTexture.height == textureHeight)
+				return;
+
+			if (metaballTexture != null)
+				UnityEngine.Object.Destroy(metaballTexture);
+			metaballTexture = new Texture2D(textureWidth, textureHeight, TextureFormat.RGBA32, false, true)
+			{
+				name = $"ZombieBlobMetaballs_{textureWidth}x{textureHeight}",
+				wrapMode = TextureWrapMode.Clamp,
+				filterMode = FilterMode.Bilinear
+			};
+			if (metaballMaterial != null)
+				ConfigureMetaballMaterial();
+			renderResourceOwners.Add(this);
+		}
+
+		static float SmoothStep(float edge0, float edge1, float x)
+		{
+			var t = Mathf.Clamp01((x - edge0) / Mathf.Max(0.0001f, edge1 - edge0));
+			return t * t * (3f - 2f * t);
 		}
 
 		void EnsureBlobDefaults()
@@ -1042,6 +1526,7 @@ namespace ZombieLand
 				orderedCells.RemoveAt(orderedCells.Count - 1);
 				cells.Remove(cell);
 			}
+			RebuildCellBounds();
 			if (radius <= 0f)
 				radius = elementRadius * 9f;
 			if (power <= 0f)
@@ -1053,11 +1538,60 @@ namespace ZombieLand
 		void EnsureRenderResources()
 		{
 			EnsureBlobDefaults();
-			metaballBuffer ??= new ComputeBuffer(MAX_METABALLS, Marshal.SizeOf(typeof(Metaball)));
-			if (metaballMaterial == null && Assets.MetaballShader != null)
-				metaballMaterial = new Material(Assets.MetaballShader);
-			if (metaballBuffer != null || metaballMaterial != null || mesh != null)
+			if (metaballTexture == null)
+			{
+				metaballTexture = new Texture2D(MetaballTextureMinSize, MetaballTextureMinSize, TextureFormat.RGBA32, false, true)
+				{
+					name = $"ZombieBlobMetaballs_{MetaballTextureMinSize}x{MetaballTextureMinSize}",
+					wrapMode = TextureWrapMode.Clamp,
+					filterMode = FilterMode.Bilinear
+				};
+			}
+			EnsureMetaballMaterial();
+			if (metaballTexture != null || metaballMaterial != null || mesh != null)
 				renderResourceOwners.Add(this);
+		}
+
+		void EnsureMetaballMaterial()
+		{
+			var shader = Assets.ZombieBlobShader ?? ShaderDatabase.Transparent;
+			if (metaballMaterial == null || metaballMaterial.shader != shader)
+			{
+				if (metaballMaterial != null)
+					UnityEngine.Object.Destroy(metaballMaterial);
+				metaballMaterial = new Material(shader)
+				{
+					name = "ZombieBlobMetaballs",
+					color = Color.white,
+					mainTexture = metaballTexture
+				};
+			}
+			ConfigureMetaballMaterial();
+		}
+
+		void ConfigureMetaballMaterial()
+		{
+			if (metaballMaterial == null)
+				return;
+			metaballMaterial.name = "ZombieBlobMetaballs";
+			metaballMaterial.color = Color.white;
+			metaballMaterial.mainTexture = metaballTexture;
+			SetMaterialFloatIfPresent(metaballMaterial, BlobOpacityMinId, BlobOpacityMin);
+			SetMaterialFloatIfPresent(metaballMaterial, BlobOpacityMaxId, BlobOpacityMax);
+			SetMaterialFloatIfPresent(metaballMaterial, BlobNoiseScaleId, BlobNoiseScale);
+			SetMaterialFloatIfPresent(metaballMaterial, BlobNoiseDriftId, BlobNoiseDrift);
+		}
+
+		static void SetMaterialFloatIfPresent(Material material, int propertyId, float value)
+		{
+			if (material.HasProperty(propertyId))
+				material.SetFloat(propertyId, value);
+		}
+
+		void UpdateMetaballMaterialTime()
+		{
+			if (metaballMaterial != null && metaballMaterial.HasProperty(BlobNoiseTimeId))
+				metaballMaterial.SetFloat(BlobNoiseTimeId, GenTicks.TicksGame * BlobNoiseTickScale);
 		}
 
 		float GetSize(IntVec3 cell)
@@ -1075,15 +1609,28 @@ namespace ZombieLand
 			return elementSizes[count];
 		}
 
+		public override void DynamicDrawPhaseAt(DrawPhase phase, Vector3 drawLoc, bool flip = false)
+		{
+			if (DebugDisableRendering)
+				return;
+			if (phase == DrawPhase.Draw)
+				DrawAt(drawLoc, flip);
+		}
+
 		public override void DrawAt(Vector3 drawLoc, bool flip = false)
 		{
+			if (DebugDisableRendering)
+				return;
 			if (mesh == null || metaballMaterial == null)
 				UpdateAll();
 			if (mesh == null || metaballMaterial == null)
 				return;
 
 			var offset = new Vector3(centerX, 0, centerZ);
-			Graphics.DrawMesh(mesh, drawLoc + offset, Quaternion.identity, metaballMaterial, 0);
+			var position = drawLoc + offset;
+			position.y = AltitudeLayer.MoteLow.AltitudeFor(BlobRenderAltitudeOffset);
+			UpdateMetaballMaterialTime();
+			Graphics.DrawMesh(mesh, position, Quaternion.identity, metaballMaterial, 0);
 		}
 
 		public override string GetInspectString()

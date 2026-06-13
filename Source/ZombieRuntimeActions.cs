@@ -25,6 +25,19 @@ namespace ZombieLand
 			};
 		}
 
+		public static object DescribeCellRect(CellRect rect)
+		{
+			return new
+			{
+				minX = rect.minX,
+				minZ = rect.minZ,
+				maxX = rect.maxX,
+				maxZ = rect.maxZ,
+				width = rect.maxX - rect.minX + 1,
+				height = rect.maxZ - rect.minZ + 1
+			};
+		}
+
 		public static bool TryFindPawn(Map map, string target, out Pawn pawn, out string error)
 		{
 			pawn = null;
