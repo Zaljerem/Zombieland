@@ -2222,7 +2222,8 @@ namespace ZombieLand
 			static void Prefix(Pawn_PathFollower __instance, Pawn ___pawn, out IntVec3 __state)
 			{
 				__state = IntVec3.Invalid;
-				if (ZombieSymbiant.DebugDisablePathCost || ZombieSettings.Values.symbiantPathCost <= 1)
+				var symbiantPathCost = ZombieSettings.Values.symbiantPathCost;
+				if (ZombieSymbiant.DebugDisablePathCost || symbiantPathCost <= 1 || symbiantPathCost <= __instance.nextCellCostTotal)
 					return;
 				var pawn = ___pawn;
 				if (pawn == null || pawn.Spawned == false || pawn.Map == null || pawn.Flying)
@@ -4184,13 +4185,13 @@ namespace ZombieLand
 
 			static void Postfix(Thing thing, StatDef stat, ref float __result)
 			{
-				if (ZombieSymbiant.DebugDisableCellStatEffects)
-					return;
 				if (stat != StatDefOf.MedicalTendSpeed
 					&& stat != StatDefOf.WorkSpeedGlobal
 					&& stat != StatDefOf.GeneralLaborSpeed
 					&& stat != StatDefOf.CleaningSpeed
 					&& stat != cookingSpeed)
+					return;
+				if (ZombieSymbiant.DebugDisableCellStatEffects)
 					return;
 				if (thing is not Pawn pawn)
 					return;
@@ -6073,8 +6074,11 @@ namespace ZombieLand
 					else
 						__result = GenMath.LerpDouble(0, 5, 14, 400, Tools.Difficulty());
 				}
-				if (ZombieSymbiant.DebugDisablePathCost == false && ZombieSymbiant.IsSymbiantCellForSlowedPawn(pawn, c, out _))
-					__result = Mathf.Max(__result, ZombieSettings.Values.symbiantPathCost);
+				var symbiantPathCost = ZombieSettings.Values.symbiantPathCost;
+				if (ZombieSymbiant.DebugDisablePathCost == false
+					&& symbiantPathCost > __result
+					&& ZombieSymbiant.IsSymbiantCellForSlowedPawn(pawn, c, out _))
+					__result = symbiantPathCost;
 			}
 		}
 

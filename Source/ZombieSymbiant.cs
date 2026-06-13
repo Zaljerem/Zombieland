@@ -358,7 +358,7 @@ namespace ZombieLand
 			return true;
 		}
 
-		internal static bool CanBeAffectedBySymbiantCellFast(Pawn pawn)
+		static bool CanBeAffectedBySymbiantCellCandidateFast(Pawn pawn)
 		{
 			return pawn != null
 				&& pawn.Destroyed == false
@@ -370,11 +370,17 @@ namespace ZombieLand
 				&& pawn is not ZombieSpitter
 				&& pawn.RaceProps?.Humanlike == true
 				&& pawn.Faction?.IsPlayer == true
-				&& pawn.IsColonistPlayerControlled
-				&& IsLinkedHostOnCurrentMapFast(pawn) == false;
+				&& pawn.IsColonistPlayerControlled;
 		}
 
-		internal static bool CanBeSlowedBySymbiantCellFast(Pawn pawn)
+		internal static bool CanBeAffectedBySymbiantCellFast(Pawn pawn)
+		{
+			if (CanBeAffectedBySymbiantCellCandidateFast(pawn) == false)
+				return false;
+			return IsLinkedHostOnCurrentMapFast(pawn) == false;
+		}
+
+		static bool CanBeSlowedBySymbiantCellCandidateFast(Pawn pawn)
 		{
 			return pawn != null
 				&& pawn.Destroyed == false
@@ -385,8 +391,14 @@ namespace ZombieLand
 				&& pawn.RaceProps?.doesntMove != true
 				&& pawn is not Zombie
 				&& pawn is not ZombieSymbiant
-				&& pawn is not ZombieSpitter
-				&& IsLinkedHostOnCurrentMapFast(pawn) == false;
+				&& pawn is not ZombieSpitter;
+		}
+
+		internal static bool CanBeSlowedBySymbiantCellFast(Pawn pawn)
+		{
+			if (CanBeSlowedBySymbiantCellCandidateFast(pawn) == false)
+				return false;
+			return IsLinkedHostOnCurrentMapFast(pawn) == false;
 		}
 
 		static bool IsLinkedHostOnCurrentMapFast(Pawn pawn)
@@ -566,7 +578,7 @@ namespace ZombieLand
 		public static bool IsSymbiantCellForAffectedPawn(Pawn pawn, IntVec3 cell, out ZombieSymbiant symbiant)
 		{
 			symbiant = null;
-			if (CanBeAffectedBySymbiantCellFast(pawn) == false)
+			if (CanBeAffectedBySymbiantCellCandidateFast(pawn) == false)
 				return false;
 			var map = pawn.Map;
 			if (cell.InBounds(map) == false)
@@ -574,13 +586,15 @@ namespace ZombieLand
 			symbiant = ActiveSymbiant(map);
 			if (symbiant == null)
 				return false;
-			return symbiant.ContainsCell(cell);
+			if (symbiant.ContainsCell(cell) == false)
+				return false;
+			return symbiant.IsLinkedTo(pawn) == false;
 		}
 
 		public static bool IsSymbiantCellForSlowedPawn(Pawn pawn, IntVec3 cell, out ZombieSymbiant symbiant)
 		{
 			symbiant = null;
-			if (CanBeSlowedBySymbiantCellFast(pawn) == false)
+			if (CanBeSlowedBySymbiantCellCandidateFast(pawn) == false)
 				return false;
 			var map = pawn.Map;
 			if (cell.InBounds(map) == false)
@@ -588,7 +602,9 @@ namespace ZombieLand
 			symbiant = ActiveSymbiant(map);
 			if (symbiant == null)
 				return false;
-			return symbiant.ContainsCell(cell);
+			if (symbiant.ContainsCell(cell) == false)
+				return false;
+			return CanEverBeLinkedHostFast(pawn) == false || symbiant.IsLinkedTo(pawn) == false;
 		}
 
 		public static int CountCellsInRoom(Room room)
