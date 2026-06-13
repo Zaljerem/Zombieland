@@ -2196,9 +2196,70 @@ namespace ZombieLand
 				var pawn = __instance?.pawn;
 				if (pawn == null || pawn.Spawned == false || pawn.Map == null || pawn.Flying)
 					return;
-				if (ZombieBlob.IsBlobCellForAffectedPawn(pawn, pawn.Position, out _) == false)
+				if (ZombieBlob.IsBlobCellForSlowedPawn(pawn, pawn.Position, out _) == false)
 					return;
 				CustomDefs.BlobSplash.PlayOneShot(SoundInfo.InMap(pawn));
+			}
+		}
+
+		[HarmonyPatch(typeof(Pawn_PathFollower), "TryEnterNextPathCell")]
+		static class Pawn_PathFollower_TryEnterNextPathCell_BlobDoor_Patch
+		{
+			static AccessTools.FieldRef<Building_Door, int> doorTicksUntilCloseRef;
+
+			static bool Prepare()
+			{
+				var field = typeof(Building_Door).Field("ticksUntilClose");
+				if (field == null)
+				{
+					Error("Cannot find Building_Door.ticksUntilClose for blob doorway slowdown patch");
+					return false;
+				}
+				doorTicksUntilCloseRef = AccessTools.FieldRefAccess<Building_Door, int>(field);
+				return true;
+			}
+
+			static void Prefix(Pawn_PathFollower __instance, Pawn ___pawn, out IntVec3 __state)
+			{
+				__state = IntVec3.Invalid;
+				if (ZombieBlob.DebugDisablePathCost || ZombieSettings.Values.blobPathCost <= 1)
+					return;
+				var pawn = ___pawn;
+				if (pawn == null || pawn.Spawned == false || pawn.Map == null || pawn.Flying)
+					return;
+				var nextCell = __instance.nextCell;
+				if (nextCell.IsValid == false || nextCell == pawn.Position)
+					return;
+				if (nextCell.GetDoor(pawn.Map) == null)
+					return;
+				if (ZombieBlob.IsBlobCellForSlowedPawn(pawn, nextCell, out _) == false)
+					return;
+				if (__instance.NextCellDoorToWaitForOrManuallyOpen() == null)
+					return;
+				__state = pawn.Position;
+			}
+
+			static void Postfix(Pawn_PathFollower __instance, Pawn ___pawn, IntVec3 __state)
+			{
+				if (__state.IsValid == false)
+					return;
+				var pawn = ___pawn;
+				if (pawn == null || pawn.Position != __state)
+					return;
+				if (ZombieBlob.IsBlobCellForSlowedPawn(pawn, __instance.nextCell, out _) == false)
+					return;
+				var door = __instance.nextCell.GetDoor(pawn.Map);
+				if (door == null)
+					return;
+
+				var cost = Mathf.Max(__instance.nextCellCostTotal, ZombieSettings.Values.blobPathCost);
+				__instance.nextCellCostTotal = Mathf.Max(__instance.nextCellCostTotal, cost);
+				__instance.nextCellCostLeft = Mathf.Max(__instance.nextCellCostLeft, cost);
+				door.Notify_PawnApproaching(pawn, cost);
+
+				ref var ticksUntilClose = ref doorTicksUntilCloseRef(door);
+				var holdTicks = Mathf.CeilToInt(cost) + Mathf.Max(door.TicksTillFullyOpened, 0) + 30;
+				ticksUntilClose = Mathf.Max(ticksUntilClose, holdTicks);
 			}
 		}
 
@@ -6012,7 +6073,7 @@ namespace ZombieLand
 					else
 						__result = GenMath.LerpDouble(0, 5, 14, 400, Tools.Difficulty());
 				}
-				if (ZombieBlob.DebugDisablePathCost == false && ZombieBlob.IsBlobCellForAffectedPawn(pawn, c, out _))
+				if (ZombieBlob.DebugDisablePathCost == false && ZombieBlob.IsBlobCellForSlowedPawn(pawn, c, out _))
 					__result = Mathf.Max(__result, ZombieSettings.Values.blobPathCost);
 			}
 		}

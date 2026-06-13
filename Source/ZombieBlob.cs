@@ -368,7 +368,30 @@ namespace ZombieLand
 				&& pawn is not ZombieSpitter
 				&& pawn.RaceProps?.Humanlike == true
 				&& pawn.Faction?.IsPlayer == true
-				&& pawn.IsColonistPlayerControlled;
+				&& pawn.IsColonistPlayerControlled
+				&& IsLinkedHostOnCurrentMapFast(pawn) == false;
+		}
+
+		internal static bool CanBeSlowedByBlobCellFast(Pawn pawn)
+		{
+			return pawn != null
+				&& pawn.Destroyed == false
+				&& pawn.Dead == false
+				&& pawn.Spawned
+				&& pawn.Map != null
+				&& pawn.Flying == false
+				&& pawn.RaceProps?.doesntMove != true
+				&& pawn is not Zombie
+				&& pawn is not ZombieBlob
+				&& pawn is not ZombieSpitter
+				&& IsLinkedHostOnCurrentMapFast(pawn) == false;
+		}
+
+		static bool IsLinkedHostOnCurrentMapFast(Pawn pawn)
+		{
+			if (CanEverBeLinkedHostFast(pawn) == false)
+				return false;
+			return ActiveBlob(pawn.Map)?.IsLinkedTo(pawn) == true;
 		}
 
 		static bool IsActiveBlobOnMap(ZombieBlob blob, Map map)
@@ -542,6 +565,20 @@ namespace ZombieLand
 		{
 			blob = null;
 			if (CanBeAffectedByBlobCellFast(pawn) == false)
+				return false;
+			var map = pawn.Map;
+			if (cell.InBounds(map) == false)
+				return false;
+			blob = ActiveBlob(map);
+			if (blob == null)
+				return false;
+			return blob.ContainsCell(cell);
+		}
+
+		public static bool IsBlobCellForSlowedPawn(Pawn pawn, IntVec3 cell, out ZombieBlob blob)
+		{
+			blob = null;
+			if (CanBeSlowedByBlobCellFast(pawn) == false)
 				return false;
 			var map = pawn.Map;
 			if (cell.InBounds(map) == false)
