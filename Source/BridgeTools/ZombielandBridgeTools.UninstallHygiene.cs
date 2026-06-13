@@ -63,7 +63,7 @@ namespace ZombieLand
 			var special = SpawnLineupZombie(map, root + new IntVec3(2, 0, 3), ZombieType.DarkSlimer, $"{UninstallHygienePrefix}_Special", true, spawned, errors);
 			var corpseSource = SpawnLineupZombie(map, root + new IntVec3(4, 0, 3), ZombieType.Normal, $"{UninstallHygienePrefix}_CorpseSource", true, spawned, errors);
 			var spitter = SpawnLineupSpitter(map, root + new IntVec3(6, 0, 3), $"{UninstallHygienePrefix}_Spitter", spawned, errors);
-			var blob = SpawnLineupBlob(map, root + new IntVec3(8, 0, 3), $"{UninstallHygienePrefix}_Blob", spawned, errors);
+			var symbiant = SpawnLineupSymbiant(map, root + new IntVec3(8, 0, 3), $"{UninstallHygienePrefix}_Symbiant", spawned, errors);
 
 			AddPawnZombieRefs(infected ?? colonist, normal, errors);
 			AddHeldZombieThings(colonist, map, errors);
@@ -94,7 +94,7 @@ namespace ZombieLand
 					&& normal != null
 					&& special != null
 					&& spitter != null
-					&& blob != null
+					&& symbiant != null
 					&& errors.Count == 0,
 				action = "setup",
 				root = ZombieRuntimeActions.DescribeCell(root),
@@ -177,7 +177,7 @@ namespace ZombieLand
 					totalZombieThings = mapThings.Count(IsUninstallZombieThing),
 					zombies = mapThings.OfType<Zombie>().Count(),
 					spitters = mapThings.OfType<ZombieSpitter>().Count(),
-					blobs = mapThings.OfType<ZombieBlob>().Count(),
+					symbiants = mapThings.OfType<ZombieSymbiant>().Count(),
 					corpses = mapThings.Count(thing => thing.def == CustomDefs.Corpse_Zombie),
 					chainsaws = mapThings.Count(thing => thing.def == CustomDefs.Chainsaw),
 					thumpers = mapThings.Count(thing => thing.def == CustomDefs.Thumper),
@@ -189,7 +189,7 @@ namespace ZombieLand
 				pawns = new
 				{
 					total = pawns.Length,
-					worldZombiePawns = WorldPawnSets().SelectMany(set => set).Count(pawn => pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter),
+					worldZombiePawns = WorldPawnSets().SelectMany(set => set).Count(pawn => pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter),
 					zombieHediffs = pawns.Sum(CountZombieHediffs),
 					zombieMemories = pawns.Sum(CountZombieMemories),
 					zombieJobs = pawns.Sum(CountZombieJobs),
@@ -540,7 +540,7 @@ namespace ZombieLand
 				IsUninstallZombieType(memory)
 				|| memory.def.IsZombieDef()
 				|| memory.otherPawn is Zombie
-				|| memory.otherPawn is ZombieBlob
+				|| memory.otherPawn is ZombieSymbiant
 				|| memory.otherPawn is ZombieSpitter) ?? 0;
 		}
 

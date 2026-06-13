@@ -2572,8 +2572,8 @@ namespace ZombieLand
 					return humanError;
 				if (TryFindClearSpawnCell(map, humanCell + new IntVec3(4, 0, 0), 10f, out var spitterCell, out var spitterError) == false)
 					return spitterError;
-				if (TryFindClearSpawnCell(map, humanCell + new IntVec3(8, 0, 0), 10f, out var blobCell, out var blobError) == false)
-					return blobError;
+				if (TryFindClearSpawnCell(map, humanCell + new IntVec3(8, 0, 0), 10f, out var symbiantCell, out var symbiantError) == false)
+					return symbiantError;
 
 				var human = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
 				GenSpawn.Spawn(human, humanCell, map, WipeMode.Vanish);
@@ -2581,19 +2581,19 @@ namespace ZombieLand
 				pawns.Add(human);
 
 				var spitter = SpawnMakeDownedSpitter(map, spitterCell);
-				var blob = SpawnMakeDownedBlob(map, blobCell);
-				if (spitter == null || blob == null)
+				var symbiant = SpawnMakeDownedSymbiant(map, symbiantCell);
+				if (spitter == null || symbiant == null)
 				{
 					return new
 					{
 						success = false,
-						error = "Could not spawn both spitter and blob for MakeDowned probe.",
+						error = "Could not spawn both spitter and symbiant for MakeDowned probe.",
 						spitterSpawned = spitter != null,
-						blobSpawned = blob != null
+						symbiantSpawned = symbiant != null
 					};
 				}
 				pawns.Add(spitter);
-				pawns.Add(blob);
+				pawns.Add(symbiant);
 
 				Constants.KILL_CIRCLE_RADIUS_MULTIPLIER = 2f;
 				var grid = map.GetGrid();
@@ -2610,12 +2610,12 @@ namespace ZombieLand
 
 				InvokeMakeDowned(makeDowned, human);
 				InvokeMakeDowned(makeDowned, spitter);
-				InvokeMakeDowned(makeDowned, blob);
+				InvokeMakeDowned(makeDowned, symbiant);
 
 				var unclearedAfter = seededCells.Count(cell => grid.GetTimestamp(cell) > 0);
 				var humanDowned = human.health.Downed;
 				var spitterDowned = spitter.health.Downed;
-				var blobDowned = blob.health.Downed;
+				var symbiantDowned = symbiant.health.Downed;
 
 				return new
 				{
@@ -2623,16 +2623,16 @@ namespace ZombieLand
 						&& unclearedAfter == 0
 						&& humanDowned
 						&& spitterDowned == false
-						&& blobDowned == false,
+						&& symbiantDowned == false,
 					seededBefore,
 					unclearedAfter,
 					radius,
 					human = DescribePawn(human),
 					spitter = DescribeZombie(spitter),
-					blob = DescribeZombie(blob),
+					symbiant = DescribeZombie(symbiant),
 					humanHealthDowned = humanDowned,
 					spitterHealthDowned = spitterDowned,
-					blobHealthDowned = blobDowned
+					symbiantHealthDowned = symbiantDowned
 				};
 			}
 			finally
@@ -2740,13 +2740,13 @@ namespace ZombieLand
 			return spitter;
 		}
 
-		static ZombieBlob SpawnMakeDownedBlob(Map map, IntVec3 cell)
+		static ZombieSymbiant SpawnMakeDownedSymbiant(Map map, IntVec3 cell)
 		{
-			var existing = CurrentZombies(map).OfType<ZombieBlob>().Select(StableId).ToHashSet();
-			ZombieBlob.Spawn(map, cell);
-			return CurrentZombies(map).OfType<ZombieBlob>()
+			var existing = CurrentZombies(map).OfType<ZombieSymbiant>().Select(StableId).ToHashSet();
+			ZombieSymbiant.Spawn(map, cell);
+			return CurrentZombies(map).OfType<ZombieSymbiant>()
 				.FirstOrDefault(candidate => existing.Contains(StableId(candidate)) == false)
-				?? CurrentZombies(map).OfType<ZombieBlob>().OrderBy(candidate => candidate.Position.DistanceToSquared(cell)).FirstOrDefault();
+				?? CurrentZombies(map).OfType<ZombieSymbiant>().OrderBy(candidate => candidate.Position.DistanceToSquared(cell)).FirstOrDefault();
 		}
 
 		static void ApplyAnestheticCapacitySuppressor(Pawn pawn)
@@ -3100,7 +3100,7 @@ namespace ZombieLand
 			}
 		}
 
-		[Tool("zombieland/zombie_faction_pawn_generation_contract", Description = "Verify Zombie faction PawnGenerator requests route normal zombies through Zombieland while preserving blob/spitter generation.")]
+		[Tool("zombieland/zombie_faction_pawn_generation_contract", Description = "Verify Zombie faction PawnGenerator requests route normal zombies through Zombieland while preserving symbiant/spitter generation.")]
 		public static object ZombieFactionPawnGenerationContract()
 		{
 			var map = CurrentMap;
@@ -3135,7 +3135,7 @@ namespace ZombieLand
 
 			Pawn generatedNormal = null;
 			Pawn generatedSpitter = null;
-			Pawn generatedBlob = null;
+			Pawn generatedSymbiant = null;
 			try
 			{
 				var beforeIds = CurrentZombies(map)
@@ -3147,7 +3147,7 @@ namespace ZombieLand
 				{
 					generatedNormal = PawnGenerator.GeneratePawn(ZombieDefOf.Zombie, zombieFaction);
 					generatedSpitter = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieSpitter, zombieFaction);
-					generatedBlob = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieBlob, zombieFaction);
+					generatedSymbiant = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieSymbiant, zombieFaction);
 				}
 				finally
 				{
@@ -3171,8 +3171,8 @@ namespace ZombieLand
 						&& newZombieIds.Length == 1
 						&& generatedSpitter is ZombieSpitter
 						&& generatedSpitter.Spawned == false
-						&& generatedBlob is ZombieBlob
-						&& generatedBlob.Spawned == false,
+						&& generatedSymbiant is ZombieSymbiant
+						&& generatedSymbiant.Spawned == false,
 					zombieFaction = zombieFaction.def?.defName,
 					sourcePath = "PawnGenerator.GenerateNewPawnInternal prefix",
 					normal = DescribeZombie(generatedNormal),
@@ -3181,9 +3181,9 @@ namespace ZombieLand
 					spitter = DescribeZombie(generatedSpitter),
 					spitterType = generatedSpitter?.GetType().FullName,
 					spitterSpawned = generatedSpitter?.Spawned ?? false,
-					blob = DescribeZombie(generatedBlob),
-					blobType = generatedBlob?.GetType().FullName,
-					blobSpawned = generatedBlob?.Spawned ?? false
+					symbiant = DescribeZombie(generatedSymbiant),
+					symbiantType = generatedSymbiant?.GetType().FullName,
+					symbiantSpawned = generatedSymbiant?.Spawned ?? false
 				};
 			}
 			finally
@@ -3194,7 +3194,7 @@ namespace ZombieLand
 					_ = tickManager.hummingZombies?.Remove(zombie);
 					_ = tickManager.tankZombies?.Remove(zombie);
 				}
-				foreach (var pawn in new[] { generatedNormal, generatedSpitter, generatedBlob }.Where(pawn => pawn != null).Distinct())
+				foreach (var pawn in new[] { generatedNormal, generatedSpitter, generatedSymbiant }.Where(pawn => pawn != null).Distinct())
 				{
 					if (pawn.Spawned && pawn.Destroyed == false)
 						pawn.Destroy(DestroyMode.Vanish);
@@ -3221,38 +3221,38 @@ namespace ZombieLand
 				return normalSpawnError;
 			if (TryFindClearSpawnCell(map, normalCell + new IntVec3(3, 0, 0), 8f, out var spitterCell, out var spitterSpawnError) == false)
 				return spitterSpawnError;
-			if (TryFindClearSpawnCell(map, normalCell + new IntVec3(6, 0, 0), 10f, out var blobCell, out var blobSpawnError) == false)
-				return blobSpawnError;
+			if (TryFindClearSpawnCell(map, normalCell + new IntVec3(6, 0, 0), 10f, out var symbiantCell, out var symbiantSpawnError) == false)
+				return symbiantSpawnError;
 
 			var normal = SpawnFireFixturePawn(map, normalCell, "normal");
 			var spitter = SpawnFireFixturePawn(map, spitterCell, "spitter");
-			var blob = SpawnFireFixturePawn(map, blobCell, "blob");
+			var symbiant = SpawnFireFixturePawn(map, symbiantCell, "symbiant");
 			var normalThreat = GenHostility.IsActiveThreatTo(normal, Faction.OfPlayer, false, false);
 			var spitterThreat = GenHostility.IsActiveThreatTo(spitter, Faction.OfPlayer, false, false);
-			var blobThreat = GenHostility.IsActiveThreatTo(blob, Faction.OfPlayer, false, false);
+			var symbiantThreat = GenHostility.IsActiveThreatTo(symbiant, Faction.OfPlayer, false, false);
 
 			return new
 			{
 				success = normal is Zombie
 					&& spitter is ZombieSpitter
-					&& blob is ZombieBlob
+					&& symbiant is ZombieSymbiant
 					&& normalThreat == false
 					&& spitterThreat == false
-					&& blobThreat == false,
+					&& symbiantThreat == false,
 				destroyedZombies,
 				normal = DescribePawn(normal),
 				spitter = DescribePawn(spitter),
-				blob = DescribePawn(blob),
+				symbiant = DescribePawn(symbiant),
 				threatsToPlayer = new
 				{
 					normal = normalThreat,
 					spitter = spitterThreat,
-					blob = blobThreat
+					symbiant = symbiantThreat
 				}
 			};
 		}
 
-		[Tool("zombieland/zombie_target_cache_excludes_specials", Description = "Verify AttackTargetsCache.TargetsHostileToColony excludes normal, spitter, and blob zombies.")]
+		[Tool("zombieland/zombie_target_cache_excludes_specials", Description = "Verify AttackTargetsCache.TargetsHostileToColony excludes normal, spitter, and symbiant zombies.")]
 		public static object ZombieTargetCacheExcludesSpecials()
 		{
 			var map = CurrentMap;
@@ -3271,22 +3271,22 @@ namespace ZombieLand
 				return normalSpawnError;
 			if (TryFindClearSpawnCell(map, normalCell + new IntVec3(3, 0, 0), 8f, out var spitterCell, out var spitterSpawnError) == false)
 				return spitterSpawnError;
-			if (TryFindClearSpawnCell(map, normalCell + new IntVec3(6, 0, 0), 10f, out var blobCell, out var blobSpawnError) == false)
-				return blobSpawnError;
+			if (TryFindClearSpawnCell(map, normalCell + new IntVec3(6, 0, 0), 10f, out var symbiantCell, out var symbiantSpawnError) == false)
+				return symbiantSpawnError;
 
 			var normal = SpawnFireFixturePawn(map, normalCell, "normal");
 			var spitter = SpawnFireFixturePawn(map, spitterCell, "spitter");
-			var blob = SpawnFireFixturePawn(map, blobCell, "blob");
+			var symbiant = SpawnFireFixturePawn(map, symbiantCell, "symbiant");
 			map.attackTargetsCache.UpdateTarget(normal);
 			map.attackTargetsCache.UpdateTarget(spitter);
-			map.attackTargetsCache.UpdateTarget(blob);
+			map.attackTargetsCache.UpdateTarget(symbiant);
 			var hostileTargets = map.attackTargetsCache.TargetsHostileToColony;
 			var containsNormal = hostileTargets.Contains(normal);
 			var containsSpitter = hostileTargets.Contains(spitter);
-			var containsBlob = hostileTargets.Contains(blob);
+			var containsSymbiant = hostileTargets.Contains(symbiant);
 			var zTypesInCache = hostileTargets
 				.Select(target => target.Thing)
-				.Where(thing => thing is Zombie || thing is ZombieSpitter || thing is ZombieBlob)
+				.Where(thing => thing is Zombie || thing is ZombieSpitter || thing is ZombieSymbiant)
 				.Select(thing => thing.def?.defName)
 				.Distinct()
 				.OrderBy(defName => defName)
@@ -3296,20 +3296,20 @@ namespace ZombieLand
 			{
 				success = normal is Zombie
 					&& spitter is ZombieSpitter
-					&& blob is ZombieBlob
+					&& symbiant is ZombieSymbiant
 					&& containsNormal == false
 					&& containsSpitter == false
-					&& containsBlob == false,
+					&& containsSymbiant == false,
 				destroyedZombies,
 				normal = DescribePawn(normal),
 				spitter = DescribePawn(spitter),
-				blob = DescribePawn(blob),
+				symbiant = DescribePawn(symbiant),
 				hostileCount = hostileTargets.Count,
 				contains = new
 				{
 					normal = containsNormal,
 					spitter = containsSpitter,
-					blob = containsBlob
+					symbiant = containsSymbiant
 				},
 				zombielandDefsInCache = zTypesInCache
 			};

@@ -50,7 +50,7 @@ namespace ZombieLand
 					zombieFaction = ZombieDefOf.Zombies != null,
 					zombieKind = ZombieDefOf.Zombie != null,
 					zombieRace = ZombieDefOf.Zombie?.race != null,
-					zombieBlobKind = ZombieDefOf.ZombieBlob != null,
+					zombieSymbiantKind = ZombieDefOf.ZombieSymbiant != null,
 					zombieSpitterKind = ZombieDefOf.ZombieSpitter != null
 				},
 				tickManager = tickManager == null ? null : new
@@ -96,7 +96,7 @@ namespace ZombieLand
 				zombieGrid,
 				spawnedZombieCount = zombies.Length,
 				ordinaryZombies = zombies.OfType<Zombie>().Count(),
-				blobs = zombies.OfType<ZombieBlob>().Count(),
+				symbiants = zombies.OfType<ZombieSymbiant>().Count(),
 				spitters = zombies.OfType<ZombieSpitter>().Count(),
 				finalizedDefs = new
 				{
@@ -132,7 +132,7 @@ namespace ZombieLand
 						liveCachedZombieCount++;
 
 			var ordinaryZombies = 0;
-			var blobs = 0;
+			var symbiants = 0;
 			var spitters = 0;
 			var tanky = 0;
 			var activeElectrical = 0;
@@ -172,8 +172,8 @@ namespace ZombieLand
 						if (zombie.isHealer)
 							healers++;
 					}
-					else if (pawn is ZombieBlob)
-						blobs++;
+					else if (pawn is ZombieSymbiant)
+						symbiants++;
 					else if (pawn is ZombieSpitter)
 						spitters++;
 				}
@@ -199,13 +199,13 @@ namespace ZombieLand
 				{
 					cachedZombieCount,
 					liveCachedZombieCount,
-					liveZombielandPawnCount = ordinaryZombies + blobs + spitters,
+					liveZombielandPawnCount = ordinaryZombies + symbiants + spitters,
 					pendingSpawns = ZombieGenerator.ZombiesSpawning,
-					liveCountIncludingPendingSpawns = liveCachedZombieCount + blobs + spitters + ZombieGenerator.ZombiesSpawning,
+					liveCountIncludingPendingSpawns = liveCachedZombieCount + symbiants + spitters + ZombieGenerator.ZombiesSpawning,
 					special = new
 					{
 						ordinaryZombies,
-						blobs,
+						symbiants,
 						spitters,
 						tanky,
 						activeElectrical,
@@ -1176,13 +1176,13 @@ namespace ZombieLand
 			{
 				success = Assets.initialized
 					&& Assets.MetaballShader != null
-					&& Assets.ZombieBlobShader != null
+					&& Assets.ZombieSymbiantShader != null
 					&& dustInstantiated
 					&& dustHasParticleSystem
 					&& dustHasRenderer,
 				Assets.initialized,
 				metaballShader = Assets.MetaballShader?.name,
-				zombieBlobShader = Assets.ZombieBlobShader?.name,
+				zombieSymbiantShader = Assets.ZombieSymbiantShader?.name,
 				dust = new
 				{
 					instantiated = dustInstantiated,
@@ -2602,7 +2602,7 @@ namespace ZombieLand
 		{
 			if (pawn == null)
 				return null;
-			if (pawn is Zombie || pawn is ZombieSpitter || pawn is ZombieBlob)
+			if (pawn is Zombie || pawn is ZombieSpitter || pawn is ZombieSymbiant)
 				return DescribeZombie(pawn);
 			return DescribePawn(pawn);
 		}
@@ -2687,7 +2687,7 @@ namespace ZombieLand
 			[ToolParameter(Description = "Origin z coordinate for the top-left zombie. Use -1 with x -1 to start near map center.", Required = false, DefaultValue = -1)] int z = -1,
 			[ToolParameter(Description = "Destroy existing Zombieland pawns on the current map before spawning the lineup.", Required = false, DefaultValue = true)] bool clearExisting = true,
 			[ToolParameter(Description = "When true, skip the underground dig-out state and spawn each zombie standing.", Required = false, DefaultValue = true)] bool appearDirectly = true,
-			[ToolParameter(Description = "Add spitter/blob plus staged render states for a reusable S-Special-Gauntlet visual screenshot.", Required = false, DefaultValue = false)] bool stageRenderStates = false)
+			[ToolParameter(Description = "Add spitter/symbiant plus staged render states for a reusable S-Special-Gauntlet visual screenshot.", Required = false, DefaultValue = false)] bool stageRenderStates = false)
 		{
 			var map = CurrentMap;
 			if (map == null)
@@ -2854,9 +2854,9 @@ namespace ZombieLand
 			if (spitter != null)
 				staged.Add(new { role = "spitter-custom-render", zombie = DescribeZombie(spitter) });
 
-			var blob = SpawnLineupBlob(map, origin + new IntVec3(12, 0, 4), "ZL Visual Blob", spawned, errors);
-			if (blob != null)
-				staged.Add(new { role = "blob-render", zombie = DescribeZombie(blob) });
+			var symbiant = SpawnLineupSymbiant(map, origin + new IntVec3(12, 0, 4), "ZL Visual Symbiant", spawned, errors);
+			if (symbiant != null)
+				staged.Add(new { role = "symbiant-render", zombie = DescribeZombie(symbiant) });
 
 			return new
 			{
@@ -2945,7 +2945,7 @@ namespace ZombieLand
 			return spitter;
 		}
 
-		static ZombieBlob SpawnLineupBlob(Map map, IntVec3 requestedCell, string name, List<Pawn> spawned, List<string> errors)
+		static ZombieSymbiant SpawnLineupSymbiant(Map map, IntVec3 requestedCell, string name, List<Pawn> spawned, List<string> errors)
 		{
 			var cell = ResolveLineupCell(map, requestedCell);
 			if (cell.IsValid == false)
@@ -2954,19 +2954,19 @@ namespace ZombieLand
 				return null;
 			}
 
-			var existing = CurrentZombies(map).OfType<ZombieBlob>().Select(ZombieRuntimeActions.StableThingId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-			ZombieBlob.Spawn(map, cell);
-			var blob = CurrentZombies(map).OfType<ZombieBlob>()
+			var existing = CurrentZombies(map).OfType<ZombieSymbiant>().Select(ZombieRuntimeActions.StableThingId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+			ZombieSymbiant.Spawn(map, cell);
+			var symbiant = CurrentZombies(map).OfType<ZombieSymbiant>()
 				.FirstOrDefault(candidate => existing.Contains(ZombieRuntimeActions.StableThingId(candidate)) == false)
-				?? CurrentZombies(map).OfType<ZombieBlob>().OrderBy(candidate => candidate.Position.DistanceToSquared(cell)).FirstOrDefault();
-			if (blob == null)
+				?? CurrentZombies(map).OfType<ZombieSymbiant>().OrderBy(candidate => candidate.Position.DistanceToSquared(cell)).FirstOrDefault();
+			if (symbiant == null)
 			{
 				errors.Add($"Could not spawn {name}.");
 				return null;
 			}
-			blob.Name = new NameSingle(name);
-			spawned.Add(blob);
-			return blob;
+			symbiant.Name = new NameSingle(name);
+			spawned.Add(symbiant);
+			return symbiant;
 		}
 
 	}

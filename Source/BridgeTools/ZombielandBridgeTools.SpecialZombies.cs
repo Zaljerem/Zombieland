@@ -37,8 +37,8 @@ namespace ZombieLand
 					return zombieError;
 				if (TryFindClearSpawnCell(map, humanCell + new IntVec3(0, 0, 3), 10f, out var spitterCell, out var spitterError) == false)
 					return spitterError;
-				if (TryFindClearSpawnCell(map, humanCell + new IntVec3(3, 0, 3), 10f, out var blobCell, out var blobError) == false)
-					return blobError;
+				if (TryFindClearSpawnCell(map, humanCell + new IntVec3(3, 0, 3), 10f, out var symbiantCell, out var symbiantError) == false)
+					return symbiantError;
 
 				var human = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
 				GenSpawn.Spawn(human, humanCell, map, Rot4.South);
@@ -69,25 +69,25 @@ namespace ZombieLand
 				if (spitter != null)
 					spawnedThings.Add(spitter);
 
-				var existingBlobs = CurrentZombies(map).OfType<ZombieBlob>()
+				var existingSymbiants = CurrentZombies(map).OfType<ZombieSymbiant>()
 					.Select(ZombieRuntimeActions.StableThingId)
 					.ToHashSet(StringComparer.OrdinalIgnoreCase);
-				ZombieBlob.Spawn(map, blobCell);
-				var blob = CurrentZombies(map).OfType<ZombieBlob>()
-					.FirstOrDefault(candidate => existingBlobs.Contains(ZombieRuntimeActions.StableThingId(candidate)) == false)
-					?? CurrentZombies(map).OfType<ZombieBlob>().OrderBy(candidate => candidate.Position.DistanceToSquared(blobCell)).FirstOrDefault();
-				if (blob != null)
-					spawnedThings.Add(blob);
+				ZombieSymbiant.Spawn(map, symbiantCell);
+				var symbiant = CurrentZombies(map).OfType<ZombieSymbiant>()
+					.FirstOrDefault(candidate => existingSymbiants.Contains(ZombieRuntimeActions.StableThingId(candidate)) == false)
+					?? CurrentZombies(map).OfType<ZombieSymbiant>().OrderBy(candidate => candidate.Position.DistanceToSquared(symbiantCell)).FirstOrDefault();
+				if (symbiant != null)
+					spawnedThings.Add(symbiant);
 
 				var spitterStoryInjected = EnsureStoryTrackerForSkinColorProbe(spitter);
-				var blobStoryInjected = EnsureStoryTrackerForSkinColorProbe(blob);
+				var symbiantStoryInjected = EnsureStoryTrackerForSkinColorProbe(symbiant);
 
 				var humanCase = DescribeSkinColorCase("human", human, humanControlColor, false, false);
 				var zombielandCases = new[]
 				{
 					DescribeSkinColorCase("zombie", zombie, Color.white, true, false),
 					DescribeSkinColorCase("spitter", spitter, Color.white, true, spitterStoryInjected),
-					DescribeSkinColorCase("blob", blob, Color.white, true, blobStoryInjected)
+					DescribeSkinColorCase("symbiant", symbiant, Color.white, true, symbiantStoryInjected)
 				};
 
 				return new
@@ -129,8 +129,8 @@ namespace ZombieLand
 					return zombieError;
 				if (TryFindClearSpawnCell(map, humanCell + new IntVec3(0, 0, 3), 10f, out var spitterCell, out var spitterError) == false)
 					return spitterError;
-				if (TryFindClearSpawnCell(map, humanCell + new IntVec3(3, 0, 3), 10f, out var blobCell, out var blobError) == false)
-					return blobError;
+				if (TryFindClearSpawnCell(map, humanCell + new IntVec3(3, 0, 3), 10f, out var symbiantCell, out var symbiantError) == false)
+					return symbiantError;
 
 				var privateAddGene = typeof(Pawn_GeneTracker).GetMethod(
 					nameof(Pawn_GeneTracker.AddGene),
@@ -173,22 +173,22 @@ namespace ZombieLand
 				if (spitter != null)
 					spawnedThings.Add(spitter);
 
-				var existingBlobs = CurrentZombies(map).OfType<ZombieBlob>()
+				var existingSymbiants = CurrentZombies(map).OfType<ZombieSymbiant>()
 					.Select(ZombieRuntimeActions.StableThingId)
 					.ToHashSet(StringComparer.OrdinalIgnoreCase);
-				ZombieBlob.Spawn(map, blobCell);
-				var blob = CurrentZombies(map).OfType<ZombieBlob>()
-					.FirstOrDefault(candidate => existingBlobs.Contains(ZombieRuntimeActions.StableThingId(candidate)) == false)
-					?? CurrentZombies(map).OfType<ZombieBlob>().OrderBy(candidate => candidate.Position.DistanceToSquared(blobCell)).FirstOrDefault();
-				if (blob != null)
-					spawnedThings.Add(blob);
+				ZombieSymbiant.Spawn(map, symbiantCell);
+				var symbiant = CurrentZombies(map).OfType<ZombieSymbiant>()
+					.FirstOrDefault(candidate => existingSymbiants.Contains(ZombieRuntimeActions.StableThingId(candidate)) == false)
+					?? CurrentZombies(map).OfType<ZombieSymbiant>().OrderBy(candidate => candidate.Position.DistanceToSquared(symbiantCell)).FirstOrDefault();
+				if (symbiant != null)
+					spawnedThings.Add(symbiant);
 
 				var humanCase = DescribeGeneRejectionCase("human", human, false, privateAddGene);
 				var zombielandCases = new[]
 				{
 					DescribeGeneRejectionCase("zombie", zombie, true, privateAddGene),
 					DescribeGeneRejectionCase("spitter", spitter, true, privateAddGene),
-					DescribeGeneRejectionCase("blob", blob, true, privateAddGene)
+					DescribeGeneRejectionCase("symbiant", symbiant, true, privateAddGene)
 				};
 
 				return new

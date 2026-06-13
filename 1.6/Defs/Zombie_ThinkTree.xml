@@ -12,10 +12,10 @@
 	</ThinkTreeDef>
 
 	<ThinkTreeDef>
-		<defName>ZombieBlob</defName>
+		<defName>ZombieSymbiant</defName>
 		<thinkRoot Class="ThinkNode_Priority">
 			<subNodes>
-				<li Class="ZombieLand.JobGiver_Blob"/>
+				<li Class="ZombieLand.JobGiver_Symbiant"/>
 			</subNodes>
 		</thinkRoot>
 	</ThinkTreeDef>

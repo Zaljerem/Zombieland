@@ -877,7 +877,7 @@
 	</SoundDef>
 
 	<SoundDef>
-		<defName>BlobSplash</defName>
+		<defName>SymbiantSplash</defName>
 		<context>MapOnly</context>
 		<eventNames />
 		<maxSimultaneous>4</maxSimultaneous>

@@ -13,7 +13,7 @@ namespace ZombieLand
 
 		private static GameObject dust;
 		private static Shader metaballShader;
-		private static Shader zombieBlobShader;
+		private static Shader zombieSymbiantShader;
 
 		[HarmonyPatch(typeof(UIRoot_Entry), nameof(UIRoot_Entry.Init))]
 		[HarmonyPostfix]
@@ -35,13 +35,13 @@ namespace ZombieLand
 
 			dust = assets.LoadAsset<GameObject>("Dust");
 			metaballShader = assets.LoadAsset<Shader>("Metaballs");
-			zombieBlobShader = assets.LoadAsset<Shader>("ZombieBlob");
+			zombieSymbiantShader = assets.LoadAsset<Shader>("ZombieSymbiant");
 
 			initialized = true;
 		}
 
 		public static GameObject NewDust() => Object.Instantiate(dust);
 		public static Shader MetaballShader => metaballShader;
-		public static Shader ZombieBlobShader => zombieBlobShader;
+		public static Shader ZombieSymbiantShader => zombieSymbiantShader;
 	}
 }

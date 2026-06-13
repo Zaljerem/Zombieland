@@ -10,18 +10,18 @@ namespace ZombieLand
 {
 	public sealed partial class ZombielandBridgeTools
 	{
-		[Tool("zombieland/blob_pawn_stress_state", Description = "Set up or read a high map-pawn stress fixture for blob performance comparison.")]
-		public static object BlobPawnStressState(
+		[Tool("zombieland/symbiant_pawn_stress_state", Description = "Set up or read a high map-pawn stress fixture for symbiant performance comparison.")]
+		public static object SymbiantPawnStressState(
 			[ToolParameter(Description = "Mode: read or setup.", Required = false, DefaultValue = "read")] string mode = "read",
 			[ToolParameter(Description = "Target total spawned free colonists after setup.", Required = false, DefaultValue = 160)] int colonists = 160,
 			[ToolParameter(Description = "Target total spawned player animals after setup.", Required = false, DefaultValue = 600)] int animals = 600,
 			[ToolParameter(Description = "PawnKindDef defName for spawned player animals.", Required = false, DefaultValue = "Chicken")] string animalKindDefName = "Chicken",
 			[ToolParameter(Description = "Raid points for the edge-walk-in immediate attack raid.", Required = false, DefaultValue = 10000f)] float raidPoints = 10000f,
 			[ToolParameter(Description = "When true, trigger the max-points edge raid during setup.", Required = false, DefaultValue = true)] bool triggerRaid = true,
-			[ToolParameter(Description = "When true, relocate/spawn player colonists inside the intended blob footprint for worst-case interaction testing.", Required = false, DefaultValue = false)] bool colonistsInsideBlob = false,
-			[ToolParameter(Description = "Blob-center x coordinate used for colonist clustering. Use -1 with blobCenterZ -1 for map center.", Required = false, DefaultValue = -1)] int blobCenterX = -1,
-			[ToolParameter(Description = "Blob-center z coordinate used for colonist clustering. Use -1 with blobCenterX -1 for map center.", Required = false, DefaultValue = -1)] int blobCenterZ = -1,
-			[ToolParameter(Description = "Radius used to place colonists inside the future blob footprint.", Required = false, DefaultValue = 16f)] float colonistClusterRadius = 16f)
+			[ToolParameter(Description = "When true, relocate/spawn player colonists inside the intended symbiant footprint for worst-case interaction testing.", Required = false, DefaultValue = false)] bool colonistsInsideSymbiant = false,
+			[ToolParameter(Description = "Symbiant-center x coordinate used for colonist clustering. Use -1 with symbiantCenterZ -1 for map center.", Required = false, DefaultValue = -1)] int symbiantCenterX = -1,
+			[ToolParameter(Description = "Symbiant-center z coordinate used for colonist clustering. Use -1 with symbiantCenterX -1 for map center.", Required = false, DefaultValue = -1)] int symbiantCenterZ = -1,
+			[ToolParameter(Description = "Radius used to place colonists inside the future symbiant footprint.", Required = false, DefaultValue = 16f)] float colonistClusterRadius = 16f)
 		{
 			var map = CurrentMap;
 			if (map == null)
@@ -49,16 +49,16 @@ namespace ZombieLand
 			if (mode == "setup")
 			{
 				var sw = Stopwatch.StartNew();
-				var setup = SetupBlobPawnStressFixture(
+				var setup = SetupSymbiantPawnStressFixture(
 					map,
 					Math.Max(0, colonists),
 					Math.Max(0, animals),
 					animalKindDefName,
 					Math.Max(1f, raidPoints),
 					triggerRaid,
-					colonistsInsideBlob,
-					blobCenterX,
-					blobCenterZ,
+					colonistsInsideSymbiant,
+					symbiantCenterX,
+					symbiantCenterZ,
 					Math.Max(4f, colonistClusterRadius));
 				actionSucceeded = (bool)(setup.GetType().GetProperty("success")?.GetValue(setup) ?? false);
 				sw.Stop();
@@ -71,7 +71,7 @@ namespace ZombieLand
 				};
 			}
 
-			var state = DescribeBlobPawnStressState(map);
+			var state = DescribeSymbiantPawnStressState(map);
 			return new
 			{
 				success = mode == "read" || actionSucceeded,
@@ -81,19 +81,19 @@ namespace ZombieLand
 			};
 		}
 
-		static object SetupBlobPawnStressFixture(
+		static object SetupSymbiantPawnStressFixture(
 			Map map,
 			int targetColonists,
 			int targetAnimals,
 			string animalKindDefName,
 			float raidPoints,
 			bool triggerRaid,
-			bool colonistsInsideBlob,
-			int blobCenterX,
-			int blobCenterZ,
+			bool colonistsInsideSymbiant,
+			int symbiantCenterX,
+			int symbiantCenterZ,
 			float colonistClusterRadius)
 		{
-			var before = DescribeBlobPawnStressState(map);
+			var before = DescribeSymbiantPawnStressState(map);
 			var existingColonistPawns = map.mapPawns.FreeColonistsSpawned
 				.Where(pawn => pawn != null && pawn.Destroyed == false && pawn.Dead == false)
 				.ToList();
@@ -103,10 +103,10 @@ namespace ZombieLand
 			var animalsToSpawn = Math.Max(0, targetAnimals - existingAnimals);
 			List<IntVec3> colonistCells = null;
 			HashSet<IntVec3> reservedCells = null;
-			var blobCenter = blobCenterX >= 0 && blobCenterZ >= 0 ? new IntVec3(blobCenterX, 0, blobCenterZ) : map.Center;
-			if (colonistsInsideBlob && targetColonists > 0)
+			var symbiantCenter = symbiantCenterX >= 0 && symbiantCenterZ >= 0 ? new IntVec3(symbiantCenterX, 0, symbiantCenterZ) : map.Center;
+			if (colonistsInsideSymbiant && targetColonists > 0)
 			{
-				colonistCells = CollectStressSpawnCellsAround(map, blobCenter, targetColonists, colonistClusterRadius, out var clusterError);
+				colonistCells = CollectStressSpawnCellsAround(map, symbiantCenter, targetColonists, colonistClusterRadius, out var clusterError);
 				if (colonistCells.Count < targetColonists)
 				{
 					return new
@@ -114,7 +114,7 @@ namespace ZombieLand
 						success = false,
 						error = $"Only found {colonistCells.Count} clear clustered colonist cells for {targetColonists} requested colonists.",
 						clusterError,
-						blobCenter = ZombieRuntimeActions.DescribeCell(blobCenter),
+						symbiantCenter = ZombieRuntimeActions.DescribeCell(symbiantCenter),
 						colonistClusterRadius,
 						before
 					};
@@ -122,7 +122,7 @@ namespace ZombieLand
 				reservedCells = new HashSet<IntVec3>(colonistCells);
 			}
 
-			var generalSpawnCount = colonistsInsideBlob ? animalsToSpawn : colonistsToSpawn + animalsToSpawn;
+			var generalSpawnCount = colonistsInsideSymbiant ? animalsToSpawn : colonistsToSpawn + animalsToSpawn;
 			var spawnCells = CollectStressSpawnCells(map, generalSpawnCount, out var cellError, reservedCells);
 			if (spawnCells.Count < generalSpawnCount)
 			{
@@ -149,7 +149,7 @@ namespace ZombieLand
 
 			var relocatedColonists = 0;
 			var failedRelocations = new List<string>();
-			if (colonistsInsideBlob)
+			if (colonistsInsideSymbiant)
 			{
 				var existingToRelocate = Math.Min(existingColonistPawns.Count, targetColonists);
 				for (var i = 0; i < existingToRelocate; i++)
@@ -173,7 +173,7 @@ namespace ZombieLand
 				var pawn = GenerateStressPawn(PawnKindDefOf.Colonist, Faction.OfPlayer, true);
 				if (pawn.Name is NameTriple)
 					pawn.Name = new NameTriple("ZLStressColonist", (i + existingColonists + 1).ToString(), "Fixture");
-				var cell = colonistsInsideBlob ? colonistCells[Math.Min(existingColonists, targetColonists) + i] : spawnCells[cellIndex++];
+				var cell = colonistsInsideSymbiant ? colonistCells[Math.Min(existingColonists, targetColonists) + i] : spawnCells[cellIndex++];
 				GenSpawn.Spawn(pawn, cell, map, Rot4.South);
 				DisablePawnWork(pawn);
 				spawnedColonists++;
@@ -187,7 +187,7 @@ namespace ZombieLand
 			}
 
 			var raid = triggerRaid ? TriggerStressRaid(map, raidPoints) : new { success = true, skipped = true };
-			var after = DescribeBlobPawnStressState(map);
+			var after = DescribeSymbiantPawnStressState(map);
 			return new
 			{
 				success = spawnedColonists == colonistsToSpawn
@@ -201,9 +201,9 @@ namespace ZombieLand
 				relocatedColonists,
 				failedRelocations,
 				spawnedAnimals,
-				colonistsInsideBlob,
-				blobCenter = colonistsInsideBlob ? ZombieRuntimeActions.DescribeCell(blobCenter) : null,
-				colonistClusterRadius = colonistsInsideBlob ? colonistClusterRadius : 0f,
+				colonistsInsideSymbiant,
+				symbiantCenter = colonistsInsideSymbiant ? ZombieRuntimeActions.DescribeCell(symbiantCenter) : null,
+				colonistClusterRadius = colonistsInsideSymbiant ? colonistClusterRadius : 0f,
 				raid,
 				before,
 				after
@@ -398,7 +398,7 @@ namespace ZombieLand
 			};
 		}
 
-		static object DescribeBlobPawnStressState(Map map)
+		static object DescribeSymbiantPawnStressState(Map map)
 		{
 			var pawns = map.mapPawns.AllPawnsSpawned;
 			var playerFaction = Faction.OfPlayer;
@@ -409,22 +409,22 @@ namespace ZombieLand
 				&& pawn.Faction.HostileTo(playerFaction)
 				&& pawn.RaceProps?.Animal == true
 				&& pawn.Dead == false);
-			var zombies = pawns.Count(pawn => pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter);
-			var blob = ZombieBlob.ActiveBlob(map);
-			var playerColonistsOnBlob = blob == null ? 0 : map.mapPawns.FreeColonistsSpawned.Count(pawn => pawn?.Dead == false && blob.ContainsCell(pawn.Position));
-			var playerAnimalsOnBlob = blob == null ? 0 : pawns.Count(pawn => pawn?.Faction == playerFaction
+			var zombies = pawns.Count(pawn => pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter);
+			var symbiant = ZombieSymbiant.ActiveSymbiant(map);
+			var playerColonistsOnSymbiant = symbiant == null ? 0 : map.mapPawns.FreeColonistsSpawned.Count(pawn => pawn?.Dead == false && symbiant.ContainsCell(pawn.Position));
+			var playerAnimalsOnSymbiant = symbiant == null ? 0 : pawns.Count(pawn => pawn?.Faction == playerFaction
 				&& pawn.RaceProps?.Animal == true
 				&& pawn.Dead == false
-				&& blob.ContainsCell(pawn.Position));
-			var hostileHumanlikesOnBlob = blob == null ? 0 : pawns.Count(pawn => pawn?.Faction != null
+				&& symbiant.ContainsCell(pawn.Position));
+			var hostileHumanlikesOnSymbiant = symbiant == null ? 0 : pawns.Count(pawn => pawn?.Faction != null
 				&& pawn.Faction.HostileTo(playerFaction)
 				&& pawn.RaceProps?.Humanlike == true
 				&& pawn is not Zombie
-				&& pawn is not ZombieBlob
+				&& pawn is not ZombieSymbiant
 				&& pawn is not ZombieSpitter
 				&& pawn.Dead == false
-				&& blob.ContainsCell(pawn.Position));
-			var allSpawnedPawnsOnBlob = blob == null ? 0 : pawns.Count(pawn => pawn != null && pawn.Dead == false && blob.ContainsCell(pawn.Position));
+				&& symbiant.ContainsCell(pawn.Position));
+			var allSpawnedPawnsOnSymbiant = symbiant == null ? 0 : pawns.Count(pawn => pawn != null && pawn.Dead == false && symbiant.ContainsCell(pawn.Position));
 			return new
 			{
 				mapId = map.uniqueID,
@@ -436,18 +436,18 @@ namespace ZombieLand
 				hostileHumanlikes,
 				hostileAnimals,
 				zombielandPawns = zombies,
-				blob = blob == null ? null : new
+				symbiant = symbiant == null ? null : new
 					{
-						id = ZombieRuntimeActions.StableThingId(blob),
-						cellCount = blob.CellCount,
-						maxCells = ZombieBlob.MaxCells,
-						debugMaxCellsOverride = ZombieBlob.DebugMaxCellsOverride,
+						id = ZombieRuntimeActions.StableThingId(symbiant),
+						cellCount = symbiant.CellCount,
+						maxCells = ZombieSymbiant.MaxCells,
+						debugMaxCellsOverride = ZombieSymbiant.DebugMaxCellsOverride,
 						occupancy = new
 						{
-							playerColonistsOnBlob,
-							playerAnimalsOnBlob,
-							hostileHumanlikesOnBlob,
-							allSpawnedPawnsOnBlob
+							playerColonistsOnSymbiant,
+							playerAnimalsOnSymbiant,
+							hostileHumanlikesOnSymbiant,
+							allSpawnedPawnsOnSymbiant
 						}
 					},
 				downedOrDeadPlayerPawns = pawns.Count(pawn => pawn?.Faction == playerFaction && (pawn.Dead || pawn.Downed)),
@@ -469,7 +469,7 @@ namespace ZombieLand
 				&& pawn.Faction.HostileTo(playerFaction)
 				&& pawn.RaceProps?.Humanlike == true
 				&& pawn is not Zombie
-				&& pawn is not ZombieBlob
+				&& pawn is not ZombieSymbiant
 				&& pawn is not ZombieSpitter
 				&& pawn.Dead == false);
 		}

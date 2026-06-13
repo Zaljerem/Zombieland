@@ -132,11 +132,11 @@
 		</race>
 	</ThingDef>
 
-	<ThingDef Name="ZombieBlob" Class="ZombieLand.ThingDef_ZombieBlob" ParentName="BasePawn">
-		<defName>ZombieBlob</defName>
-		<label>zombie blob</label>
-		<thingClass>ZombieLand.ZombieBlob</thingClass>
-		<description>A zombie blob.</description>
+	<ThingDef Name="ZombieSymbiant" Class="ZombieLand.ThingDef_ZombieSymbiant" ParentName="BasePawn">
+		<defName>ZombieSymbiant</defName>
+		<label>zombie symbiant</label>
+		<thingClass>ZombieLand.ZombieSymbiant</thingClass>
+		<description>A zombie symbiant.</description>
 		<drawHighlight>false</drawHighlight>
 		<tools>
 		</tools>
@@ -157,15 +157,15 @@
 		<soundImpactDefault>BulletImpact_Flesh</soundImpactDefault>
 		<tradeability>None</tradeability>
 		<graphicData>
-			<texPath>Blob/Blob</texPath>
+			<texPath>Symbiant/Symbiant</texPath>
 			<graphicClass>Graphic_Single</graphicClass>
 			<shaderType>CutoutComplex</shaderType>
 		</graphicData>
 		<race>
 			<bloodDef>Filth_Blood</bloodDef>
 			<intelligence>ToolUser</intelligence>
-			<thinkTreeMain>ZombieBlob</thinkTreeMain>
-			<body>ZombieBlobBody</body>
+			<thinkTreeMain>ZombieSymbiant</thinkTreeMain>
+			<body>ZombieSymbiantBody</body>
 			<soundMeleeHitPawn>Pawn_Melee_BigBash_HitPawn</soundMeleeHitPawn>
 			<soundMeleeHitBuilding>Pawn_Melee_BigBash_HitBuilding</soundMeleeHitBuilding>
 			<soundMeleeMiss>Pawn_Melee_BigBash_Miss</soundMeleeMiss>

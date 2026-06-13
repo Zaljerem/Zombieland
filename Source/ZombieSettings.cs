@@ -37,7 +37,7 @@ namespace ZombieLand
 		Allow
 	}
 
-	public enum BlobCoagulantPotency
+	public enum SymbiantCoagulantPotency
 	{
 		Cheap,
 		Normal,
@@ -267,24 +267,24 @@ namespace ZombieLand
 		public bool floatingZombies = true;
 		public float childChance = 0.02f;
 		public float spitterThreat = 1f;
-		public bool blobEnabled = true;
-		public float blobSpawnCooldownDays = 12f;
-		public int blobExpansionIntervalHours = 16;
-		public int blobPostFeedPauseHours = 16;
-		public int blobMaxCells = 400;
-		public float blobFullBenefitRoomCoverage = 0.20f;
-		public float blobSeveranceMaturityCoverage = 0.50f;
-		public int blobSeveranceMaturityMinCells = 10;
-		public int blobSeveranceMaturityMaxCells = 80;
-		public float blobSeveranceReserveCoverage = 0.25f;
-		public int blobSeveranceReserveMin = 12;
-		public int blobSeveranceReserveMax = 60;
-		public float blobZombieIgnoreMinBenefit = 0.50f;
-		public int blobDecouplingFeedPulsesPerDay = 2;
-		public int blobSymbioteMaxSkillBonus = 6;
-		public int blobPathCost = 220;
-		public bool blobCanBreakConstructedWalls = true;
-		public BlobCoagulantPotency blobCoagulantPotency = BlobCoagulantPotency.Normal;
+		public bool symbiantEnabled = true;
+		public float symbiantSpawnCooldownDays = 12f;
+		public int symbiantExpansionIntervalHours = 16;
+		public int symbiantPostFeedPauseHours = 16;
+		public int symbiantMaxCells = 400;
+		public float symbiantFullBenefitRoomCoverage = 0.20f;
+		public float symbiantSeveranceMaturityCoverage = 0.50f;
+		public int symbiantSeveranceMaturityMinCells = 10;
+		public int symbiantSeveranceMaturityMaxCells = 80;
+		public float symbiantSeveranceReserveCoverage = 0.25f;
+		public int symbiantSeveranceReserveMin = 12;
+		public int symbiantSeveranceReserveMax = 60;
+		public float symbiantZombieIgnoreMinBenefit = 0.50f;
+		public int symbiantDecouplingFeedPulsesPerDay = 2;
+		public int symbiantMaxSkillBonus = 6;
+		public int symbiantPathCost = 220;
+		public bool symbiantCanBreakConstructedWalls = true;
+		public SymbiantCoagulantPotency symbiantCoagulantPotency = SymbiantCoagulantPotency.Normal;
 		public int minimumZombiesForWallPushing = 18;
 		public List<string> blacklistedApparel = new();
 		public float contaminationBaseFactor = 1f;
@@ -358,10 +358,10 @@ namespace ZombieLand
 
 			if (Scribe.mode == LoadSaveMode.LoadingVars)
 			{
-				var savedPotency = blobCoagulantPotency.ToString();
-				Scribe_Values.Look(ref savedPotency, "blobCoagulantRecipeCost", blobCoagulantPotency.ToString());
-				if (Enum.TryParse<BlobCoagulantPotency>(savedPotency, true, out var potency))
-					blobCoagulantPotency = potency;
+				var savedPotency = symbiantCoagulantPotency.ToString();
+				Scribe_Values.Look(ref savedPotency, "symbiantCoagulantRecipeCost", symbiantCoagulantPotency.ToString());
+				if (Enum.TryParse<SymbiantCoagulantPotency>(savedPotency, true, out var potency))
+					symbiantCoagulantPotency = potency;
 			}
 
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)

@@ -202,9 +202,9 @@
 	</ThingDef>
 
 	<ThingDef ParentName="ResourceBase">
-		<defName>BlobCoagulantPack</defName>
-		<label>blob coagulant pack</label>
-		<description>A sealed packet of zombie extract and volatile fuel that makes zombie blob tissue coagulate. Feeding one pack to a zombie blob triggers a strong recession pulse.</description>
+		<defName>SymbiantCoagulantPack</defName>
+		<label>symbiant coagulant pack</label>
+		<description>A sealed packet of zombie extract and volatile fuel that makes zombie symbiant tissue coagulate. Feeding one pack to a zombie symbiant triggers a strong recession pulse.</description>
 		<graphicData>
 			<graphicClass>Graphic_Single</graphicClass>
 			<texPath>ZombieExtract</texPath>

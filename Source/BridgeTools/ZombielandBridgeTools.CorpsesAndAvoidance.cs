@@ -29,7 +29,7 @@ namespace ZombieLand
 					error
 				};
 			}
-			if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+			if (pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 			{
 				return new
 				{

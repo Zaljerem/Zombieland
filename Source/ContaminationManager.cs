@@ -122,7 +122,7 @@ namespace ZombieLand
 				return;
 
 			var effects = pawn.Map?.GetComponent<TickManager>()?.contaminationEffects;
-			if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+			if (pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 			{
 				effects?.Remove(pawn);
 				return;

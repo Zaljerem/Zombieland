@@ -26,7 +26,7 @@ namespace ZombieLand
 			_ = Find.BattleLog.Battles.RemoveAll(battle =>
 			{
 				_ = battle.Entries.RemoveAll(entry => entry.GetConcerns().Any(th => th is Zombie));
-				_ = battle.Entries.RemoveAll(entry => entry.GetConcerns().Any(th => th is ZombieBlob));
+				_ = battle.Entries.RemoveAll(entry => entry.GetConcerns().Any(th => th is ZombieSymbiant));
 				_ = battle.Entries.RemoveAll(entry => entry.GetConcerns().Any(th => th is ZombieSpitter));
 				return battle.concerns.Any(RemoveItem);
 			});
@@ -36,7 +36,7 @@ namespace ZombieLand
 				var singlePawnTale = tale as Tale_SinglePawn;
 				if ((singlePawnTale?.pawnData?.pawn as Zombie) != null)
 					return true;
-				if ((singlePawnTale?.pawnData?.pawn as ZombieBlob) != null)
+				if ((singlePawnTale?.pawnData?.pawn as ZombieSymbiant) != null)
 					return true;
 				if ((singlePawnTale?.pawnData?.pawn as ZombieSpitter) != null)
 					return true;
@@ -46,13 +46,13 @@ namespace ZombieLand
 				var doublePawnTale = tale as Tale_DoublePawn;
 				if ((doublePawnTale?.firstPawnData?.pawn as Zombie) != null)
 					return true;
-				if ((doublePawnTale?.firstPawnData?.pawn as ZombieBlob) != null)
+				if ((doublePawnTale?.firstPawnData?.pawn as ZombieSymbiant) != null)
 					return true;
 				if ((doublePawnTale?.firstPawnData?.pawn as ZombieSpitter) != null)
 					return true;
 				if ((doublePawnTale?.secondPawnData?.pawn as Zombie) != null)
 					return true;
-				if ((doublePawnTale?.secondPawnData?.pawn as ZombieBlob) != null)
+				if ((doublePawnTale?.secondPawnData?.pawn as ZombieSymbiant) != null)
 					return true;
 				if ((doublePawnTale?.secondPawnData?.pawn as ZombieSpitter) != null)
 					return true;
@@ -227,7 +227,7 @@ namespace ZombieLand
 				return false;
 			if (memory.IsZombieType() || memory.def.IsZombieDef())
 				return true;
-			if (memory.otherPawn is Zombie || memory.otherPawn is ZombieBlob || memory.otherPawn is ZombieSpitter)
+			if (memory.otherPawn is Zombie || memory.otherPawn is ZombieSymbiant || memory.otherPawn is ZombieSpitter)
 				return true;
 			return false;
 		}
@@ -324,7 +324,7 @@ namespace ZombieLand
 			foreach (var fieldName in fieldNames)
 			{
 				var pawnSet = trvWorldPawns.Field(fieldName).GetValue<HashSet<Pawn>>();
-				_ = pawnSet.RemoveWhere(pawn => pawn is Zombie || pawn is ZombieBlob);
+				_ = pawnSet.RemoveWhere(pawn => pawn is Zombie || pawn is ZombieSymbiant);
 				_ = pawnSet.RemoveWhere(pawn => pawn is Zombie || pawn is ZombieSpitter);
 				foreach (var pawn in pawnSet)
 					RemovePawnRelatedStuff(pawn);

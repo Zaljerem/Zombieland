@@ -2,10 +2,10 @@
 <Defs>
 
 	<BodyDef>
-		<defName>ZombieBlobBody</defName>
+		<defName>ZombieSymbiantBody</defName>
 		<label>body</label>
 		<corePart>
-			<def>ZombieBlobBase</def>
+			<def>ZombieSymbiantBase</def>
 			<height>Middle</height>
 			<depth>Outside</depth>
 			<parts>
@@ -14,7 +14,7 @@
 	</BodyDef>
 
 	<BodyPartDef>
-		<defName>ZombieBlobBase</defName>
+		<defName>ZombieSymbiantBase</defName>
 		<label>body</label>
 		<labelShort>body</labelShort>
 		<hitPoints>800</hitPoints>

@@ -20,7 +20,7 @@ namespace ZombieLand
 
 		public static bool IsZombielandPawn(Pawn pawn)
 		{
-			return pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter;
+			return pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter;
 		}
 
 		static Pawn[] AllZombies(Map map)

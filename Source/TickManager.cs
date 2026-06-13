@@ -127,8 +127,8 @@ namespace ZombieLand
 		public int lastZombieContact = 0;
 		public int lastZombieSpitter = 0;
 		public bool zombieSpitterInited = false;
-		public int lastZombieBlob = 0;
-		public bool zombieBlobInited = false;
+		public int lastZombieSymbiant = 0;
+		public bool zombieSymbiantInited = false;
 
 		public TickManager(Map map) : base(map)
 		{
@@ -245,8 +245,8 @@ namespace ZombieLand
 			Scribe_Values.Look(ref lastZombieContact, "lastZombieContact");
 			Scribe_Values.Look(ref lastZombieSpitter, "lastZombieSpitter");
 			Scribe_Values.Look(ref zombieSpitterInited, "zombieSpitterInited");
-			Scribe_Values.Look(ref lastZombieBlob, "lastZombieBlob");
-			Scribe_Values.Look(ref zombieBlobInited, "zombieBlobInited");
+			Scribe_Values.Look(ref lastZombieSymbiant, "lastZombieSymbiant");
+			Scribe_Values.Look(ref zombieSymbiantInited, "zombieSymbiantInited");
 
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
 			{
@@ -267,10 +267,10 @@ namespace ZombieLand
 					lastZombieSpitter = ticks;
 					zombieSpitterInited = true;
 				}
-				if (zombieBlobInited == false)
+				if (zombieSymbiantInited == false)
 				{
-					lastZombieBlob = GenTicks.TicksGame;
-					zombieBlobInited = true;
+					lastZombieSymbiant = GenTicks.TicksGame;
+					zombieSymbiantInited = true;
 				}
 			}
 
@@ -526,17 +526,17 @@ namespace ZombieLand
 
 		void HandleIncidents()
 		{
-			if (ZombieSettings.Values.blobEnabled && zombieBlobInited)
+			if (ZombieSettings.Values.symbiantEnabled && zombieSymbiantInited)
 			{
 				var ticks = GenTicks.TicksGame;
-				var cooldownTicks = Mathf.Max(1f, ZombieSettings.Values.blobSpawnCooldownDays) * GenDate.TicksPerDay;
+				var cooldownTicks = Mathf.Max(1f, ZombieSettings.Values.symbiantSpawnCooldownDays) * GenDate.TicksPerDay;
 				if (NewMapZombieDelay(ticks) == false
-					&& ticks - lastZombieBlob > cooldownTicks
-					&& ZombieBlob.ActiveBlob(map) == null
+					&& ticks - lastZombieSymbiant > cooldownTicks
+					&& ZombieSymbiant.ActiveSymbiant(map) == null
 					&& ZombieWeather.GetThreatLevel(map) > 0f)
 				{
-					if (ZombieBlob.TrySpawnInBestRoom(map))
-						lastZombieBlob = ticks;
+					if (ZombieSymbiant.TrySpawnInBestRoom(map))
+						lastZombieSymbiant = ticks;
 				}
 			}
 

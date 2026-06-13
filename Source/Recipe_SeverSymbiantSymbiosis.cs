@@ -5,11 +5,11 @@ using Verse;
 
 namespace ZombieLand
 {
-	public class Recipe_SeverBlobSymbiosis : Recipe_Surgery
+	public class Recipe_SeverSymbiantSymbiosis : Recipe_Surgery
 	{
 		public override IEnumerable<BodyPartRecord> GetPartsToApplyOn(Pawn pawn, RecipeDef recipe)
 		{
-			if (ZombieBlob.CanSeverSymbiosis(pawn) == false)
+			if (ZombieSymbiant.CanSeverSymbiosis(pawn) == false)
 				yield break;
 			var torso = pawn.health?.hediffSet?.GetNotMissingParts().FirstOrDefault(part => part.def == BodyPartDefOf.Torso);
 			if (torso != null)
@@ -20,11 +20,11 @@ namespace ZombieLand
 		{
 			if (pawn.DestroyedOrNull() || pawn.Dead || pawn.Map != billDoer.Map || pawn.IsInAnyStorage())
 				return;
-			var blob = ZombieBlob.LinkedBlobFor(pawn);
-			if (blob == null)
+			var symbiant = ZombieSymbiant.LinkedSymbiantFor(pawn);
+			if (symbiant == null)
 				return;
 
-			var success = blob.TrySeverSymbiosis(pawn, billDoer);
+			var success = symbiant.TrySeverSymbiosis(pawn, billDoer);
 			if (success)
 			{
 				_ = TaleRecorder.RecordTale(TaleDefOf.DidSurgery, new object[] { billDoer, pawn });
@@ -38,7 +38,7 @@ namespace ZombieLand
 
 		public override string GetLabelWhenUsedOn(Pawn pawn, BodyPartRecord part)
 		{
-			return "SeverBlobSymbiosis".Translate();
+			return "SeverSymbiantSymbiosis".Translate();
 		}
 	}
 }

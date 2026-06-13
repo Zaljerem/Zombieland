@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: ZombieBlob
+  m_Name: ZombieSymbiant
   m_Shader: {fileID: 4800000, guid: c1a5c4f8208d05b498f00011d22dc916, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4

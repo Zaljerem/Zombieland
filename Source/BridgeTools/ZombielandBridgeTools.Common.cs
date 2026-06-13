@@ -603,11 +603,11 @@ namespace ZombieLand
 				return spitter;
 			}
 
-			if (kind == "blob")
+			if (kind == "symbiant")
 			{
-				var blob = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieBlob, Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies));
-				GenSpawn.Spawn(blob, cell, map, Rot4.South, WipeMode.Vanish, false);
-				return blob;
+				var symbiant = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieSymbiant, Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies));
+				GenSpawn.Spawn(symbiant, cell, map, Rot4.South, WipeMode.Vanish, false);
+				return symbiant;
 			}
 
 			return null;
@@ -743,7 +743,7 @@ namespace ZombieLand
 		static object DescribeZombie(Pawn pawn)
 		{
 			var zombie = pawn as Zombie;
-			var blob = pawn as ZombieBlob;
+			var symbiant = pawn as ZombieSymbiant;
 			var spitter = pawn as ZombieSpitter;
 
 			return new
@@ -763,7 +763,7 @@ namespace ZombieLand
 				gridAtLastGotoPosition = zombie?.Spawned == true && zombie.lastGotoPosition.IsValid ? zombie.Map.GetGrid().GetZombieCount(zombie.lastGotoPosition) : 0,
 				state = zombie?.state.ToString() ?? spitter?.state.ToString(),
 				raging = zombie?.raging ?? 0,
-				kind = DescribeZombieKind(zombie, blob, spitter),
+				kind = DescribeZombieKind(zombie, symbiant, spitter),
 				wasMapPawnBefore = zombie?.wasMapPawnBefore ?? false,
 				isSuicideBomber = zombie?.IsSuicideBomber ?? false,
 				bombWillGoOff = zombie?.bombWillGoOff,
@@ -984,10 +984,10 @@ namespace ZombieLand
 			};
 		}
 
-		static string DescribeZombieKind(Zombie zombie, ZombieBlob blob, ZombieSpitter spitter)
+		static string DescribeZombieKind(Zombie zombie, ZombieSymbiant symbiant, ZombieSpitter spitter)
 		{
-			if (blob != null)
-				return "Blob";
+			if (symbiant != null)
+				return "Symbiant";
 			if (spitter != null)
 				return "Spitter";
 			if (zombie == null)
@@ -1085,9 +1085,9 @@ namespace ZombieLand
 			if (map.mapPawns?.AllPawnsSpawned != null)
 				pawns.AddRange(map.mapPawns.AllPawnsSpawned.Where(pawn => pawn is Zombie || pawn is ZombieSpitter));
 
-			var blob = ZombieBlob.ActiveBlob(map);
-			if (blob != null && pawns.Contains(blob) == false)
-				pawns.Add(blob);
+			var symbiant = ZombieSymbiant.ActiveSymbiant(map);
+			if (symbiant != null && pawns.Contains(symbiant) == false)
+				pawns.Add(symbiant);
 			return pawns.ToArray();
 		}
 

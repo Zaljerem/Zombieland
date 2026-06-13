@@ -26,15 +26,15 @@
 		<initialResistanceRange>0~0</initialResistanceRange>
 	</PawnKindDef>
 
-	<PawnKindDef class="ZombieLand.PawnKindDef_ZombieBlob">
-		<defName>ZombieBlob</defName>
-		<race>ZombieBlob</race>
+	<PawnKindDef class="ZombieLand.PawnKindDef_ZombieSymbiant">
+		<defName>ZombieSymbiant</defName>
+		<race>ZombieSymbiant</race>
 		<lifeStages>
 			<li>
-				<label>zombie blob</label>
-				<labelPlural>zombie blobs</labelPlural>
+				<label>zombie symbiant</label>
+				<labelPlural>zombie symbiants</labelPlural>
 				<bodyGraphicData>
-					<texPath>Blob/Blob</texPath>
+					<texPath>Symbiant/Symbiant</texPath>
 				</bodyGraphicData>
 			</li>
 		</lifeStages>

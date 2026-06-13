@@ -214,12 +214,12 @@ namespace ZombieLand
 		}
 	}
 
-	public class WorkGiver_FeedZombieBlob : WorkGiver_Scanner
+	public class WorkGiver_FeedZombieSymbiant : WorkGiver_Scanner
 	{
-		static readonly string NoBlobFeedTrans = "NoBlobFeed".Translate();
-		static readonly string BlobFeedLimitReachedTrans = "BlobFeedLimitReached".Translate();
+		static readonly string NoSymbiantFeedTrans = "NoSymbiantFeed".Translate();
+		static readonly string SymbiantFeedLimitReachedTrans = "SymbiantFeedLimitReached".Translate();
 
-		public override ThingRequest PotentialWorkThingRequest => ThingRequest.ForDef(CustomDefs.ZombieBlob);
+		public override ThingRequest PotentialWorkThingRequest => ThingRequest.ForDef(CustomDefs.ZombieSymbiant);
 		public override PathEndMode PathEndMode => PathEndMode.Touch;
 		public override bool Prioritized => true;
 		public override int MaxRegionsToScanBeforeGlobalSearch => 8;
@@ -228,29 +228,29 @@ namespace ZombieLand
 		{
 			if (pawn?.Map == null || pawn.IsColonist == false)
 				return Enumerable.Empty<Thing>();
-			var blob = ZombieBlob.ActiveBlob(pawn.Map);
-			if (blob.DestroyedOrNull() || blob.Spawned == false || blob.FeedRequested == false || blob.FeedPulsesRemaining <= 0)
+			var symbiant = ZombieSymbiant.ActiveSymbiant(pawn.Map);
+			if (symbiant.DestroyedOrNull() || symbiant.Spawned == false || symbiant.FeedRequested == false || symbiant.FeedPulsesRemaining <= 0)
 				return Enumerable.Empty<Thing>();
-			return new Thing[] { blob };
+			return new Thing[] { symbiant };
 		}
 
 		public override bool HasJobOnThing(Pawn pawn, Thing t, bool forced = false)
 		{
-			if (pawn.IsColonist == false || t is not ZombieBlob blob)
+			if (pawn.IsColonist == false || t is not ZombieSymbiant symbiant)
 				return false;
-			if (blob.FeedRequested == false)
+			if (symbiant.FeedRequested == false)
 				return false;
-			if (blob.FeedPulsesRemaining <= 0)
+			if (symbiant.FeedPulsesRemaining <= 0)
 			{
-				JobFailReason.Is(BlobFeedLimitReachedTrans, null);
+				JobFailReason.Is(SymbiantFeedLimitReachedTrans, null);
 				return false;
 			}
-			if (pawn.CanReach(blob, PathEndMode.Touch, forced ? Danger.Deadly : pawn.NormalMaxDanger()) == false)
+			if (pawn.CanReach(symbiant, PathEndMode.Touch, forced ? Danger.Deadly : pawn.NormalMaxDanger()) == false)
 				return false;
-			var feed = FindClosestFeed(pawn, blob);
+			var feed = FindClosestFeed(pawn, symbiant);
 			if (feed == null)
 			{
-				JobFailReason.Is(NoBlobFeedTrans, null);
+				JobFailReason.Is(NoSymbiantFeedTrans, null);
 				return false;
 			}
 			return true;
@@ -258,17 +258,17 @@ namespace ZombieLand
 
 		public override Job JobOnThing(Pawn pawn, Thing t, bool forced = false)
 		{
-			if (t is not ZombieBlob blob)
+			if (t is not ZombieSymbiant symbiant)
 				return null;
-			var feed = FindClosestFeed(pawn, blob);
+			var feed = FindClosestFeed(pawn, symbiant);
 			if (feed == null)
 				return null;
-			var job = JobMaker.MakeJob(CustomDefs.FeedZombieBlob, blob, feed);
+			var job = JobMaker.MakeJob(CustomDefs.FeedZombieSymbiant, symbiant, feed);
 			job.count = 1;
 			return job;
 		}
 
-		public static Thing FindClosestFeed(Pawn pawn, ZombieBlob blob)
+		public static Thing FindClosestFeed(Pawn pawn, ZombieSymbiant symbiant)
 		{
 			if (pawn?.Map == null)
 				return null;
@@ -278,16 +278,16 @@ namespace ZombieLand
 				return thing.DestroyedOrNull() == false
 					&& thing.Spawned
 					&& thing.IsForbidden(pawn) == false
-					&& ZombieBlob.IsValidFeed(thing)
+					&& ZombieSymbiant.IsValidFeed(thing)
 					&& pawn.CanReserve(thing)
 					&& pawn.CanReach(thing, PathEndMode.Touch, pawn.NormalMaxDanger());
 			}
 
 			var map = pawn.Map;
 			var candidates = map.listerThings.ThingsInGroup(ThingRequestGroup.Corpse)
-				.Concat(map.listerThings.ThingsOfDef(CustomDefs.BlobCoagulantPack))
+				.Concat(map.listerThings.ThingsOfDef(CustomDefs.SymbiantCoagulantPack))
 				.Where(Valid)
-				.OrderBy(thing => thing.Position.DistanceToSquared(blob.Position));
+				.OrderBy(thing => thing.Position.DistanceToSquared(symbiant.Position));
 			return candidates.FirstOrDefault();
 		}
 	}

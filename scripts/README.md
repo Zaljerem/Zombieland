@@ -88,8 +88,8 @@ assets/_zombieland/metaballs.shader
 assets/_zombieland/smoke_n.png
 assets/_zombieland/smoke_thin.mat
 assets/_zombieland/smoke_thin.png
-assets/_zombieland/zombieblob.mat
-assets/_zombieland/zombieblob.shader
+assets/_zombieland/zombiesymbiant.mat
+assets/_zombieland/zombiesymbiant.shader
 ```
 
 The script then checks the Unity log for a matching validation line for every requested OS, prints the SHA-256 of each deployed bundle, and confirms that Unity exited batch mode successfully.
@@ -100,7 +100,7 @@ A successful quick macOS build prints lines similar to:
 
 ```text
 Building Zombieland asset bundle(s): MacOS
-Zombieland bundle validated MacOS: Dust=Dust, Metaballs=Custom/Metaballs, ZombieBlob=Custom/ZombieBlob, assets=7, Unity=2022.3.62f3, path=/Users/ap/Projects/ZombieLand/Resources/MacOS/zombieland
+Zombieland bundle validated MacOS: Dust=Dust, Metaballs=Custom/Metaballs, ZombieSymbiant=Custom/ZombieSymbiant, assets=7, Unity=2022.3.62f3, path=/Users/ap/Projects/ZombieLand/Resources/MacOS/zombieland
 <sha256>  /Users/ap/Projects/ZombieLand/Resources/MacOS/zombieland
 Exiting batchmode successfully now!
 ```

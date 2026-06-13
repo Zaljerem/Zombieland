@@ -131,16 +131,16 @@ namespace ZombieLand
 			_ = ZombiesRising.TryExecute(Find.CurrentMap, 200, UI.MouseCell(), false, true);
 		}
 
-		[DebugAction("Zombieland", "Spawn: Zombie Blob", actionType = DebugActionType.ToolMap)]
-		private static void SpawnZombieBlob()
+		[DebugAction("Zombieland", "Spawn: Zombie Symbiant", actionType = DebugActionType.ToolMap)]
+		private static void SpawnZombieSymbiant()
 		{
-			ZombieBlob.Spawn(Find.CurrentMap, UI.MouseCell());
+			ZombieSymbiant.Spawn(Find.CurrentMap, UI.MouseCell());
 		}
 
-		[DebugAction("Zombieland", "Spawn: Add Blob Cell", actionType = DebugActionType.ToolMap)]
-		private static void AddBlobCell()
+		[DebugAction("Zombieland", "Spawn: Add Symbiant Cell", actionType = DebugActionType.ToolMap)]
+		private static void AddSymbiantCell()
 		{
-			ZombieBlob.AddCell(Find.CurrentMap, UI.MouseCell());
+			ZombieSymbiant.AddCell(Find.CurrentMap, UI.MouseCell());
 		}
 
 		[DebugAction("Zombieland", "Spawn: Zombie Spitter", actionType = DebugActionType.ToolMap)]
@@ -161,7 +161,7 @@ namespace ZombieLand
 			var map = Find.CurrentMap;
 			foreach (var thing in map.thingGrid.ThingsAt(UI.MouseCell()))
 			{
-				if (thing is not Pawn pawn || pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+				if (thing is not Pawn pawn || pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 					continue;
 				ZombieRuntimeActions.ConvertPawnToZombie(pawn, map, true);
 			}
@@ -183,7 +183,7 @@ namespace ZombieLand
 		{
 			foreach (var thing in Find.CurrentMap.thingGrid.ThingsAt(UI.MouseCell()))
 			{
-				if (thing is not Pawn pawn || pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+				if (thing is not Pawn pawn || pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 					continue;
 				_ = ZombieRuntimeActions.AddZombieBite(pawn, "harmful", out _, out _);
 			}
@@ -194,7 +194,7 @@ namespace ZombieLand
 		{
 			foreach (var thing in Find.CurrentMap.thingGrid.ThingsAt(UI.MouseCell()))
 			{
-				if (thing is not Pawn pawn || pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+				if (thing is not Pawn pawn || pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 					continue;
 				_ = ZombieRuntimeActions.RemoveZombieInfections(pawn);
 			}
@@ -320,7 +320,7 @@ namespace ZombieLand
 		{
 			var map = Find.CurrentMap;
 			var pawn = map.thingGrid.ThingAt<Pawn>(UI.MouseCell());
-			if (pawn == null || pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+			if (pawn == null || pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 				return;
 			var window = new Dialog_ContaminationDebugSettings(pawn);
 			Find.WindowStack.Add(window);

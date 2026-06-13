@@ -1,16 +1,16 @@
-Shader "Custom/ZombieBlob"
+Shader "Custom/ZombieSymbiant"
 {
 	Properties
 	{
-		_MainTex ("Blob Mask", 2D) = "white" {}
+		_MainTex ("Symbiant Mask", 2D) = "white" {}
 		_Color ("Tint", Color) = (1, 1, 1, 1)
-		_BlobOpacityMin ("Blob Opacity Min", Range(0, 1)) = 0.42
-		_BlobOpacityMax ("Blob Opacity Max", Range(0, 1)) = 0.76
-		_BlobNoiseScale ("Blob Wave Scale", Float) = 2.00
-		_BlobFlowSpeed ("Blob Wave Phase Speed", Float) = 0.45
-		_BlobWaveShadeStrength ("Blob Wave Shade Strength", Range(0, 1)) = 0.68
-		_BlobEdgeContrast ("Blob Edge Contrast", Range(0, 1)) = 0.95
-		_BlobNoiseTime ("Blob Noise Time Seconds", Float) = 0
+		_SymbiantOpacityMin ("Symbiant Opacity Min", Range(0, 1)) = 0.42
+		_SymbiantOpacityMax ("Symbiant Opacity Max", Range(0, 1)) = 0.76
+		_SymbiantNoiseScale ("Symbiant Wave Scale", Float) = 2.00
+		_SymbiantFlowSpeed ("Symbiant Wave Phase Speed", Float) = 0.45
+		_SymbiantWaveShadeStrength ("Symbiant Wave Shade Strength", Range(0, 1)) = 0.68
+		_SymbiantEdgeContrast ("Symbiant Edge Contrast", Range(0, 1)) = 0.95
+		_SymbiantNoiseTime ("Symbiant Noise Time Seconds", Float) = 0
 	}
 
 	SubShader
@@ -32,13 +32,13 @@ Shader "Custom/ZombieBlob"
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
 			fixed4 _Color;
-			float _BlobOpacityMin;
-			float _BlobOpacityMax;
-			float _BlobNoiseScale;
-			float _BlobFlowSpeed;
-			float _BlobWaveShadeStrength;
-			float _BlobEdgeContrast;
-			float _BlobNoiseTime;
+			float _SymbiantOpacityMin;
+			float _SymbiantOpacityMax;
+			float _SymbiantNoiseScale;
+			float _SymbiantFlowSpeed;
+			float _SymbiantWaveShadeStrength;
+			float _SymbiantEdgeContrast;
+			float _SymbiantNoiseTime;
 
 			struct appdata
 			{
@@ -64,8 +64,8 @@ Shader "Custom/ZombieBlob"
 
 			float GooWave(float2 worldXZ)
 			{
-				float scale = max(_BlobNoiseScale, 0.001);
-				float phase = _BlobNoiseTime * _BlobFlowSpeed;
+				float scale = max(_SymbiantNoiseScale, 0.001);
+				float phase = _SymbiantNoiseTime * _SymbiantFlowSpeed;
 				float2 dirA = normalize(float2(1.0, 1.0));
 				float2 dirB = normalize(float2(1.0, -1.0));
 				float2 q = worldXZ;
@@ -95,16 +95,16 @@ Shader "Custom/ZombieBlob"
 				float cluster = GooWave(input.worldXZ);
 				float shadeBand = saturate(1.0 - abs(cluster - 0.50) / 0.42);
 				shadeBand = shadeBand * shadeBand * (3.0 - 2.0 * shadeBand);
-				float3 waveShade = lerp(float3(1.0, 1.0, 1.0), float3(0.03, 0.20, 0.04), saturate(shadeBand * _BlobWaveShadeStrength));
+				float3 waveShade = lerp(float3(1.0, 1.0, 1.0), float3(0.03, 0.20, 0.04), saturate(shadeBand * _SymbiantWaveShadeStrength));
 				float edgeCore = smoothstep(0.012, 0.055, maskAlpha) * (1.0 - smoothstep(0.115, 0.235, maskAlpha));
 				float edgeFeather = smoothstep(0.004, 0.025, maskAlpha) * (1.0 - smoothstep(0.210, 0.360, maskAlpha));
 				float edgeBand = saturate(edgeCore * 1.55 + edgeFeather * 0.35);
-				float edgeImpact = saturate(edgeBand * _BlobEdgeContrast);
+				float edgeImpact = saturate(edgeBand * _SymbiantEdgeContrast);
 				float3 edgeShade = lerp(float3(1.0, 1.0, 1.0), float3(0.00, 0.04, 0.00), edgeImpact);
 				color.rgb *= waveShade * edgeShade;
 
-				float minOpacity = saturate(min(_BlobOpacityMin, _BlobOpacityMax));
-				float maxOpacity = saturate(max(_BlobOpacityMin, _BlobOpacityMax));
+				float minOpacity = saturate(min(_SymbiantOpacityMin, _SymbiantOpacityMax));
+				float maxOpacity = saturate(max(_SymbiantOpacityMin, _SymbiantOpacityMax));
 				float opacity = lerp(minOpacity, maxOpacity, cluster);
 				color.a = saturate(color.a * opacity + edgeImpact * (1.0 - saturate(maskAlpha * 1.65)) * 0.12);
 				return color;

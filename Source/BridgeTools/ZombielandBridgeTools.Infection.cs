@@ -1558,7 +1558,7 @@ namespace ZombieLand
 		{
 			bite = null;
 			error = null;
-			if (pawn == null || pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+			if (pawn == null || pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 			{
 				error = "Target must be a non-zombie pawn.";
 				return false;
@@ -1952,7 +1952,7 @@ namespace ZombieLand
 					error
 				};
 			}
-			if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+			if (pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 			{
 				return new
 				{

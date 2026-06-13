@@ -17,8 +17,8 @@ public class CreateAssetBundles
 		"assets/_zombieland/smoke_n.png",
 		"assets/_zombieland/smoke_thin.mat",
 		"assets/_zombieland/smoke_thin.png",
-		"assets/_zombieland/zombieblob.mat",
-		"assets/_zombieland/zombieblob.shader"
+		"assets/_zombieland/zombiesymbiant.mat",
+		"assets/_zombieland/zombiesymbiant.shader"
 	};
 
 	static string DeploymentDir()
@@ -150,9 +150,9 @@ public class CreateAssetBundles
 		_ = RequireAsset<Material>(bundle, arch, ExpectedAssetNames[3]);
 		_ = RequireAsset<Texture2D>(bundle, arch, ExpectedAssetNames[4]);
 		_ = RequireAsset<Material>(bundle, arch, ExpectedAssetNames[5]);
-		var zombieBlob = RequireAsset<Shader>(bundle, arch, ExpectedAssetNames[6]);
+		var zombieSymbiant = RequireAsset<Shader>(bundle, arch, ExpectedAssetNames[6]);
 
-		Debug.Log($"Zombieland bundle validated {arch}: Dust={dust.name}, Metaballs={metaballs.name}, ZombieBlob={zombieBlob.name}, assets={actualNames.Count}, Unity={Application.unityVersion}, path={path}");
+		Debug.Log($"Zombieland bundle validated {arch}: Dust={dust.name}, Metaballs={metaballs.name}, ZombieSymbiant={zombieSymbiant.name}, assets={actualNames.Count}, Unity={Application.unityVersion}, path={path}");
 	}
 
 	static T RequireAsset<T>(AssetBundle bundle, string arch, string assetName) where T : UnityEngine.Object
@@ -166,7 +166,7 @@ public class CreateAssetBundles
 	static void LogMaterial(string arch, string assetName, Material material)
 	{
 		Debug.Log($"Zombieland bundle inspect {arch}: material={assetName}, shader={material.shader?.name ?? "null"}, renderQueue={material.renderQueue}, color={GetMaterialColor(material)}");
-		foreach (var property in new[] { "_MainTex", "_BumpMap", "_Mode", "_SrcBlend", "_DstBlend", "_ZWrite", "_Cull", "_BlobOpacityMin", "_BlobOpacityMax", "_BlobNoiseScale", "_BlobFlowSpeed", "_BlobWaveShadeStrength", "_BlobEdgeContrast", "_BlobNoiseTime" })
+		foreach (var property in new[] { "_MainTex", "_BumpMap", "_Mode", "_SrcBlend", "_DstBlend", "_ZWrite", "_Cull", "_SymbiantOpacityMin", "_SymbiantOpacityMax", "_SymbiantNoiseScale", "_SymbiantFlowSpeed", "_SymbiantWaveShadeStrength", "_SymbiantEdgeContrast", "_SymbiantNoiseTime" })
 		{
 			if (material.HasProperty(property) == false)
 				continue;
@@ -264,8 +264,8 @@ public class CreateAssetBundles
 		FileUtil.DeleteFileOrDirectory($"{GeneratedAssetDir}.meta");
 		Directory.CreateDirectory(GeneratedAssetDir);
 
-		var zombieBlobShaderPath = $"{GeneratedAssetDir}/ZombieBlob.shader";
-		File.Copy("Assets/Zombieland/ZombieBlob.shader", zombieBlobShaderPath, true);
+		var zombieSymbiantShaderPath = $"{GeneratedAssetDir}/ZombieSymbiant.shader";
+		File.Copy("Assets/Zombieland/ZombieSymbiant.shader", zombieSymbiantShaderPath, true);
 
 		var metaballsShaderPath = $"{GeneratedAssetDir}/Metaballs.shader";
 		File.WriteAllText(metaballsShaderPath, MetaballsShaderSource);
@@ -280,9 +280,9 @@ public class CreateAssetBundles
 		SetTextureImporter(smokeTexturePath, TextureImporterType.Default);
 		SetTextureImporter(smokeNormalPath, TextureImporterType.NormalMap);
 
-		var zombieBlobShader = AssetDatabase.LoadAssetAtPath<Shader>(zombieBlobShaderPath);
-		var zombieBlobMaterial = new Material(zombieBlobShader) { name = "ZombieBlob" };
-		AssetDatabase.CreateAsset(zombieBlobMaterial, $"{GeneratedAssetDir}/ZombieBlob.mat");
+		var zombieSymbiantShader = AssetDatabase.LoadAssetAtPath<Shader>(zombieSymbiantShaderPath);
+		var zombieSymbiantMaterial = new Material(zombieSymbiantShader) { name = "ZombieSymbiant" };
+		AssetDatabase.CreateAsset(zombieSymbiantMaterial, $"{GeneratedAssetDir}/ZombieSymbiant.mat");
 
 		var smokeTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(smokeTexturePath);
 		var smokeNormal = AssetDatabase.LoadAssetAtPath<Texture2D>(smokeNormalPath);
@@ -333,8 +333,8 @@ public class CreateAssetBundles
 			$"{GeneratedAssetDir}/smoke_n.png",
 			$"{GeneratedAssetDir}/Smoke_thin.mat",
 			$"{GeneratedAssetDir}/smoke_thin.png",
-			$"{GeneratedAssetDir}/ZombieBlob.mat",
-			$"{GeneratedAssetDir}/ZombieBlob.shader"
+			$"{GeneratedAssetDir}/ZombieSymbiant.mat",
+			$"{GeneratedAssetDir}/ZombieSymbiant.shader"
 		})
 		{
 			var importer = AssetImporter.GetAtPath(assetPath);

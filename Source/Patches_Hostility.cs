@@ -36,7 +36,7 @@ namespace ZombieLand
 			var isEnemy = isAnimal == false && attackerFactionDef != null && attackerFaction.HostileTo(Faction.OfPlayer);
 			var isFriendly = isAnimal == false && isEnemy == false && isPlayer == false;
 
-			rawTargets.RemoveAll(thing => thing.Thing is ZombieBlob);
+			rawTargets.RemoveAll(thing => thing.Thing is ZombieSymbiant);
 
 			// remove spitter for everyone except player
 			if (isPlayer == false)
@@ -203,9 +203,9 @@ namespace ZombieLand
 			{
 				if (target.Thing is not Pawn pawn)
 					return false;
-				if (removeAllZombies && (pawn is Zombie || pawn is ZombieSpitter || pawn is ZombieBlob))
+				if (removeAllZombies && (pawn is Zombie || pawn is ZombieSpitter || pawn is ZombieSymbiant))
 					return true;
-				if (removeSpitter && (pawn is ZombieSpitter || pawn is ZombieBlob))
+				if (removeSpitter && (pawn is ZombieSpitter || pawn is ZombieSymbiant))
 					return true;
 				if (pawn is not Zombie zombie)
 					return false;
@@ -272,7 +272,7 @@ namespace ZombieLand
 			{
 				validator = (Thing t) =>
 				{
-					if (t is ZombieBlob)
+					if (t is ZombieSymbiant)
 						return false;
 					if (verb.CanHarmElectricZombies() == false && t is Zombie zombie && (zombie.IsActiveElectric || zombie.IsRopedOrConfused))
 						return false;
@@ -287,7 +287,7 @@ namespace ZombieLand
 			{
 				validator = (Thing t) =>
 				{
-					if (t is ZombieBlob)
+					if (t is ZombieSymbiant)
 						return false;
 					return oldValidator(t);
 				};
@@ -303,7 +303,7 @@ namespace ZombieLand
 			{
 				validator = (Thing t) =>
 				{
-					if (t is ZombieBlob)
+					if (t is ZombieSymbiant)
 						return false;
 					if (t is Zombie zombie && zombie.IsRopedOrConfused)
 						return false;
@@ -317,7 +317,7 @@ namespace ZombieLand
 			{
 				validator = (Thing t) =>
 				{
-					if (t is ZombieBlob || t is ZombieSpitter)
+					if (t is ZombieSymbiant || t is ZombieSpitter)
 						return false;
 					if (t is Zombie)
 						return anomalyAttacksZombies;
@@ -332,7 +332,7 @@ namespace ZombieLand
 			{
 				validator = (Thing t) =>
 				{
-					if (t is ZombieBlob || t is ZombieSpitter)
+					if (t is ZombieSymbiant || t is ZombieSpitter)
 						return false;
 					if (t is Zombie)
 						return ZombieSettings.Values.animalsAttackZombies;
@@ -346,7 +346,7 @@ namespace ZombieLand
 			{
 				validator = (Thing t) =>
 				{
-					if (t is ZombieBlob)
+					if (t is ZombieSymbiant)
 						return false;
 					return oldValidator(t);
 				};
@@ -358,7 +358,7 @@ namespace ZombieLand
 			// attacker is enemy
 			validator = (Thing t) =>
 			{
-				if (t is ZombieBlob || t is ZombieSpitter)
+				if (t is ZombieSymbiant || t is ZombieSpitter)
 					return false;
 
 				if (t is Zombie zombie)
@@ -505,7 +505,7 @@ namespace ZombieLand
 			yield return SymbolExtensions.GetMethodInfo(() => AttackTargetFinder.FriendlyFireBlastRadiusTargetScoreOffset(default, default, default));
 		}
 
-		static List<Thing> RemoveZombies(List<Thing> input) => input.Where(i => i is not Zombie && i is not ZombieBlob).ToList();
+		static List<Thing> RemoveZombies(List<Thing> input) => input.Where(i => i is not Zombie && i is not ZombieSymbiant).ToList();
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
@@ -527,7 +527,7 @@ namespace ZombieLand
 		[HarmonyPriority(Priority.First)]
 		static bool Prefix(Thing a, Thing b, ref bool __result)
 		{
-			if (a is ZombieBlob || b is ZombieBlob)
+			if (a is ZombieSymbiant || b is ZombieSymbiant)
 			{
 				__result = false;
 				return false;
@@ -554,7 +554,7 @@ namespace ZombieLand
 	{
 		static bool Prefix(ref bool __result, Thing t, Faction fac)
 		{
-			if (t is ZombieBlob)
+			if (t is ZombieSymbiant)
 			{
 				__result = false;
 				return false;
@@ -593,13 +593,13 @@ namespace ZombieLand
 	{
 		static bool IsZombielandPawnTarget(IAttackTarget target)
 		{
-			return target is Zombie || target is ZombieBlob || target is ZombieSpitter;
+			return target is Zombie || target is ZombieSymbiant || target is ZombieSpitter;
 		}
 
 		[HarmonyPriority(Priority.First)]
 		static bool Prefix(ref bool __result, IAttackTarget target, Faction faction)
 		{
-			if (target is ZombieBlob)
+			if (target is ZombieSymbiant)
 			{
 				__result = false;
 				return false;
@@ -655,7 +655,7 @@ namespace ZombieLand
 		{
 			if (target is Zombie zombie)
 				return zombie.IsRopedOrConfused == false;
-			if (target is ZombieBlob)
+			if (target is ZombieSymbiant)
 				return false;
 			if (target is ZombieSpitter)
 				return faction?.def?.isPlayer ?? false;
@@ -680,7 +680,7 @@ namespace ZombieLand
 
 		static bool IsZombielandTarget(IAttackTarget target)
 		{
-			return target?.Thing is Zombie || target?.Thing is ZombieBlob || target?.Thing is ZombieSpitter;
+			return target?.Thing is Zombie || target?.Thing is ZombieSymbiant || target?.Thing is ZombieSpitter;
 		}
 
 		static HashSet<IAttackTarget> PlayerHostilesWithoutZombies(Map map)
@@ -722,7 +722,7 @@ namespace ZombieLand
 		{
 			static bool Prefix(IAttackTarget target)
 			{
-				return target?.Thing is not ZombieBlob;
+				return target?.Thing is not ZombieSymbiant;
 			}
 
 			static void Postfix(IAttackTarget target)
@@ -746,7 +746,7 @@ namespace ZombieLand
 			static bool Prefix(IAttackTarget target)
 			{
 				var thing = target?.Thing;
-				if (thing is ZombieBlob)
+				if (thing is ZombieSymbiant)
 					return false;
 				if (thing == null || IsZombielandTarget(target))
 					return true;

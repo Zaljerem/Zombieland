@@ -15,8 +15,8 @@ namespace ZombieLand
 	public class PawnKindDef_Zombie : PawnKindDef { }
 	public class ThingDef_Zombie : ThingDef { }
 
-	public class PawnKindDef_ZombieBlob : PawnKindDef { }
-	public class ThingDef_ZombieBlob : ThingDef { }
+	public class PawnKindDef_ZombieSymbiant : PawnKindDef { }
+	public class ThingDef_ZombieSymbiant : ThingDef { }
 
 	public class PawnKindDef_ZombieSpitter : PawnKindDef { }
 	public class ThingDef_ZombieSpitter : ThingDef { }
@@ -26,7 +26,7 @@ namespace ZombieLand
 	{
 		public static FactionDef Zombies;
 		public static PawnKindDef Zombie;
-		public static PawnKindDef ZombieBlob;
+		public static PawnKindDef ZombieSymbiant;
 		public static PawnKindDef ZombieSpitter;
 		public static BodyDef ZombieSpitterBody;
 		public static BodyPartDef ZombieSpitterBase;

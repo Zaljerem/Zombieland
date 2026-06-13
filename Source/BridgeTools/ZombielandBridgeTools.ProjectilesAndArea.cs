@@ -486,8 +486,8 @@ namespace ZombieLand
 			};
 		}
 
-		[Tool("zombieland/spawn_blob", Description = "Spawn a ZombieBlob through its runtime spawn path and verify it enters the map with the blob job.")]
-		public static object SpawnBlob(
+		[Tool("zombieland/spawn_symbiant", Description = "Spawn a ZombieSymbiant through its runtime spawn path and verify it enters the map with the symbiant job.")]
+		public static object SpawnSymbiant(
 			[ToolParameter(Description = "Target x coordinate. Use -1 with z -1 to spawn near map center.", Required = false, DefaultValue = -1)] int x = -1,
 			[ToolParameter(Description = "Target z coordinate. Use -1 with x -1 to spawn near map center.", Required = false, DefaultValue = -1)] int z = -1)
 		{
@@ -505,31 +505,31 @@ namespace ZombieLand
 			if (TryFindClearSpawnCell(map, root, 16f, out var cell, out var error) == false)
 				return error;
 
-			var existing = CurrentZombies(map).OfType<ZombieBlob>()
+			var existing = CurrentZombies(map).OfType<ZombieSymbiant>()
 				.Select(ZombieRuntimeActions.StableThingId)
 				.ToHashSet(StringComparer.OrdinalIgnoreCase);
-			ZombieBlob.Spawn(map, cell);
-			var blob = CurrentZombies(map).OfType<ZombieBlob>()
+			ZombieSymbiant.Spawn(map, cell);
+			var symbiant = CurrentZombies(map).OfType<ZombieSymbiant>()
 				.FirstOrDefault(candidate => existing.Contains(ZombieRuntimeActions.StableThingId(candidate)) == false)
-				?? CurrentZombies(map).OfType<ZombieBlob>().OrderBy(candidate => candidate.Position.DistanceToSquared(cell)).FirstOrDefault();
+				?? CurrentZombies(map).OfType<ZombieSymbiant>().OrderBy(candidate => candidate.Position.DistanceToSquared(cell)).FirstOrDefault();
 
 			return new
 			{
-				success = blob?.Spawned == true && blob.CurJobDef == CustomDefs.Blob,
+				success = symbiant?.Spawned == true && symbiant.CurJobDef == CustomDefs.Symbiant,
 				requestedCell = ZombieRuntimeActions.DescribeCell(root),
 				spawnCell = ZombieRuntimeActions.DescribeCell(cell),
-				blob = DescribeZombie(blob),
+				symbiant = DescribeZombie(symbiant),
 				assets = new
 				{
 					Assets.initialized,
 					hasMetaballShader = Assets.MetaballShader != null,
-					hasZombieBlobShader = Assets.ZombieBlobShader != null,
-					zombieBlobShader = Assets.ZombieBlobShader?.name
+					hasZombieSymbiantShader = Assets.ZombieSymbiantShader != null,
+					zombieSymbiantShader = Assets.ZombieSymbiantShader?.name
 				}
 			};
 		}
 
-		[Tool("zombieland/zombie_area_risk_contract", Description = "Verify dangerous-area risk modes classify colonists, normal zombies, spitters, and blobs consistently.")]
+		[Tool("zombieland/zombie_area_risk_contract", Description = "Verify dangerous-area risk modes classify colonists, normal zombies, spitters, and symbiants consistently.")]
 		public static object ZombieAreaRiskContract()
 		{
 			var map = CurrentMap;
@@ -549,8 +549,8 @@ namespace ZombieLand
 				return normalCellError;
 			if (TryFindClearSpawnCell(map, root + new IntVec3(2, 0, 0), 16f, out var spitterCell, out var spitterCellError) == false)
 				return spitterCellError;
-			if (TryFindClearSpawnCell(map, root + new IntVec3(6, 0, 0), 16f, out var blobCell, out var blobCellError) == false)
-				return blobCellError;
+			if (TryFindClearSpawnCell(map, root + new IntVec3(6, 0, 0), 16f, out var symbiantCell, out var symbiantCellError) == false)
+				return symbiantCellError;
 
 			var previousDangerousAreas = ZombieSettings.Values.dangerousAreas.ToDictionary(pair => pair.Key, pair => pair.Value);
 			var createdAreas = new List<Area>();
@@ -570,12 +570,12 @@ namespace ZombieLand
 				var spitter = CurrentZombies(map).OfType<ZombieSpitter>().OrderBy(candidate => candidate.Position.DistanceToSquared(spitterCell)).FirstOrDefault();
 				if (spitter != null)
 					spawnedThings.Add(spitter);
-				ZombieBlob.Spawn(map, blobCell);
-				var blob = CurrentZombies(map).OfType<ZombieBlob>().OrderBy(candidate => candidate.Position.DistanceToSquared(blobCell)).FirstOrDefault();
-				if (blob != null)
-					spawnedThings.Add(blob);
+				ZombieSymbiant.Spawn(map, symbiantCell);
+				var symbiant = CurrentZombies(map).OfType<ZombieSymbiant>().OrderBy(candidate => candidate.Position.DistanceToSquared(symbiantCell)).FirstOrDefault();
+				if (symbiant != null)
+					spawnedThings.Add(symbiant);
 
-				if (normal == null || spitter == null || blob == null)
+				if (normal == null || spitter == null || symbiant == null)
 				{
 					return new
 					{
@@ -583,7 +583,7 @@ namespace ZombieLand
 						colonist = DescribePawn(colonist),
 						normal = DescribeZombie(normal),
 						spitter = DescribeZombie(spitter),
-						blob = DescribeZombie(blob),
+						symbiant = DescribeZombie(symbiant),
 						error = "Could not create all dangerous-area pawn fixtures."
 					};
 				}
@@ -632,7 +632,7 @@ namespace ZombieLand
 						.Select(pair => new
 						{
 							pawn = DescribePawn(pair.Key),
-							kind = DescribeZombieKind(pair.Key as Zombie, pair.Key as ZombieBlob, pair.Key as ZombieSpitter),
+							kind = DescribeZombieKind(pair.Key as Zombie, pair.Key as ZombieSymbiant, pair.Key as ZombieSpitter),
 							area = pair.Value?.Label
 						})
 						.ToArray();
@@ -644,15 +644,15 @@ namespace ZombieLand
 						colonist = ZombieAreaManager.pawnsInDanger.ContainsKey(colonist),
 						normal = ZombieAreaManager.pawnsInDanger.ContainsKey(normal),
 						spitter = ZombieAreaManager.pawnsInDanger.ContainsKey(spitter),
-						blob = ZombieAreaManager.pawnsInDanger.ContainsKey(blob),
+						symbiant = ZombieAreaManager.pawnsInDanger.ContainsKey(symbiant),
 						entries
 					};
 				}
 
-				var ignore = Snapshot("ignore", AreaRiskMode.Ignore, colonist.Position, normal.Position, spitter.Position, blob.Position);
-				var colonistInside = Snapshot("colonistInside", AreaRiskMode.ColonistInside, colonist.Position, normal.Position, spitter.Position, blob.Position);
-				var colonistOutside = Snapshot("colonistOutside", AreaRiskMode.ColonistOutside, normal.Position, spitter.Position, blob.Position);
-				var zombieInside = Snapshot("zombieInside", AreaRiskMode.ZombieInside, colonist.Position, normal.Position, spitter.Position, blob.Position);
+				var ignore = Snapshot("ignore", AreaRiskMode.Ignore, colonist.Position, normal.Position, spitter.Position, symbiant.Position);
+				var colonistInside = Snapshot("colonistInside", AreaRiskMode.ColonistInside, colonist.Position, normal.Position, spitter.Position, symbiant.Position);
+				var colonistOutside = Snapshot("colonistOutside", AreaRiskMode.ColonistOutside, normal.Position, spitter.Position, symbiant.Position);
+				var zombieInside = Snapshot("zombieInside", AreaRiskMode.ZombieInside, colonist.Position, normal.Position, spitter.Position, symbiant.Position);
 				var zombieOutside = Snapshot("zombieOutside", AreaRiskMode.ZombieOutside, colonist.Position);
 
 				bool Has(object snapshot, string field)
@@ -663,23 +663,23 @@ namespace ZombieLand
 				var success = Has(ignore, "colonist") == false
 					&& Has(ignore, "normal") == false
 					&& Has(ignore, "spitter") == false
-					&& Has(ignore, "blob") == false
+					&& Has(ignore, "symbiant") == false
 					&& Has(colonistInside, "colonist")
 					&& Has(colonistInside, "normal") == false
 					&& Has(colonistInside, "spitter") == false
-					&& Has(colonistInside, "blob") == false
+					&& Has(colonistInside, "symbiant") == false
 					&& Has(colonistOutside, "colonist")
 					&& Has(colonistOutside, "normal") == false
 					&& Has(colonistOutside, "spitter") == false
-					&& Has(colonistOutside, "blob") == false
+					&& Has(colonistOutside, "symbiant") == false
 					&& Has(zombieInside, "colonist") == false
 					&& Has(zombieInside, "normal")
 					&& Has(zombieInside, "spitter")
-					&& Has(zombieInside, "blob")
+					&& Has(zombieInside, "symbiant")
 					&& Has(zombieOutside, "colonist") == false
 					&& Has(zombieOutside, "normal")
 					&& Has(zombieOutside, "spitter")
-					&& Has(zombieOutside, "blob");
+					&& Has(zombieOutside, "symbiant");
 
 				return new
 				{
@@ -688,7 +688,7 @@ namespace ZombieLand
 					colonist = DescribePawn(colonist),
 					normal = DescribeZombie(normal),
 					spitter = DescribeZombie(spitter),
-					blob = DescribeZombie(blob),
+					symbiant = DescribeZombie(symbiant),
 					snapshots = new[]
 					{
 						ignore,
@@ -1785,8 +1785,8 @@ namespace ZombieLand
 				var albino = SpawnTargetZombie(map, targetCells[4], ZombieType.Albino, "ZL_Area_AlbinoTarget", spawnedThings);
 				var suicide = SpawnTargetZombie(map, targetCells[5], ZombieType.SuicideBomber, "ZL_Area_SuicideTarget", spawnedThings);
 				var spitter = SpawnTargetSpitter(map, targetCells[6], "ZL_Area_SpitterTarget", spawnedThings);
-				var blob = SpawnTargetBlob(map, targetCells[7], "ZL_Area_BlobTarget", spawnedThings);
-				if (new Pawn[] { normal, roped, confused, electric, albino, suicide, spitter, blob }.Any(pawn => pawn == null))
+				var symbiant = SpawnTargetSymbiant(map, targetCells[7], "ZL_Area_SymbiantTarget", spawnedThings);
+				if (new Pawn[] { normal, roped, confused, electric, albino, suicide, spitter, symbiant }.Any(pawn => pawn == null))
 				{
 					return new
 					{
@@ -1800,7 +1800,7 @@ namespace ZombieLand
 							albino = DescribeZombie(albino),
 							suicide = DescribeZombie(suicide),
 							spitter = DescribeZombie(spitter as ZombieSpitter),
-							blob = DescribeZombie(blob as ZombieBlob)
+							symbiant = DescribeZombie(symbiant as ZombieSymbiant)
 						},
 						error = "Could not create all mixed-targeting zombie pawns."
 					};
@@ -1809,7 +1809,7 @@ namespace ZombieLand
 				confused.paralyzedUntil = GenTicks.TicksAbs + 2500;
 				RefreshZombieTargetCache(map);
 
-				var allTargets = new List<IAttackTarget> { normal, roped, confused, electric, albino, suicide, spitter, blob };
+				var allTargets = new List<IAttackTarget> { normal, roped, confused, electric, albino, suicide, spitter, symbiant };
 				var playerAvailable = InvokeAvailableTargetsPatch(allTargets, player, playerVerb);
 				var playerTargetIds = TargetIds(playerAvailable);
 				var playerBest = AttackTargetFinder.BestAttackTarget(player, TargetScanFlags.NeedLOSToAll | TargetScanFlags.NeedThreat, thing => thing is Zombie, 0f, 20f);
@@ -1826,7 +1826,7 @@ namespace ZombieLand
 				var enemyBest = AttackTargetFinder.BestAttackTarget(enemy, TargetScanFlags.NeedLOSToAll | TargetScanFlags.NeedThreat, thing => thing is Zombie, 0f, 20f);
 				var enemyNormalEnabledBest = BestSpecificTarget(enemy, normal);
 				var enemySpitterBest = BestSpecificTarget(enemy, spitter);
-				var enemyBlobBest = BestSpecificTarget(enemy, blob);
+				var enemySymbiantBest = BestSpecificTarget(enemy, symbiant);
 				var enemyElectricBest = BestSpecificTarget(enemy, electric);
 
 				ZombieSettings.Values.animalsAttackZombies = false;
@@ -1864,9 +1864,9 @@ namespace ZombieLand
 				var friendlyFireHelper = VerifyFriendlyFireHelper(normal, player);
 				var availablePatchOwners = PatchOwners("GetAvailableShootingTargetsByScore");
 				var scorePatchOwners = PatchOwners("GetShootingTargetScore");
-				var directHostility = VerifyAreaWorkflowDirectHostility(map, player, enemy, normal, spitter, blob, shooterCell, spawnedThings);
-				var targetCache = VerifyAreaWorkflowTargetCache(map, normal, spitter, blob, shooterCell, spawnedThings);
-				var availableBranches = VerifyAreaWorkflowAvailableTargetBranches(map, shooterCell, allTargets, normal, roped, confused, electric, albino, spitter, blob, spawnedThings);
+				var directHostility = VerifyAreaWorkflowDirectHostility(map, player, enemy, normal, spitter, symbiant, shooterCell, spawnedThings);
+				var targetCache = VerifyAreaWorkflowTargetCache(map, normal, spitter, symbiant, shooterCell, spawnedThings);
+				var availableBranches = VerifyAreaWorkflowAvailableTargetBranches(map, shooterCell, allTargets, normal, roped, confused, electric, albino, spitter, symbiant, spawnedThings);
 				var waitAutoAttack = VerifyAreaWorkflowWaitAutoAttack(map, shooterCell, spawnedThings);
 				var turretTargeting = VerifyAreaWorkflowTurretTargeting(map, shooterCell, player, spawnedThings);
 				var tarSmokeMeleeTargeting = VerifyAreaWorkflowTarSmokeMeleeTargeting(map, shooterCell, spawnedThings);
@@ -1883,13 +1883,13 @@ namespace ZombieLand
 					&& enemyDisabledIds.Contains(StableId(normal)) == false
 					&& enemyEnabledIds.Contains(StableId(normal))
 					&& enemyEnabledIds.Contains(StableId(spitter)) == false
-					&& enemyEnabledIds.Contains(StableId(blob)) == false
+					&& enemyEnabledIds.Contains(StableId(symbiant)) == false
 					&& enemyEnabledIds.Contains(StableId(albino)) == false
 					&& (enemyVerb.CanHarmElectricZombies() || enemyEnabledIds.Contains(StableId(electric)) == false)
 					&& enemyNormalDisabledBest == null
 					&& ReferenceEquals(enemyNormalEnabledBest?.Thing, normal)
 					&& enemySpitterBest == null
-					&& enemyBlobBest == null
+					&& enemySymbiantBest == null
 					&& (enemyVerb.CanHarmElectricZombies() || enemyElectricBest == null)
 					&& animalDisabledBest == null
 					&& ReferenceEquals(animalEnabledBest?.Thing, normal)
@@ -1931,7 +1931,7 @@ namespace ZombieLand
 						albino = DescribeZombie(albino),
 						suicide = DescribeZombie(suicide),
 						spitter = DescribeZombie(spitter as ZombieSpitter),
-						blob = DescribeZombie(blob as ZombieBlob)
+						symbiant = DescribeZombie(symbiant as ZombieSymbiant)
 					},
 					available = new
 					{
@@ -1948,7 +1948,7 @@ namespace ZombieLand
 						enemyNormalDisabled = DescribeTarget(enemyNormalDisabledBest),
 						enemyNormalEnabled = DescribeTarget(enemyNormalEnabledBest),
 						enemySpitter = DescribeTarget(enemySpitterBest),
-						enemyBlob = DescribeTarget(enemyBlobBest),
+						enemySymbiant = DescribeTarget(enemySymbiantBest),
 						enemyElectric = DescribeTarget(enemyElectricBest),
 						animalDisabled = DescribeTarget(animalDisabledBest),
 						animalEnabled = DescribeTarget(animalEnabledBest)
@@ -2748,18 +2748,18 @@ namespace ZombieLand
 			return spitter;
 		}
 
-		static ZombieBlob SpawnTargetBlob(Map map, IntVec3 cell, string name, List<Thing> spawnedThings)
+		static ZombieSymbiant SpawnTargetSymbiant(Map map, IntVec3 cell, string name, List<Thing> spawnedThings)
 		{
-			var existing = CurrentZombies(map).OfType<ZombieBlob>().Select(StableId).ToHashSet();
-			ZombieBlob.Spawn(map, cell);
-			var blob = CurrentZombies(map).OfType<ZombieBlob>()
+			var existing = CurrentZombies(map).OfType<ZombieSymbiant>().Select(StableId).ToHashSet();
+			ZombieSymbiant.Spawn(map, cell);
+			var symbiant = CurrentZombies(map).OfType<ZombieSymbiant>()
 				.FirstOrDefault(candidate => existing.Contains(StableId(candidate)) == false)
-				?? CurrentZombies(map).OfType<ZombieBlob>().OrderBy(candidate => candidate.Position.DistanceToSquared(cell)).FirstOrDefault();
-			if (blob == null)
+				?? CurrentZombies(map).OfType<ZombieSymbiant>().OrderBy(candidate => candidate.Position.DistanceToSquared(cell)).FirstOrDefault();
+			if (symbiant == null)
 				return null;
-			blob.Name = new NameSingle(name);
-			spawnedThings.Add(blob);
-			return blob;
+			symbiant.Name = new NameSingle(name);
+			spawnedThings.Add(symbiant);
+			return symbiant;
 		}
 
 		static void RefreshZombieTargetCache(Map map)
@@ -2825,7 +2825,7 @@ namespace ZombieLand
 				}).Cast<object>().ToArray());
 		}
 
-		static object VerifyAreaWorkflowDirectHostility(Map map, Pawn player, Pawn enemy, Zombie normal, ZombieSpitter spitter, ZombieBlob blob, IntVec3 root, List<Thing> spawnedThings)
+		static object VerifyAreaWorkflowDirectHostility(Map map, Pawn player, Pawn enemy, Zombie normal, ZombieSpitter spitter, ZombieSymbiant symbiant, IntVec3 root, List<Thing> spawnedThings)
 		{
 			var settings = ZombieSettings.Values;
 			var oldEnemiesAttackZombies = settings.enemiesAttackZombies;
@@ -2875,7 +2875,7 @@ namespace ZombieLand
 				var animalThingEnabled = TryHostileTo(wildAnimal, normal);
 				var enemyFaction = TryHostileTo(enemy, zombieFaction);
 				var spitterToEnemyFaction = TryHostileTo(spitter, enemy.Faction);
-				var blobToEnemyFaction = TryHostileTo(blob, enemy.Faction);
+				var symbiantToEnemyFaction = TryHostileTo(symbiant, enemy.Faction);
 				var normalThreatToEnemyEverything = GenHostility.IsActiveThreatTo(normal, enemy.Faction, false, false);
 
 				settings.attackMode = AttackMode.OnlyColonists;
@@ -2894,7 +2894,7 @@ namespace ZombieLand
 					animalThingEnabled,
 					enemyFaction,
 					spitterToEnemyFaction,
-					blobToEnemyFaction,
+					symbiantToEnemyFaction,
 					enemyThingInfecting
 				}.All(sample => sample.error == null);
 
@@ -2906,7 +2906,7 @@ namespace ZombieLand
 					&& animalThingEnabled.value
 					&& enemyFaction.value
 					&& spitterToEnemyFaction.value == false
-					&& blobToEnemyFaction.value == false
+					&& symbiantToEnemyFaction.value == false
 					&& enemyThingInfecting.value == false
 					&& normalThreatToPlayer == false
 					&& normalThreatToNull == false
@@ -2927,7 +2927,7 @@ namespace ZombieLand
 						animalThingEnabled = DescribeHostility(animalThingEnabled),
 						enemyFaction = DescribeHostility(enemyFaction),
 						spitterToEnemyFaction = DescribeHostility(spitterToEnemyFaction),
-						blobToEnemyFaction = DescribeHostility(blobToEnemyFaction),
+						symbiantToEnemyFaction = DescribeHostility(symbiantToEnemyFaction),
 						enemyThingInfecting = DescribeHostility(enemyThingInfecting)
 					},
 					activeThreat = new
@@ -2949,7 +2949,7 @@ namespace ZombieLand
 			}
 		}
 
-		static object VerifyAreaWorkflowTargetCache(Map map, Zombie normal, ZombieSpitter spitter, ZombieBlob blob, IntVec3 root, List<Thing> spawnedThings)
+		static object VerifyAreaWorkflowTargetCache(Map map, Zombie normal, ZombieSpitter spitter, ZombieSymbiant symbiant, IntVec3 root, List<Thing> spawnedThings)
 		{
 			if (TryFindClearSpawnCell(map, root + new IntVec3(4, 0, -4), 10f, out var hostileCell, out var cellError) == false)
 				return cellError;
@@ -2959,16 +2959,16 @@ namespace ZombieLand
 			cache.UpdateTarget(hostile);
 			cache.UpdateTarget(normal);
 			cache.UpdateTarget(spitter);
-			cache.UpdateTarget(blob);
+			cache.UpdateTarget(symbiant);
 
 			var before = cache.TargetsHostileToColony;
 			var containsHostileBefore = before.Contains(hostile);
 			var containsNormalBefore = before.Contains(normal);
 			var containsSpitterBefore = before.Contains(spitter);
-			var containsBlobBefore = before.Contains(blob);
+			var containsSymbiantBefore = before.Contains(symbiant);
 			var zombielandTargetsBefore = before
 				.Select(target => target.Thing)
-				.Where(thing => thing is Zombie || thing is ZombieSpitter || thing is ZombieBlob)
+				.Where(thing => thing is Zombie || thing is ZombieSpitter || thing is ZombieSymbiant)
 				.Select(thing => thing.def?.defName)
 				.Distinct()
 				.OrderBy(defName => defName)
@@ -2985,7 +2985,7 @@ namespace ZombieLand
 				success = containsHostileBefore
 					&& containsNormalBefore == false
 					&& containsSpitterBefore == false
-					&& containsBlobBefore == false
+					&& containsSymbiantBefore == false
 					&& zombielandTargetsBefore.Length == 0
 					&& containsHostileAfter == false,
 				hostile = hostileDescription,
@@ -2995,7 +2995,7 @@ namespace ZombieLand
 					containsHostile = containsHostileBefore,
 					containsNormal = containsNormalBefore,
 					containsSpitter = containsSpitterBefore,
-					containsBlob = containsBlobBefore,
+					containsSymbiant = containsSymbiantBefore,
 					zombielandTargets = zombielandTargetsBefore
 				},
 				after = new
@@ -3016,7 +3016,7 @@ namespace ZombieLand
 			Zombie electric,
 			Zombie albino,
 			ZombieSpitter spitter,
-			ZombieBlob blob,
+			ZombieSymbiant symbiant,
 			List<Thing> spawnedThings)
 		{
 			if (TryFindClearSpawnCell(map, root + new IntVec3(-4, 0, 4), 12f, out var friendlyHumanCell, out var friendlyHumanCellError) == false)
@@ -3109,9 +3109,9 @@ namespace ZombieLand
 							&& ContainsTarget(friendlyHumanIds, confused) == false
 							&& ContainsTarget(friendlyHumanIds, albino) == false
 							&& ContainsTarget(friendlyHumanIds, spitter) == false
-							&& ContainsTarget(friendlyHumanIds, blob) == false
+							&& ContainsTarget(friendlyHumanIds, symbiant) == false
 							&& (friendlyHumanVerb.CanHarmElectricZombies() || ContainsTarget(friendlyHumanIds, electric) == false),
-						normal, roped, confused, electric, albino, spitter, blob),
+						normal, roped, confused, electric, albino, spitter, symbiant),
 					DescribeAvailableBranchCase(
 						"friendlyMechEverything",
 						friendlyMechIds,
@@ -3120,14 +3120,14 @@ namespace ZombieLand
 							&& ContainsTarget(friendlyMechIds, confused) == false
 							&& ContainsTarget(friendlyMechIds, albino) == false
 							&& ContainsTarget(friendlyMechIds, spitter) == false
-							&& ContainsTarget(friendlyMechIds, blob) == false
+							&& ContainsTarget(friendlyMechIds, symbiant) == false
 							&& (friendlyMechVerb.CanHarmElectricZombies() || ContainsTarget(friendlyMechIds, electric) == false),
-						normal, roped, confused, electric, albino, spitter, blob),
+						normal, roped, confused, electric, albino, spitter, symbiant),
 					DescribeAvailableBranchCase(
 						"playerMechOnlyHumans",
 						playerMechOnlyHumansIds,
 						playerMechOnlyHumansIds.Length == 0,
-						normal, roped, confused, electric, albino, spitter, blob),
+						normal, roped, confused, electric, albino, spitter, symbiant),
 					DescribeAvailableBranchCase(
 						"playerMechEverything",
 						playerMechEverythingIds,
@@ -3136,9 +3136,9 @@ namespace ZombieLand
 							&& ContainsTarget(playerMechEverythingIds, confused) == false
 							&& ContainsTarget(playerMechEverythingIds, albino)
 							&& ContainsTarget(playerMechEverythingIds, spitter)
-							&& ContainsTarget(playerMechEverythingIds, blob)
+							&& ContainsTarget(playerMechEverythingIds, symbiant)
 							&& (playerMechVerb.CanHarmElectricZombies() || ContainsTarget(playerMechEverythingIds, electric) == false),
-						normal, roped, confused, electric, albino, spitter, blob),
+						normal, roped, confused, electric, albino, spitter, symbiant),
 					DescribeAvailableBranchCase(
 						"playerThingEverything",
 						playerThingIds,
@@ -3147,14 +3147,14 @@ namespace ZombieLand
 							&& ContainsTarget(playerThingIds, confused) == false
 							&& ContainsTarget(playerThingIds, albino) == false
 							&& ContainsTarget(playerThingIds, spitter)
-							&& ContainsTarget(playerThingIds, blob)
+							&& ContainsTarget(playerThingIds, symbiant)
 							&& (playerTurretVerb.CanHarmElectricZombies() || ContainsTarget(playerThingIds, electric) == false),
-						normal, roped, confused, electric, albino, spitter, blob),
+						normal, roped, confused, electric, albino, spitter, symbiant),
 					DescribeAvailableBranchCase(
 						"enemyThingDisabled",
 						enemyThingDisabledIds,
 						enemyThingDisabledIds.Length == 0,
-						normal, roped, confused, electric, albino, spitter, blob),
+						normal, roped, confused, electric, albino, spitter, symbiant),
 					DescribeAvailableBranchCase(
 						"enemyThingEnabled",
 						enemyThingEnabledIds,
@@ -3163,9 +3163,9 @@ namespace ZombieLand
 							&& ContainsTarget(enemyThingEnabledIds, confused)
 							&& ContainsTarget(enemyThingEnabledIds, albino) == false
 							&& ContainsTarget(enemyThingEnabledIds, spitter) == false
-							&& ContainsTarget(enemyThingEnabledIds, blob) == false
+							&& ContainsTarget(enemyThingEnabledIds, symbiant) == false
 							&& (enemyTurretVerb.CanHarmElectricZombies() || ContainsTarget(enemyThingEnabledIds, electric) == false),
-						normal, roped, confused, electric, albino, spitter, blob)
+						normal, roped, confused, electric, albino, spitter, symbiant)
 				};
 
 				return new
@@ -3444,8 +3444,8 @@ namespace ZombieLand
 			var confused = SpawnTargetZombie(map, targetCells[2], ZombieType.Normal, "ZL_Area_TurretConfused", spawnedThings);
 			var electric = SpawnTargetZombie(map, targetCells[3], ZombieType.Electrifier, "ZL_Area_TurretElectric", spawnedThings);
 			var spitter = SpawnTargetSpitter(map, targetCells[4], "ZL_Area_TurretSpitter", spawnedThings);
-			var blob = SpawnTargetBlob(map, targetCells[5], "ZL_Area_TurretBlob", spawnedThings);
-			if (new Pawn[] { normal, roped, confused, electric, spitter, blob }.Any(pawn => pawn == null))
+			var symbiant = SpawnTargetSymbiant(map, targetCells[5], "ZL_Area_TurretSymbiant", spawnedThings);
+			if (new Pawn[] { normal, roped, confused, electric, spitter, symbiant }.Any(pawn => pawn == null))
 			{
 				return new
 				{
@@ -3458,7 +3458,7 @@ namespace ZombieLand
 						confused = DescribeZombie(confused),
 						electric = DescribeZombie(electric),
 						spitter = DescribeZombie(spitter),
-						blob = DescribeZombie(blob)
+						symbiant = DescribeZombie(symbiant)
 					},
 					error = "Could not create all turret-targeting zombie fixtures."
 				};
@@ -3475,11 +3475,11 @@ namespace ZombieLand
 			var confusedBest = BestSpecificTarget(turret, confused);
 			var electricBest = BestSpecificTarget(turret, electric);
 			var spitterBest = BestSpecificTarget(turret, spitter);
-			var blobBest = BestSpecificTarget(turret, blob);
+			var symbiantBest = BestSpecificTarget(turret, symbiant);
 			var generalBest = AttackTargetFinder.BestAttackTarget(
 				turret,
 				flags,
-				thing => thing is Zombie || thing is ZombieSpitter || thing is ZombieBlob,
+				thing => thing is Zombie || thing is ZombieSpitter || thing is ZombieSymbiant,
 				0f,
 				Math.Max(20f, verb.verbProps.range));
 			var rejectedIds = new[] { StableId(roped), StableId(confused), StableId(electric) };
@@ -3488,7 +3488,7 @@ namespace ZombieLand
 			{
 				Zombie zombie => zombie.IsRopedOrConfused == false && (verb.CanHarmElectricZombies() || zombie.IsActiveElectric == false),
 				ZombieSpitter => true,
-				ZombieBlob => true,
+				ZombieSymbiant _ => true,
 				_ => false
 			};
 			var potentialIds = map.attackTargetsCache.GetPotentialTargetsFor(turret).Select(StableId).Where(id => id != null).ToArray();
@@ -3504,7 +3504,7 @@ namespace ZombieLand
 					&& confusedBest == null
 					&& electricBest == null
 					&& ReferenceEquals(spitterBest?.Thing, spitter)
-					&& ReferenceEquals(blobBest?.Thing, blob)
+					&& ReferenceEquals(symbiantBest?.Thing, symbiant)
 					&& generalBestAllowed
 					&& rejectedIds.Contains(StableId(generalBest)) == false,
 				patchOwners,
@@ -3518,7 +3518,7 @@ namespace ZombieLand
 					confused = DescribeZombie(confused),
 					electric = DescribeZombie(electric),
 					spitter = DescribeZombie(spitter),
-					blob = DescribeZombie(blob)
+					symbiant = DescribeZombie(symbiant)
 				},
 				bestTargets = new
 				{
@@ -3527,7 +3527,7 @@ namespace ZombieLand
 					confused = DescribeTarget(confusedBest),
 					electric = DescribeTarget(electricBest),
 					spitter = DescribeTarget(spitterBest),
-					blob = DescribeTarget(blobBest),
+					symbiant = DescribeTarget(symbiantBest),
 					general = DescribeTarget(generalBest),
 					generalAllowed = generalBestAllowed
 				},
@@ -3674,7 +3674,7 @@ namespace ZombieLand
 					zombie.paralyzedUntil = GenTicks.TicksAbs + 2500;
 			}));
 			cases.Add(RunCase("spitter", true, (cell, actor) => SpawnTargetSpitter(map, cell, "ZL_Area_WaitSpitter", spawnedThings)));
-			cases.Add(RunCase("blob", true, (cell, actor) => SpawnTargetBlob(map, cell, "ZL_Area_WaitBlob", spawnedThings), requireDamage: false));
+			cases.Add(RunCase("symbiant", true, (cell, actor) => SpawnTargetSymbiant(map, cell, "ZL_Area_WaitSymbiant", spawnedThings), requireDamage: false));
 			cases.Add(RunCase("hostilePawn", true, (cell, actor) => SpawnMeleeAreaWorkflowPawn(map, "ZL_Area_WaitHostile", cell, Faction.OfAncientsHostile, spawnedThings), requireDamage: false));
 
 			return new
@@ -4373,15 +4373,15 @@ namespace ZombieLand
 
 			var normal = SpawnTargetZombie(map, cells[0], ZombieType.Normal, "ZL_Area_JobGateNormal", spawnedThings);
 			var spitter = SpawnTargetSpitter(map, cells[1], "ZL_Area_JobGateSpitter", spawnedThings);
-			var blob = SpawnTargetBlob(map, cells[2], "ZL_Area_JobGateBlob", spawnedThings);
-			if (normal == null || spitter == null || blob == null)
+			var symbiant = SpawnTargetSymbiant(map, cells[2], "ZL_Area_JobGateSymbiant", spawnedThings);
+			if (normal == null || spitter == null || symbiant == null)
 			{
 				return new
 				{
 					success = false,
 					normal = DescribeZombie(normal),
 					spitter = DescribeZombie(spitter),
-					blob = DescribeZombie(blob),
+					symbiant = DescribeZombie(symbiant),
 					error = "Could not spawn all Zombieland pawn job-gate fixtures."
 				};
 			}
@@ -4390,13 +4390,13 @@ namespace ZombieLand
 			{
 				VerifyJobGateAllowed(map, normal, "normal"),
 				VerifyJobGateAllowed(map, spitter, "spitter"),
-				VerifyJobGateAllowed(map, blob, "blob")
+				VerifyJobGateAllowed(map, symbiant, "symbiant")
 			};
 			var blockedCases = new[]
 			{
 				VerifyJobGateBlocked(map, normal, cells[3], "normal"),
 				VerifyJobGateBlocked(map, spitter, cells[4], "spitter"),
-				VerifyJobGateBlocked(map, blob, cells[5], "blob")
+				VerifyJobGateBlocked(map, symbiant, cells[5], "symbiant")
 			};
 
 			return new
@@ -7990,7 +7990,7 @@ namespace ZombieLand
 				var humanInstigator = SpawnAreaWorkflowPawn(map, "ZL_Area_AnimalResponseHumanInstigator", cells[1], Faction.OfPlayer, spawnedThings);
 				var zombieInstigator = SpawnTargetZombie(map, cells[2], ZombieType.Normal, "ZL_Area_AnimalResponseZombieInstigator", spawnedThings);
 				var spitterInstigator = SpawnTargetSpitter(map, cells[3], "ZL_Area_AnimalResponseSpitterInstigator", spawnedThings);
-				var blobInstigator = SpawnTargetBlob(map, cells[4], "ZL_Area_AnimalResponseBlobInstigator", spawnedThings);
+				var symbiantInstigator = SpawnTargetSymbiant(map, cells[4], "ZL_Area_AnimalResponseSymbiantInstigator", spawnedThings);
 				var predator = SpawnAreaWorkflowAnimal(
 					map,
 					"ZL_Area_AnimalResponsePredator",
@@ -8001,7 +8001,7 @@ namespace ZombieLand
 				var humanPrey = SpawnAreaWorkflowPawn(map, "ZL_Area_AnimalResponseHumanPrey", cells[6], Faction.OfPlayer, spawnedThings);
 				var zombiePrey = SpawnTargetZombie(map, cells[7], ZombieType.Normal, "ZL_Area_AnimalResponseZombiePrey", spawnedThings);
 
-				if (manhunterVictim == null || humanInstigator == null || zombieInstigator == null || spitterInstigator == null || blobInstigator == null || predator == null || humanPrey == null || zombiePrey == null)
+				if (manhunterVictim == null || humanInstigator == null || zombieInstigator == null || spitterInstigator == null || symbiantInstigator == null || predator == null || humanPrey == null || zombiePrey == null)
 				{
 					return new
 					{
@@ -8010,7 +8010,7 @@ namespace ZombieLand
 						humanInstigator = DescribePawn(humanInstigator),
 						zombieInstigator = DescribeZombie(zombieInstigator),
 						spitterInstigator = DescribeZombie(spitterInstigator),
-						blobInstigator = DescribeZombie(blobInstigator),
+						symbiantInstigator = DescribeZombie(symbiantInstigator),
 						predator = DescribePawn(predator),
 						humanPrey = DescribePawn(humanPrey),
 						zombiePrey = DescribeZombie(zombiePrey),
@@ -8018,8 +8018,8 @@ namespace ZombieLand
 					};
 				}
 
-				var manhunter = VerifyAnimalResponseManhunter(manhunterVictim, humanInstigator, zombieInstigator, spitterInstigator, blobInstigator);
-				var preyScores = VerifyAnimalResponsePreyScores(predator, humanPrey, zombiePrey, spitterInstigator, blobInstigator);
+				var manhunter = VerifyAnimalResponseManhunter(manhunterVictim, humanInstigator, zombieInstigator, spitterInstigator, symbiantInstigator);
+				var preyScores = VerifyAnimalResponsePreyScores(predator, humanPrey, zombiePrey, spitterInstigator, symbiantInstigator);
 
 				return new
 				{
@@ -8038,7 +8038,7 @@ namespace ZombieLand
 						humanInstigator = DescribePawn(humanInstigator),
 						zombieInstigator = DescribeZombie(zombieInstigator),
 						spitterInstigator = DescribeZombie(spitterInstigator),
-						blobInstigator = DescribeZombie(blobInstigator),
+						symbiantInstigator = DescribeZombie(symbiantInstigator),
 						predator = DescribePawn(predator),
 						humanPrey = DescribePawn(humanPrey),
 						zombiePrey = DescribeZombie(zombiePrey)
@@ -8101,7 +8101,7 @@ namespace ZombieLand
 			return false;
 		}
 
-		static object VerifyAnimalResponseManhunter(Pawn victim, Pawn humanInstigator, Zombie zombieInstigator, ZombieSpitter spitterInstigator, ZombieBlob blobInstigator)
+		static object VerifyAnimalResponseManhunter(Pawn victim, Pawn humanInstigator, Zombie zombieInstigator, ZombieSpitter spitterInstigator, ZombieSymbiant symbiantInstigator)
 		{
 			const float distance = 3f;
 			var settings = ZombieSettings.Values;
@@ -8114,13 +8114,13 @@ namespace ZombieLand
 				var humanEnabled = PawnUtility.GetManhunterOnDamageChance(victim, humanInstigator, distance);
 				var zombieEnabled = PawnUtility.GetManhunterOnDamageChance(victim, zombieInstigator, distance);
 				var spitterEnabled = PawnUtility.GetManhunterOnDamageChance(victim, spitterInstigator, distance);
-				var blobEnabled = PawnUtility.GetManhunterOnDamageChance(victim, blobInstigator, distance);
+				var symbiantEnabled = PawnUtility.GetManhunterOnDamageChance(victim, symbiantInstigator, distance);
 
 				settings.zombiesCauseManhuntingResponse = false;
 				var humanDisabled = PawnUtility.GetManhunterOnDamageChance(victim, humanInstigator, distance);
 				var zombieDisabled = PawnUtility.GetManhunterOnDamageChance(victim, zombieInstigator, distance);
 				var spitterDisabled = PawnUtility.GetManhunterOnDamageChance(victim, spitterInstigator, distance);
-				var blobDisabled = PawnUtility.GetManhunterOnDamageChance(victim, blobInstigator, distance);
+				var symbiantDisabled = PawnUtility.GetManhunterOnDamageChance(victim, symbiantInstigator, distance);
 
 				var expectedZombieEnabled = zombieExpected / 20f;
 				return new
@@ -8133,8 +8133,8 @@ namespace ZombieLand
 						&& Approximately(zombieDisabled, 0f)
 						&& Approximately(spitterEnabled, 0f)
 						&& Approximately(spitterDisabled, 0f)
-						&& Approximately(blobEnabled, 0f)
-						&& Approximately(blobDisabled, 0f),
+						&& Approximately(symbiantEnabled, 0f)
+						&& Approximately(symbiantDisabled, 0f),
 					distance,
 					human = new
 					{
@@ -8154,10 +8154,10 @@ namespace ZombieLand
 						enabled = spitterEnabled,
 						disabled = spitterDisabled
 					},
-					blob = new
+					symbiant = new
 					{
-						enabled = blobEnabled,
-						disabled = blobDisabled
+						enabled = symbiantEnabled,
+						disabled = symbiantDisabled
 					},
 					victimManhunterOnDamageChance = victim.def?.race?.manhunterOnDamageChance,
 					settingRestoredTo = originalSetting
@@ -8184,7 +8184,7 @@ namespace ZombieLand
 			return Mathf.Clamp01(chance);
 		}
 
-		static object VerifyAnimalResponsePreyScores(Pawn predator, Pawn humanPrey, Zombie zombiePrey, ZombieSpitter spitterPrey, ZombieBlob blobPrey)
+		static object VerifyAnimalResponsePreyScores(Pawn predator, Pawn humanPrey, Zombie zombiePrey, ZombieSpitter spitterPrey, ZombieSymbiant symbiantPrey)
 		{
 			var settings = ZombieSettings.Values;
 			var originalSetting = settings.animalsAttackZombies;
@@ -8194,13 +8194,13 @@ namespace ZombieLand
 				var humanDisabled = FoodUtility.GetPreyScoreFor(predator, humanPrey);
 				var zombieDisabled = FoodUtility.GetPreyScoreFor(predator, zombiePrey);
 				var spitterDisabled = FoodUtility.GetPreyScoreFor(predator, spitterPrey);
-				var blobDisabled = FoodUtility.GetPreyScoreFor(predator, blobPrey);
+				var symbiantDisabled = FoodUtility.GetPreyScoreFor(predator, symbiantPrey);
 
 				settings.animalsAttackZombies = true;
 				var humanEnabled = FoodUtility.GetPreyScoreFor(predator, humanPrey);
 				var zombieEnabled = FoodUtility.GetPreyScoreFor(predator, zombiePrey);
 				var spitterEnabled = FoodUtility.GetPreyScoreFor(predator, spitterPrey);
-				var blobEnabled = FoodUtility.GetPreyScoreFor(predator, blobPrey);
+				var symbiantEnabled = FoodUtility.GetPreyScoreFor(predator, symbiantPrey);
 
 				return new
 				{
@@ -8210,8 +8210,8 @@ namespace ZombieLand
 						&& zombieEnabled > humanEnabled
 						&& Approximately(spitterDisabled, 0f)
 						&& Approximately(spitterEnabled, 0f)
-						&& Approximately(blobDisabled, 0f)
-						&& Approximately(blobEnabled, 0f),
+						&& Approximately(symbiantDisabled, 0f)
+						&& Approximately(symbiantEnabled, 0f),
 					human = new
 					{
 						disabled = humanDisabled,
@@ -8228,17 +8228,17 @@ namespace ZombieLand
 						disabled = spitterDisabled,
 						enabled = spitterEnabled
 					},
-					blob = new
+					symbiant = new
 					{
-						disabled = blobDisabled,
-						enabled = blobEnabled
+						disabled = symbiantDisabled,
+						enabled = symbiantEnabled
 					},
 					distances = new
 					{
 						human = (predator.Position - humanPrey.Position).LengthHorizontal,
 						normalZombie = (predator.Position - zombiePrey.Position).LengthHorizontal,
 						spitter = (predator.Position - spitterPrey.Position).LengthHorizontal,
-						blob = (predator.Position - blobPrey.Position).LengthHorizontal
+						symbiant = (predator.Position - symbiantPrey.Position).LengthHorizontal
 					},
 					settingRestoredTo = originalSetting
 				};

@@ -88,7 +88,7 @@ namespace ZombieLand
 		public static int DestroyZombies(Map map)
 		{
 			var things = map.listerThings.AllThings
-				.Where(thing => thing is Zombie || thing is ZombieBlob || thing is ZombieSpitter)
+				.Where(thing => thing is Zombie || thing is ZombieSymbiant || thing is ZombieSpitter)
 				.ToArray();
 			foreach (var thing in things)
 				thing.Destroy(DestroyMode.Vanish);
@@ -102,7 +102,7 @@ namespace ZombieLand
 		{
 			bite = null;
 			error = null;
-			if (pawn == null || pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+			if (pawn == null || pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 			{
 				error = "Target must be a non-zombie pawn.";
 				return false;
@@ -168,7 +168,7 @@ namespace ZombieLand
 		{
 			corpse = null;
 			error = null;
-			if (pawn == null || pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+			if (pawn == null || pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 			{
 				error = "Target must be a non-zombie pawn.";
 				return false;

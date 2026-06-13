@@ -369,7 +369,7 @@ namespace ZombieLand
 						{
 							var colonistPositions = mapPawns
 								.OfType<Pawn>()
-								.Where(pawn => Customization.DoesAttractsZombies(pawn) && pawn is not ZombieBlob && pawn is not ZombieSpitter)
+								.Where(pawn => Customization.DoesAttractsZombies(pawn) && pawn is not ZombieSymbiant && pawn is not ZombieSpitter)
 								.Select(pawn => pawn.Position).ToArray();
 							didNothing = false;
 							yield return null;

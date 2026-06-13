@@ -45,9 +45,9 @@
 		</WorkGiverDef>
 
 		<WorkGiverDef>
-			<defName>FeedZombieBlob</defName>
-			<label>feed zombie blob</label>
-			<giverClass>ZombieLand.WorkGiver_FeedZombieBlob</giverClass>
+			<defName>FeedZombieSymbiant</defName>
+			<label>feed zombie symbiant</label>
+			<giverClass>ZombieLand.WorkGiver_FeedZombieSymbiant</giverClass>
 			<workType>Hauling</workType>
 			<verb>feed</verb>
 			<gerund>feeding</gerund>

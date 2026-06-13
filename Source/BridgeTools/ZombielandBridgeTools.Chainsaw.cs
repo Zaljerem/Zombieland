@@ -1406,50 +1406,50 @@ namespace ZombieLand
 
 			if (TryFindClearSpawnCell(map, root, 20f, out var spitterCell, out var spitterError) == false)
 				return spitterError;
-			if (TryFindClearSpawnCell(map, spitterCell + new IntVec3(4, 0, 0), 20f, out var blobCell, out var blobError) == false)
-				return blobError;
+			if (TryFindClearSpawnCell(map, spitterCell + new IntVec3(4, 0, 0), 20f, out var symbiantCell, out var symbiantError) == false)
+				return symbiantError;
 
 			var zombieFaction = Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies);
 			var spitter = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieSpitter, zombieFaction) as ZombieSpitter;
-			var blob = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieBlob, zombieFaction) as ZombieBlob;
-			if (spitter == null || blob == null)
+			var symbiant = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieSymbiant, zombieFaction) as ZombieSymbiant;
+			if (spitter == null || symbiant == null)
 			{
 				return new
 				{
 					success = false,
 					spitterGenerated = spitter != null,
-					blobGenerated = blob != null,
+					symbiantGenerated = symbiant != null,
 					error = "Could not generate both special zombie melee-suppression pawns."
 				};
 			}
 
 			GenSpawn.Spawn(spitter, spitterCell, map, Rot4.South, WipeMode.Vanish, false);
-			GenSpawn.Spawn(blob, blobCell, map, Rot4.South, WipeMode.Vanish, false);
-			if (spitter.meleeVerbs == null || blob.meleeVerbs == null)
+			GenSpawn.Spawn(symbiant, symbiantCell, map, Rot4.South, WipeMode.Vanish, false);
+			if (spitter.meleeVerbs == null || symbiant.meleeVerbs == null)
 			{
 				var spitterDescription = DescribePawn(spitter);
-				var blobDescription = DescribePawn(blob);
+				var symbiantDescription = DescribePawn(symbiant);
 				var spitterHasMeleeVerbs = spitter.meleeVerbs != null;
-				var blobHasMeleeVerbs = blob.meleeVerbs != null;
+				var symbiantHasMeleeVerbs = symbiant.meleeVerbs != null;
 				spitter.Destroy(DestroyMode.Vanish);
-				blob.Destroy(DestroyMode.Vanish);
+				symbiant.Destroy(DestroyMode.Vanish);
 				return new
 				{
 					success = false,
 					spitter = spitterDescription,
-					blob = blobDescription,
+					symbiant = symbiantDescription,
 					spitterHasMeleeVerbs,
-					blobHasMeleeVerbs,
+					symbiantHasMeleeVerbs,
 					error = "Generated special zombies did not both have melee verb trackers."
 				};
 			}
 
 			var spitterTryMeleeResult = spitter.meleeVerbs.TryMeleeAttack(chainsawPawn);
-			var blobTryMeleeResult = blob.meleeVerbs.TryMeleeAttack(chainsawPawn);
+			var symbiantTryMeleeResult = symbiant.meleeVerbs.TryMeleeAttack(chainsawPawn);
 			var spitterEvidence = DescribePawn(spitter);
-			var blobEvidence = DescribePawn(blob);
+			var symbiantEvidence = DescribePawn(symbiant);
 			spitter.Destroy(DestroyMode.Vanish);
-			blob.Destroy(DestroyMode.Vanish);
+			symbiant.Destroy(DestroyMode.Vanish);
 
 			return new
 			{
@@ -1458,16 +1458,16 @@ namespace ZombieLand
 					&& normalZombie.Dead == false
 					&& normalZombie.Destroyed == false
 					&& spitterTryMeleeResult == false
-					&& blobTryMeleeResult == false,
+					&& symbiantTryMeleeResult == false,
 				chainsawPawn = DescribePawn(chainsawPawn),
 				normalZombie = DescribeZombie(normalZombie),
 				chainsawTryMeleeResult,
 				normalZombieInjuryBefore = injuryBefore,
 				normalZombieInjuryAfter = injuryAfter,
 				spitter = spitterEvidence,
-				blob = blobEvidence,
+				symbiant = symbiantEvidence,
 				spitterTryMeleeResult,
-				blobTryMeleeResult
+				symbiantTryMeleeResult
 			};
 		}
 

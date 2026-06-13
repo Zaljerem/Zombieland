@@ -4,18 +4,18 @@ using Verse.AI;
 
 namespace ZombieLand
 {
-	public class JobDriver_Blob : JobDriver
+	public class JobDriver_Symbiant : JobDriver
 	{
-		public ZombieBlob blob;
+		public ZombieSymbiant symbiant;
 
 		void InitAction()
 		{
-			blob = pawn as ZombieBlob;
+			symbiant = pawn as ZombieSymbiant;
 		}
 
 		void TickAction()
 		{
-			blob?.BlobTick();
+			symbiant?.SymbiantTick();
 		}
 
 		public override void Notify_PatherArrived()
@@ -30,7 +30,7 @@ namespace ZombieLand
 
 		public override string GetReport()
 		{
-			return "zombie blob";
+			return "zombie symbiant";
 		}
 
 		public override IEnumerable<Toil> MakeNewToils()

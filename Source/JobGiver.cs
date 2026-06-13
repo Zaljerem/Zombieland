@@ -49,24 +49,24 @@ namespace ZombieLand
 		}
 	}
 
-	public class JobGiver_Blob : ThinkNode_JobGiver
+	public class JobGiver_Symbiant : ThinkNode_JobGiver
 	{
 		public override ThinkNode DeepCopy(bool resolve = true)
 		{
-			return (JobGiver_Blob)base.DeepCopy(resolve);
+			return (JobGiver_Symbiant)base.DeepCopy(resolve);
 		}
 
 		public override Job TryGiveJob(Pawn pawn)
 		{
-			if (pawn is not ZombieBlob)
+			if (pawn is not ZombieSymbiant)
 				return null;
 			pawn.jobs.StopAll();
-			return JobMaker.MakeJob(CustomDefs.Blob);
+			return JobMaker.MakeJob(CustomDefs.Symbiant);
 		}
 
 		public override ThinkResult TryIssueJobPackage(Pawn pawn, JobIssueParams jobParams)
 		{
-			if (pawn is not ZombieBlob)
+			if (pawn is not ZombieSymbiant)
 				return ThinkResult.NoJob;
 			return base.TryIssueJobPackage(pawn, jobParams);
 		}

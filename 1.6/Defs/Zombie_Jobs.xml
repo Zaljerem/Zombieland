@@ -16,15 +16,15 @@
 	</JobDef>
 
 		<JobDef>
-			<defName>Blob</defName>
-			<driverClass>ZombieLand.JobDriver_Blob</driverClass>
+			<defName>Symbiant</defName>
+			<driverClass>ZombieLand.JobDriver_Symbiant</driverClass>
 			<reportString>blubbering.</reportString>
 			<suspendable>false</suspendable>
 		</JobDef>
 
 		<JobDef>
-			<defName>FeedZombieBlob</defName>
-			<driverClass>ZombieLand.JobDriver_FeedZombieBlob</driverClass>
+			<defName>FeedZombieSymbiant</defName>
+			<driverClass>ZombieLand.JobDriver_FeedZombieSymbiant</driverClass>
 			<reportString>feeding TargetB to TargetA.</reportString>
 			<allowOpportunisticPrefix>false</allowOpportunisticPrefix>
 		</JobDef>

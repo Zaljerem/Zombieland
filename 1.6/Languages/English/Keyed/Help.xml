@@ -145,25 +145,25 @@
 	<ChildZombieChance_Help>The percentage of zombies that are children. Note: killing a zombie child will give a slight negative mood (lasts for 2 hours)</ChildZombieChance_Help>
 	<SpitterThreat_Help>The zombie spitter is a siege beast that launches zombies into your base. This setting adjusts both the intensity and frequency with which the spitter operates. Setting it to 0% disables the spitter.</SpitterThreat_Help>
 	<WallPushing_Help>When a group of zombies gets too dense this will define the number of zombies that will push other zombies over adjacent walls. If the other side of the wall is part of a roofed room, that roof will be damaged by the zombie.</WallPushing_Help>
-	<ZombieBlobTitle_Help>The zombie blob is an indoor infestation that links to one colonist. Visible slime grants the host benefits, while feeding builds decoupling reserve for controlled shrinkage and eventual surgery.</ZombieBlobTitle_Help>
-	<BlobEnabled_Help>Enables or disables natural zombie blob infestations.</BlobEnabled_Help>
-	<BlobSpawnCooldownDays_Help>Minimum number of days between natural blob infestations on the same map. Only one blob can be active on a map.</BlobSpawnCooldownDays_Help>
-	<BlobExpansionIntervalHours_Help>How many in-game hours pass between blob expansion pulses. Each pulse can add one cell, break one constructed wall if it is caged, or do nothing.</BlobExpansionIntervalHours_Help>
-	<BlobPostFeedPauseHours_Help>How many in-game hours the blob waits before growing again after colonists feed it.</BlobPostFeedPauseHours_Help>
-	<BlobMaxCells_Help>Maximum number of map cells one blob can occupy before it stops growing. Existing larger blobs are not deleted when this setting is lowered; they simply stop expanding until fed below the cap.</BlobMaxCells_Help>
-	<BlobFullBenefitRoomCoverage_Help>The share of eligible indoor colony-room cells the blob must occupy, weighted by integrated colony use, before its linked colonist receives full symbiote benefits. The threshold is clamped to at least 20 cells and never above Blob max cells.</BlobFullBenefitRoomCoverage_Help>
-	<BlobSeveranceMaturityCoverage_Help>The share of the full-benefit threshold the blob must reach before feeding can prepare a clean severance. This uses integrated colony-room presence, not raw caged cell count.</BlobSeveranceMaturityCoverage_Help>
-	<BlobSeveranceMaturityMinCells_Help>Minimum integrated visible cells required before the blob can mature for clean severance.</BlobSeveranceMaturityMinCells_Help>
-	<BlobSeveranceMaturityMaxCells_Help>Maximum integrated visible cells required before the blob can mature for clean severance.</BlobSeveranceMaturityMaxCells_Help>
-	<BlobSeveranceReserveCoverage_Help>The share of the full-benefit threshold that defines the maximum decoupling reserve needed for clean severance. This is separate from full symbiosis, so large blobs do not require feeding hundreds of cells.</BlobSeveranceReserveCoverage_Help>
-	<BlobSeveranceReserveMin_Help>Minimum decoupling reserve needed for clean severance once the blob has matured.</BlobSeveranceReserveMin_Help>
-	<BlobSeveranceReserveMax_Help>Maximum decoupling reserve needed for clean severance once the blob has matured.</BlobSeveranceReserveMax_Help>
-	<BlobZombieIgnoreMinBenefit_Help>Minimum symbiosis benefit factor before zombies ignore the linked host and the host receives the stronger mental-state protection. A fresh one-cell blob does not grant this protection.</BlobZombieIgnoreMinBenefit_Help>
-	<BlobDecouplingFeedPulsesPerDay_Help>Maximum number of feeding pulses that can build decoupling reserve per day. This prevents stockpiled corpses or coagulant from instantly neutralizing a fresh blob.</BlobDecouplingFeedPulsesPerDay_Help>
-	<BlobSymbioteMaxSkillBonus_Help>Maximum effective skill-level bonus the linked colonist receives at full symbiosis strength. Smaller visible blobs grant only a fraction of this bonus.</BlobSymbioteMaxSkillBonus_Help>
-	<BlobPathCost_Help>Movement cost applied to non-Zombieland pawns when their path crosses a blob cell. This slows colonists without directly injuring them.</BlobPathCost_Help>
-	<BlobCanBreakConstructedWalls_Help>If enabled, a caged blob can destroy one constructed wall piece during an expansion pulse to reach used indoor rooms. Natural rock is never breached.</BlobCanBreakConstructedWalls_Help>
-	<BlobCoagulantPotency_Help>Controls how strong blob coagulant packs are when fed to a blob. Higher potency gives larger recession pulses without changing the feed-pulse daily cap.</BlobCoagulantPotency_Help>
+	<ZombieSymbiantTitle_Help>The zombie symbiant is an indoor infestation that links to one colonist. Visible slime grants the host benefits, while feeding builds decoupling reserve for controlled shrinkage and eventual surgery.</ZombieSymbiantTitle_Help>
+	<SymbiantEnabled_Help>Enables or disables natural zombie symbiant infestations.</SymbiantEnabled_Help>
+	<SymbiantSpawnCooldownDays_Help>Minimum number of days between natural symbiant infestations on the same map. Only one symbiant can be active on a map.</SymbiantSpawnCooldownDays_Help>
+	<SymbiantExpansionIntervalHours_Help>How many in-game hours pass between symbiant expansion pulses. Each pulse can add one cell, break one constructed wall if it is caged, or do nothing.</SymbiantExpansionIntervalHours_Help>
+	<SymbiantPostFeedPauseHours_Help>How many in-game hours the symbiant waits before growing again after colonists feed it.</SymbiantPostFeedPauseHours_Help>
+	<SymbiantMaxCells_Help>Maximum number of map cells one symbiant can occupy before it stops growing. Existing larger symbiants are not deleted when this setting is lowered; they simply stop expanding until fed below the cap.</SymbiantMaxCells_Help>
+	<SymbiantFullBenefitRoomCoverage_Help>The share of eligible indoor colony-room cells the symbiant must occupy, weighted by integrated colony use, before its linked colonist receives full symbiant benefits. The threshold is clamped to at least 20 cells and never above Symbiant max cells.</SymbiantFullBenefitRoomCoverage_Help>
+	<SymbiantSeveranceMaturityCoverage_Help>The share of the full-benefit threshold the symbiant must reach before feeding can prepare a clean severance. This uses integrated colony-room presence, not raw caged cell count.</SymbiantSeveranceMaturityCoverage_Help>
+	<SymbiantSeveranceMaturityMinCells_Help>Minimum integrated visible cells required before the symbiant can mature for clean severance.</SymbiantSeveranceMaturityMinCells_Help>
+	<SymbiantSeveranceMaturityMaxCells_Help>Maximum integrated visible cells required before the symbiant can mature for clean severance.</SymbiantSeveranceMaturityMaxCells_Help>
+	<SymbiantSeveranceReserveCoverage_Help>The share of the full-benefit threshold that defines the maximum decoupling reserve needed for clean severance. This is separate from full symbiosis, so large symbiants do not require feeding hundreds of cells.</SymbiantSeveranceReserveCoverage_Help>
+	<SymbiantSeveranceReserveMin_Help>Minimum decoupling reserve needed for clean severance once the symbiant has matured.</SymbiantSeveranceReserveMin_Help>
+	<SymbiantSeveranceReserveMax_Help>Maximum decoupling reserve needed for clean severance once the symbiant has matured.</SymbiantSeveranceReserveMax_Help>
+	<SymbiantZombieIgnoreMinBenefit_Help>Minimum symbiosis benefit factor before zombies ignore the linked host and the host receives the stronger mental-state protection. A fresh one-cell symbiant does not grant this protection.</SymbiantZombieIgnoreMinBenefit_Help>
+	<SymbiantDecouplingFeedPulsesPerDay_Help>Maximum number of feeding pulses that can build decoupling reserve per day. This prevents stockpiled corpses or coagulant from instantly neutralizing a fresh symbiant.</SymbiantDecouplingFeedPulsesPerDay_Help>
+	<SymbiantMaxSkillBonus_Help>Maximum effective skill-level bonus the linked colonist receives at full symbiosis strength. Smaller visible symbiants grant only a fraction of this bonus.</SymbiantMaxSkillBonus_Help>
+	<SymbiantPathCost_Help>Movement cost applied to non-Zombieland pawns when their path crosses a symbiant cell. This slows colonists without directly injuring them.</SymbiantPathCost_Help>
+	<SymbiantCanBreakConstructedWalls_Help>If enabled, a caged symbiant can destroy one constructed wall piece during an expansion pulse to reach used indoor rooms. Natural rock is never breached.</SymbiantCanBreakConstructedWalls_Help>
+	<SymbiantCoagulantPotency_Help>Controls how strong symbiant coagulant packs are when fed to a symbiant. Higher potency gives larger recession pulses without changing the feed-pulse daily cap.</SymbiantCoagulantPotency_Help>
 
 	<!-- -->
 

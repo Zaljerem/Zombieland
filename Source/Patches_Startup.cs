@@ -77,7 +77,7 @@ namespace ZombieLand
 		{
 			static void Prefix()
 			{
-				ZombieBlob.ReleaseAllRenderResources();
+				ZombieSymbiant.ReleaseAllRenderResources();
 				Tools.avoider.running = false;
 
 				// var maps = Find.Maps;
@@ -95,7 +95,7 @@ namespace ZombieLand
 		{
 			static void Prefix()
 			{
-				ZombieBlob.ReleaseAllRenderResources();
+				ZombieSymbiant.ReleaseAllRenderResources();
 			}
 		}
 	}

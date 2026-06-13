@@ -5,21 +5,21 @@ using Verse.AI;
 
 namespace ZombieLand
 {
-	public class JobDriver_FeedZombieBlob : JobDriver
+	public class JobDriver_FeedZombieSymbiant : JobDriver
 	{
-		ZombieBlob Blob => job.GetTarget(TargetIndex.A).Thing as ZombieBlob;
+		ZombieSymbiant TargetSymbiant => job.GetTarget(TargetIndex.A).Thing as ZombieSymbiant;
 		Thing Feed => job.GetTarget(TargetIndex.B).Thing;
 
 		public override string GetReport()
 		{
-			return "FeedingZombieBlob".Translate();
+			return "FeedingZombieSymbiant".Translate();
 		}
 
 		public override bool TryMakePreToilReservations(bool errorOnFailed)
 		{
-			var blob = Blob;
+			var symbiant = TargetSymbiant;
 			var feed = Feed;
-			return blob != null
+			return symbiant != null
 				&& feed != null
 				&& pawn.Reserve(feed, job, 1, 1, null, errorOnFailed);
 		}
@@ -42,18 +42,18 @@ namespace ZombieLand
 			_ = feed.WithProgressBarToilDelay(TargetIndex.A);
 			yield return feed;
 
-			var finish = ToilMaker.MakeToil("FeedZombieBlob");
+			var finish = ToilMaker.MakeToil("FeedZombieSymbiant");
 			finish.initAction = delegate ()
 			{
-				var blob = Blob;
+				var symbiant = TargetSymbiant;
 				var carried = pawn.carryTracker?.CarriedThing;
-				if (blob == null || carried == null || blob.TryFeed(carried) == false)
+				if (symbiant == null || carried == null || symbiant.TryFeed(carried) == false)
 				{
 					pawn.jobs.EndCurrentJob(JobCondition.Incompletable, true);
 					return;
 				}
-				if (blob.DestroyedOrNull() || blob.CellCount == 0)
-					blob?.RequestFeed(false);
+				if (symbiant.DestroyedOrNull() || symbiant.CellCount == 0)
+					symbiant?.RequestFeed(false);
 				pawn.jobs.EndCurrentJob(JobCondition.Succeeded, true);
 			};
 			yield return finish;

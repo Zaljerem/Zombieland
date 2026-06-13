@@ -76,9 +76,9 @@ namespace ZombieLand
 				spitter.Rotation = Rot4.South;
 			}
 
-			var blob = SpawnLineupBlob(map, origin + new IntVec3(10, 0, 0), $"{SpecialGauntletPrefix} Blob", spawned, errors);
-			if (blob != null)
-				blob.Rotation = Rot4.South;
+			var symbiant = SpawnLineupSymbiant(map, origin + new IntVec3(10, 0, 0), $"{SpecialGauntletPrefix} Symbiant", spawned, errors);
+			if (symbiant != null)
+				symbiant.Rotation = Rot4.South;
 
 			var wounded = SpawnLineupZombie(map, origin + new IntVec3(4, 0, 6), ZombieType.Normal, $"{SpecialGauntletPrefix} Wounded", true, spawned, errors);
 			if (wounded != null)
@@ -108,7 +108,7 @@ namespace ZombieLand
 				destroyed,
 				errors = errors.ToArray(),
 				spawnedCount = spawned.Count,
-				spawned = spawned.Select(pawn => pawn is Zombie || pawn is ZombieSpitter || pawn is ZombieBlob ? DescribeZombie(pawn) : DescribePawn(pawn)).ToArray(),
+				spawned = spawned.Select(pawn => pawn is Zombie || pawn is ZombieSpitter || pawn is ZombieSymbiant ? DescribeZombie(pawn) : DescribePawn(pawn)).ToArray(),
 				read
 			};
 		}
@@ -127,7 +127,7 @@ namespace ZombieLand
 			results.Add(RunGauntletMiner(map, errors));
 			results.Add(RunGauntletAlbino(map, errors));
 			results.Add(RunGauntletSpitter(map, errors));
-			results.Add(RunGauntletBlob(map, errors));
+			results.Add(RunGauntletSymbiant(map, errors));
 
 			AdvanceGameTicks(5);
 			var read = ReadSpecialGauntlet(map, origin);
@@ -168,7 +168,7 @@ namespace ZombieLand
 				.ToArray();
 			var humans = map.mapPawns.AllPawnsSpawned
 				.Where(pawn => pawn.Name?.ToStringShort?.StartsWith(SpecialGauntletPrefix, StringComparison.OrdinalIgnoreCase) == true)
-				.Where(pawn => pawn is not Zombie && pawn is not ZombieSpitter && pawn is not ZombieBlob)
+				.Where(pawn => pawn is not Zombie && pawn is not ZombieSpitter && pawn is not ZombieSymbiant)
 				.OrderBy(pawn => pawn.Name?.ToStringShort)
 				.ToArray();
 			var corpseCount = map.listerThings.ThingsInGroup(ThingRequestGroup.Corpse)
@@ -209,11 +209,11 @@ namespace ZombieLand
 				.FirstOrDefault(spitter => spitter.Name?.ToStringShort?.IndexOf($"{SpecialGauntletPrefix} Spitter", StringComparison.OrdinalIgnoreCase) >= 0);
 		}
 
-		static ZombieBlob FindGauntletBlob(Map map)
+		static ZombieSymbiant FindGauntletSymbiant(Map map)
 		{
 			return CurrentZombies(map)
-				.OfType<ZombieBlob>()
-				.FirstOrDefault(blob => blob.Name?.ToStringShort?.IndexOf($"{SpecialGauntletPrefix} Blob", StringComparison.OrdinalIgnoreCase) >= 0);
+				.OfType<ZombieSymbiant>()
+				.FirstOrDefault(symbiant => symbiant.Name?.ToStringShort?.IndexOf($"{SpecialGauntletPrefix} Symbiant", StringComparison.OrdinalIgnoreCase) >= 0);
 		}
 
 		static object RunGauntletBomber(Map map, List<string> errors)
@@ -455,17 +455,17 @@ namespace ZombieLand
 			};
 		}
 
-		static object RunGauntletBlob(Map map, List<string> errors)
+		static object RunGauntletSymbiant(Map map, List<string> errors)
 		{
-			var blob = FindGauntletBlob(map);
-			if (blob == null)
-				return FailGauntletCase("blob", errors, "Missing gauntlet blob.");
+			var symbiant = FindGauntletSymbiant(map);
+			if (symbiant == null)
+				return FailGauntletCase("symbiant", errors, "Missing gauntlet symbiant.");
 
 			return new
 			{
-				caseName = "blob",
-				success = blob.Spawned && blob.CurJobDef == CustomDefs.Blob,
-				blob = DescribeZombie(blob)
+				caseName = "symbiant",
+				success = symbiant.Spawned && symbiant.CurJobDef == CustomDefs.Symbiant,
+				symbiant = DescribeZombie(symbiant)
 			};
 		}
 

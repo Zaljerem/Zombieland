@@ -470,8 +470,8 @@ namespace ZombieLand
 				return stripNormalSpawnError;
 			if (TryFindClearSpawnCell(map, stripNormalCell + new IntVec3(3, 0, 0), 10f, out var stripSpitterCell, out var stripSpitterSpawnError) == false)
 				return stripSpitterSpawnError;
-			if (TryFindClearSpawnCell(map, stripSpitterCell + new IntVec3(3, 0, 0), 10f, out var stripBlobCell, out var stripBlobSpawnError) == false)
-				return stripBlobSpawnError;
+			if (TryFindClearSpawnCell(map, stripSpitterCell + new IntVec3(3, 0, 0), 10f, out var stripSymbiantCell, out var stripSymbiantSpawnError) == false)
+				return stripSymbiantSpawnError;
 
 			var worker = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
 			GenSpawn.Spawn(worker, workerCell, map, Rot4.South);
@@ -534,8 +534,8 @@ namespace ZombieLand
 			DisablePawnWork(stripHuman);
 			var stripNormal = ZombieRuntimeActions.SpawnZombie(stripNormalCell, map, ZombieType.Normal, true);
 			var stripSpitter = SpawnFireFixturePawn(map, stripSpitterCell, "spitter") as ZombieSpitter;
-			var stripBlob = SpawnFireFixturePawn(map, stripBlobCell, "blob") as ZombieBlob;
-			if (stripNormal == null || stripSpitter == null || stripBlob == null)
+			var stripSymbiant = SpawnFireFixturePawn(map, stripSymbiantCell, "symbiant") as ZombieSymbiant;
+			if (stripNormal == null || stripSpitter == null || stripSymbiant == null)
 			{
 				return new
 				{
@@ -546,11 +546,11 @@ namespace ZombieLand
 					stripHuman = DescribePawn(stripHuman),
 					stripNormal = DescribeZombie(stripNormal),
 					stripSpitter = DescribeZombie(stripSpitter),
-					stripBlob = DescribeZombie(stripBlob),
+					stripSymbiant = DescribeZombie(stripSymbiant),
 					error = "Could not spawn all strip-probe pawns."
 				};
 			}
-			if (TryProbeAnythingToStrip(stripHuman, stripNormal, stripSpitter, stripBlob, out var stripProbe, out var stripError) == false)
+			if (TryProbeAnythingToStrip(stripHuman, stripNormal, stripSpitter, stripSymbiant, out var stripProbe, out var stripError) == false)
 			{
 				return new
 				{
@@ -564,7 +564,7 @@ namespace ZombieLand
 			}
 			stripNormal.DeSpawn(DestroyMode.Vanish);
 			stripSpitter.DeSpawn(DestroyMode.Vanish);
-			stripBlob.DeSpawn(DestroyMode.Vanish);
+			stripSymbiant.DeSpawn(DestroyMode.Vanish);
 
 			var humanPawn = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
 			GenSpawn.Spawn(humanPawn, humanCorpseCell, map, Rot4.South);
@@ -751,48 +751,48 @@ namespace ZombieLand
 			return success;
 		}
 
-		static bool TryProbeAnythingToStrip(Pawn human, Zombie normal, ZombieSpitter spitter, ZombieBlob blob, out object evidence, out string error)
+		static bool TryProbeAnythingToStrip(Pawn human, Zombie normal, ZombieSpitter spitter, ZombieSymbiant symbiant, out object evidence, out string error)
 		{
 			error = null;
 			var humanPayload = TryAddStripPayload(human, out var humanPayloadEvidence, out var humanPayloadError);
 			var normalPayload = TryAddStripPayload(normal, out var normalPayloadEvidence, out var normalPayloadError);
 			var spitterPayload = TryAddStripPayload(spitter, out var spitterPayloadEvidence, out var spitterPayloadError);
-			var blobPayload = TryAddStripPayload(blob, out var blobPayloadEvidence, out var blobPayloadError);
+			var symbiantPayload = TryAddStripPayload(symbiant, out var symbiantPayloadEvidence, out var symbiantPayloadError);
 			var humanAnythingToStrip = human.AnythingToStrip();
 			var normalAnythingToStrip = normal.AnythingToStrip();
 			var spitterAnythingToStrip = spitter.AnythingToStrip();
-			var blobAnythingToStrip = blob.AnythingToStrip();
+			var symbiantAnythingToStrip = symbiant.AnythingToStrip();
 			var success = humanPayload
 				&& normalPayload
 				&& spitterPayload
-				&& blobPayload
+				&& symbiantPayload
 				&& humanAnythingToStrip
 				&& normalAnythingToStrip == false
 				&& spitterAnythingToStrip == false
-				&& blobAnythingToStrip == false;
+				&& symbiantAnythingToStrip == false;
 			evidence = new
 			{
 				success,
 				human = DescribePawn(human),
 				normal = DescribeZombie(normal),
 				spitter = DescribeZombie(spitter),
-				blob = DescribeZombie(blob),
+				symbiant = DescribeZombie(symbiant),
 				humanPayload,
 				normalPayload,
 				spitterPayload,
-				blobPayload,
+				symbiantPayload,
 				humanPayloadEvidence,
 				normalPayloadEvidence,
 				spitterPayloadEvidence,
-				blobPayloadEvidence,
+				symbiantPayloadEvidence,
 				humanPayloadError,
 				normalPayloadError,
 				spitterPayloadError,
-				blobPayloadError,
+				symbiantPayloadError,
 				humanAnythingToStrip,
 				normalAnythingToStrip,
 				spitterAnythingToStrip,
-				blobAnythingToStrip
+				symbiantAnythingToStrip
 			};
 			if (success == false)
 				error = "AnythingToStrip probe failed.";

@@ -11,19 +11,19 @@ using Verse.Sound;
 namespace ZombieLand
 {
 	[StaticConstructorOnStartup]
-	public class ZombieBlob : Pawn
+	public class ZombieSymbiant : Pawn
 	{
 		public const int MAX_METABALLS = 4000;
 		static readonly Color color = new(0, 0.8f, 0);
 		static readonly float elementPower = 1f;
 		static readonly float elementRadius = 0.011f;
 		static readonly float[] elementSizes = [2.5f, 2.4f, 1.6f, 1.2f, 1f, 0.9f, 0.9f, 1f, 1f];
-		static readonly HashSet<ZombieBlob> renderResourceOwners = [];
-		static readonly Dictionary<Map, ZombieBlob> activeBlobByMap = [];
-		static readonly HashSet<Map> mapsWithoutActiveBlob = [];
+		static readonly HashSet<ZombieSymbiant> renderResourceOwners = [];
+		static readonly Dictionary<Map, ZombieSymbiant> activeSymbiantByMap = [];
+		static readonly HashSet<Map> mapsWithoutActiveSymbiant = [];
 		internal static string DebugPerfProfile { get; private set; } = "default";
 		internal static bool DebugDisableRendering { get; private set; }
-		internal static bool DebugDisableBlobTick { get; private set; }
+		internal static bool DebugDisableSymbiantTick { get; private set; }
 		internal static bool DebugDisablePathCost { get; private set; }
 		internal static bool DebugDisableCellStatEffects { get; private set; }
 		internal static bool DebugDisableHostHediffSync { get; private set; }
@@ -41,22 +41,22 @@ namespace ZombieLand
 		const float MetaballMaxAlpha = 0.40f;
 		const float MetaballEdgeStart = 0.45f;
 		const float MetaballEdgeFull = 1.80f;
-		const float BlobOpacityMin = 0.42f;
-		const float BlobOpacityMax = 0.76f;
-		const float BlobNoiseScale = 2.00f;
-		const float BlobWavePhaseSpeed = 0.45f;
-		const float BlobWaveShadeStrength = 0.68f;
-		const float BlobEdgeContrast = 0.95f;
-		const float BlobNormalTicksPerSecond = 60f;
-		const float BlobRenderAltitudeOffset = -0.25f;
+		const float SymbiantOpacityMin = 0.42f;
+		const float SymbiantOpacityMax = 0.76f;
+		const float SymbiantNoiseScale = 2.00f;
+		const float SymbiantWavePhaseSpeed = 0.45f;
+		const float SymbiantWaveShadeStrength = 0.68f;
+		const float SymbiantEdgeContrast = 0.95f;
+		const float SymbiantNormalTicksPerSecond = 60f;
+		const float SymbiantRenderAltitudeOffset = -0.25f;
 		const int SymbiosisMetricRefreshInterval = 250;
-		static readonly int BlobOpacityMinId = Shader.PropertyToID("_BlobOpacityMin");
-		static readonly int BlobOpacityMaxId = Shader.PropertyToID("_BlobOpacityMax");
-		static readonly int BlobNoiseScaleId = Shader.PropertyToID("_BlobNoiseScale");
-		static readonly int BlobWavePhaseSpeedId = Shader.PropertyToID("_BlobFlowSpeed");
-		static readonly int BlobWaveShadeStrengthId = Shader.PropertyToID("_BlobWaveShadeStrength");
-		static readonly int BlobEdgeContrastId = Shader.PropertyToID("_BlobEdgeContrast");
-		static readonly int BlobNoiseTimeId = Shader.PropertyToID("_BlobNoiseTime");
+		static readonly int SymbiantOpacityMinId = Shader.PropertyToID("_SymbiantOpacityMin");
+		static readonly int SymbiantOpacityMaxId = Shader.PropertyToID("_SymbiantOpacityMax");
+		static readonly int SymbiantNoiseScaleId = Shader.PropertyToID("_SymbiantNoiseScale");
+		static readonly int SymbiantWavePhaseSpeedId = Shader.PropertyToID("_SymbiantFlowSpeed");
+		static readonly int SymbiantWaveShadeStrengthId = Shader.PropertyToID("_SymbiantWaveShadeStrength");
+		static readonly int SymbiantEdgeContrastId = Shader.PropertyToID("_SymbiantEdgeContrast");
+		static readonly int SymbiantNoiseTimeId = Shader.PropertyToID("_SymbiantNoiseTime");
 		// static readonly float[] elementSizes = [1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f];
 
 		HashSet<IntVec3> cells = [];
@@ -109,17 +109,17 @@ namespace ZombieLand
 		public int RenderTextureHeight => metaballTexture?.height ?? 0;
 		public Vector2 RenderWorldSize => new(renderWidth, renderHeight);
 		public string RenderShaderName => metaballMaterial?.shader?.name;
-		public bool RenderUsesBlobShader => Assets.ZombieBlobShader != null && metaballMaterial?.shader == Assets.ZombieBlobShader;
+		public bool RenderUsesSymbiantShader => Assets.ZombieSymbiantShader != null && metaballMaterial?.shader == Assets.ZombieSymbiantShader;
 		public bool RegisteredInMapPawnLists => (MapHeld?.mapPawns?.AllPawnsSpawned?.Contains(this) ?? false);
-		public static float RenderOpacityMin => BlobOpacityMin;
-		public static float RenderOpacityMax => BlobOpacityMax;
-		public static float RenderNoiseScale => BlobNoiseScale;
-		public static float RenderWavePhaseSpeed => BlobWavePhaseSpeed;
-		public static float RenderWaveShadeStrength => BlobWaveShadeStrength;
-		public static float RenderEdgeContrast => BlobEdgeContrast;
-		public static float RenderNoiseTimeSeconds => GenTicks.TicksGame / BlobNormalTicksPerSecond;
-		public static int MaxCells => Mathf.Clamp(DebugMaxCellsOverride > 0 ? DebugMaxCellsOverride : (ZombieSettings.Values?.blobMaxCells ?? 400), 1, MAX_METABALLS);
-		Map BlobMap => Spawned ? Map : host?.MapHeld ?? MapHeld;
+		public static float RenderOpacityMin => SymbiantOpacityMin;
+		public static float RenderOpacityMax => SymbiantOpacityMax;
+		public static float RenderNoiseScale => SymbiantNoiseScale;
+		public static float RenderWavePhaseSpeed => SymbiantWavePhaseSpeed;
+		public static float RenderWaveShadeStrength => SymbiantWaveShadeStrength;
+		public static float RenderEdgeContrast => SymbiantEdgeContrast;
+		public static float RenderNoiseTimeSeconds => GenTicks.TicksGame / SymbiantNormalTicksPerSecond;
+		public static int MaxCells => Mathf.Clamp(DebugMaxCellsOverride > 0 ? DebugMaxCellsOverride : (ZombieSettings.Values?.symbiantMaxCells ?? 400), 1, MAX_METABALLS);
+		Map SymbiantMap => Spawned ? Map : host?.MapHeld ?? MapHeld;
 		public Pawn LinkedHost => ResolveHost();
 		public string HostThingId => hostThingId;
 		public int EligibleColonyRoomCells { get { RefreshSymbiosisMetrics(); return cachedEligibleColonyRoomCells; } }
@@ -154,16 +154,16 @@ namespace ZombieLand
 				return decouplingFeedPulsesToday;
 			}
 		}
-		public int DecouplingFeedPulsesPerDay => Mathf.Max(1, ZombieSettings.Values?.blobDecouplingFeedPulsesPerDay ?? 2);
+		public int DecouplingFeedPulsesPerDay => Mathf.Max(1, ZombieSettings.Values?.symbiantDecouplingFeedPulsesPerDay ?? 2);
 		public int FeedPulsesRemaining => Mathf.Max(0, DecouplingFeedPulsesPerDay - DecouplingFeedPulsesToday);
 		public bool CanSafelySever => LinkedHost != null && HasMaturedForSeverance && decouplingReserve >= DecouplingReserveMax - 0.01f && CellCount <= 3;
-		public static float ZombieIgnoreMinBenefit => Mathf.Clamp(ZombieSettings.Values?.blobZombieIgnoreMinBenefit ?? 0.5f, 0f, 1f);
+		public static float ZombieIgnoreMinBenefit => Mathf.Clamp(ZombieSettings.Values?.symbiantZombieIgnoreMinBenefit ?? 0.5f, 0f, 1f);
 
 		internal static object SetDebugPerfProfile(string profile)
 		{
 			var normalized = (profile ?? "default").Trim().ToLowerInvariant();
 			DebugDisableRendering = false;
-			DebugDisableBlobTick = false;
+			DebugDisableSymbiantTick = false;
 			DebugDisablePathCost = false;
 			DebugDisableCellStatEffects = false;
 			DebugDisableHostHediffSync = false;
@@ -178,7 +178,7 @@ namespace ZombieLand
 					break;
 				case "inert":
 					DebugDisableRendering = true;
-					DebugDisableBlobTick = true;
+					DebugDisableSymbiantTick = true;
 					DebugDisablePathCost = true;
 					DebugDisableCellStatEffects = true;
 					DebugDisableHostHediffSync = true;
@@ -187,7 +187,7 @@ namespace ZombieLand
 				case "renderonly":
 				case "render-only":
 					normalized = "renderOnly";
-					DebugDisableBlobTick = true;
+					DebugDisableSymbiantTick = true;
 					DebugDisablePathCost = true;
 					DebugDisableCellStatEffects = true;
 					DebugDisableHostHediffSync = true;
@@ -197,7 +197,7 @@ namespace ZombieLand
 				case "path-only":
 					normalized = "pathOnly";
 					DebugDisableRendering = true;
-					DebugDisableBlobTick = true;
+					DebugDisableSymbiantTick = true;
 					DebugDisableCellStatEffects = true;
 					DebugDisableHostHediffSync = true;
 					DebugDisableSymbiosisBenefits = true;
@@ -227,7 +227,7 @@ namespace ZombieLand
 				case "notick":
 				case "no-tick":
 					normalized = "noTick";
-					DebugDisableBlobTick = true;
+					DebugDisableSymbiantTick = true;
 					DebugDisableHostHediffSync = true;
 					DebugDisableSymbiosisBenefits = true;
 					break;
@@ -246,7 +246,7 @@ namespace ZombieLand
 			{
 				profile = DebugPerfProfile,
 				rendering = DebugDisableRendering == false,
-				blobTick = DebugDisableBlobTick == false,
+				symbiantTick = DebugDisableSymbiantTick == false,
 				pathCost = DebugDisablePathCost == false,
 				cellStatEffects = DebugDisableCellStatEffects == false,
 				hostHediffSync = DebugDisableHostHediffSync == false,
@@ -265,26 +265,26 @@ namespace ZombieLand
 
 		public static void Spawn(Map map, IntVec3 cell)
 		{
-			var blob = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieBlob, null) as ZombieBlob;
-			blob.Position = cell;
-			blob.AddRelativeCell(IntVec3.Zero);
-			blob.ResetExpansionClock();
-			blob.EnsureRenderResources();
-			blob.UpdateAll();
+			var symbiant = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieSymbiant, null) as ZombieSymbiant;
+			symbiant.Position = cell;
+			symbiant.AddRelativeCell(IntVec3.Zero);
+			symbiant.ResetExpansionClock();
+			symbiant.EnsureRenderResources();
+			symbiant.UpdateAll();
 
-			blob.SetFactionDirect(Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies));
-			GenSpawn.Spawn(blob, cell, map, Rot4.Random, WipeMode.Vanish, false);
-			RegisterActiveBlob(blob, map);
+			symbiant.SetFactionDirect(Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies));
+			GenSpawn.Spawn(symbiant, cell, map, Rot4.Random, WipeMode.Vanish, false);
+			RegisterActiveSymbiant(symbiant, map);
 
-			blob.jobs.StartJob(JobMaker.MakeJob(CustomDefs.Blob));
-			_ = blob.TryAssignRandomHost();
-			blob.UpdateSymbiosisState();
+			symbiant.jobs.StartJob(JobMaker.MakeJob(CustomDefs.Symbiant));
+			_ = symbiant.TryAssignRandomHost();
+			symbiant.UpdateSymbiosisState();
 
 			if (ZombieSettings.Values.showZombieEventLetters)
 			{
-				var headline = "LetterLabelZombieBlob".Translate();
-				var linkedHost = blob.LinkedHost;
-				var text = linkedHost == null ? "ZombieBlobNoHost".Translate() : "ZombieBlob".Translate(linkedHost.LabelShortCap);
+				var headline = "LetterLabelZombieSymbiant".Translate();
+				var linkedHost = symbiant.LinkedHost;
+				var text = linkedHost == null ? "ZombieSymbiantNoHost".Translate() : "ZombieSymbiant".Translate(linkedHost.LabelShortCap);
 				Find.LetterStack.ReceiveLetter(headline, text, LetterDefOf.ThreatSmall, new GlobalTargetInfo(cell, map));
 			}
 
@@ -294,9 +294,9 @@ namespace ZombieLand
 
 		public static bool TrySpawnInBestRoom(Map map)
 		{
-			if (map == null || ZombieSettings.Values.blobEnabled == false)
+			if (map == null || ZombieSettings.Values.symbiantEnabled == false)
 				return false;
-			if (ActiveBlob(map) != null)
+			if (ActiveSymbiant(map) != null)
 				return false;
 			if (EligibleHosts(map, null).Any() == false)
 				return false;
@@ -345,7 +345,7 @@ namespace ZombieLand
 				return false;
 			if (allowDead == false && (pawn.Spawned == false || pawn.Map == null))
 				return false;
-			if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+			if (pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 				return false;
 			if (pawn.RaceProps?.Humanlike != true || pawn.RaceProps.IsFlesh == false)
 				return false;
@@ -356,7 +356,7 @@ namespace ZombieLand
 			return true;
 		}
 
-		internal static bool CanBeAffectedByBlobCellFast(Pawn pawn)
+		internal static bool CanBeAffectedBySymbiantCellFast(Pawn pawn)
 		{
 			return pawn != null
 				&& pawn.Destroyed == false
@@ -364,7 +364,7 @@ namespace ZombieLand
 				&& pawn.Spawned
 				&& pawn.Map != null
 				&& pawn is not Zombie
-				&& pawn is not ZombieBlob
+				&& pawn is not ZombieSymbiant
 				&& pawn is not ZombieSpitter
 				&& pawn.RaceProps?.Humanlike == true
 				&& pawn.Faction?.IsPlayer == true
@@ -372,7 +372,7 @@ namespace ZombieLand
 				&& IsLinkedHostOnCurrentMapFast(pawn) == false;
 		}
 
-		internal static bool CanBeSlowedByBlobCellFast(Pawn pawn)
+		internal static bool CanBeSlowedBySymbiantCellFast(Pawn pawn)
 		{
 			return pawn != null
 				&& pawn.Destroyed == false
@@ -382,7 +382,7 @@ namespace ZombieLand
 				&& pawn.Flying == false
 				&& pawn.RaceProps?.doesntMove != true
 				&& pawn is not Zombie
-				&& pawn is not ZombieBlob
+				&& pawn is not ZombieSymbiant
 				&& pawn is not ZombieSpitter
 				&& IsLinkedHostOnCurrentMapFast(pawn) == false;
 		}
@@ -391,88 +391,88 @@ namespace ZombieLand
 		{
 			if (CanEverBeLinkedHostFast(pawn) == false)
 				return false;
-			return ActiveBlob(pawn.Map)?.IsLinkedTo(pawn) == true;
+			return ActiveSymbiant(pawn.Map)?.IsLinkedTo(pawn) == true;
 		}
 
-		static bool IsActiveBlobOnMap(ZombieBlob blob, Map map)
+		static bool IsActiveSymbiantOnMap(ZombieSymbiant symbiant, Map map)
 		{
-			return blob != null && blob.Destroyed == false && blob.Spawned && blob.Dead == false && blob.Map == map;
+			return symbiant != null && symbiant.Destroyed == false && symbiant.Spawned && symbiant.Dead == false && symbiant.Map == map;
 		}
 
-		static void RegisterActiveBlob(ZombieBlob blob, Map map)
+		static void RegisterActiveSymbiant(ZombieSymbiant symbiant, Map map)
 		{
-			if (blob == null || map == null)
+			if (symbiant == null || map == null)
 				return;
-			activeBlobByMap[map] = blob;
-			mapsWithoutActiveBlob.Remove(map);
+			activeSymbiantByMap[map] = symbiant;
+			mapsWithoutActiveSymbiant.Remove(map);
 		}
 
-		static void ForgetActiveBlob(ZombieBlob blob)
+		static void ForgetActiveSymbiant(ZombieSymbiant symbiant)
 		{
-			foreach (var map in activeBlobByMap
-				.Where(pair => ReferenceEquals(pair.Value, blob))
+			foreach (var map in activeSymbiantByMap
+				.Where(pair => ReferenceEquals(pair.Value, symbiant))
 				.Select(pair => pair.Key)
 				.ToArray())
-				activeBlobByMap.Remove(map);
+				activeSymbiantByMap.Remove(map);
 		}
 
-		public static ZombieBlob ActiveBlob(Map map)
+		public static ZombieSymbiant ActiveSymbiant(Map map)
 		{
 			if (map == null)
 				return null;
-			if (activeBlobByMap.TryGetValue(map, out var cached))
+			if (activeSymbiantByMap.TryGetValue(map, out var cached))
 			{
-				if (IsActiveBlobOnMap(cached, map))
+				if (IsActiveSymbiantOnMap(cached, map))
 					return cached;
-				activeBlobByMap.Remove(map);
+				activeSymbiantByMap.Remove(map);
 			}
-			if (mapsWithoutActiveBlob.Contains(map))
+			if (mapsWithoutActiveSymbiant.Contains(map))
 				return null;
 
-			foreach (var blob in SpawnedBlobThings(map))
+			foreach (var symbiant in SpawnedSymbiantThings(map))
 			{
-				if (IsActiveBlobOnMap(blob, map))
+				if (IsActiveSymbiantOnMap(symbiant, map))
 				{
-					blob.EnsureHiddenFromPawnSystems(map);
-					RegisterActiveBlob(blob, map);
-					return blob;
+					symbiant.EnsureHiddenFromPawnSystems(map);
+					RegisterActiveSymbiant(symbiant, map);
+					return symbiant;
 				}
 			}
-			mapsWithoutActiveBlob.Add(map);
+			mapsWithoutActiveSymbiant.Add(map);
 			return null;
 		}
 
-		static IEnumerable<ZombieBlob> SpawnedBlobThings(Map map)
+		static IEnumerable<ZombieSymbiant> SpawnedSymbiantThings(Map map)
 		{
 			var lister = map?.listerThings;
 			if (lister == null)
 				yield break;
 
-			var def = CustomDefs.ZombieBlob;
+			var def = CustomDefs.ZombieSymbiant;
 			if (def != null)
 			{
 				var things = lister.ThingsOfDef(def);
 				if (things != null)
 					for (var i = 0; i < things.Count; i++)
-						if (things[i] is ZombieBlob blob)
-							yield return blob;
+						if (things[i] is ZombieSymbiant symbiant)
+							yield return symbiant;
 				yield break;
 			}
 
 			foreach (var thing in lister.AllThings)
-				if (thing is ZombieBlob blob)
-					yield return blob;
+				if (thing is ZombieSymbiant symbiant)
+					yield return symbiant;
 		}
 
-		static IEnumerable<ZombieBlob> ActiveBlobs()
+		static IEnumerable<ZombieSymbiant> ActiveSymbiants()
 		{
 			if (Find.Maps == null)
 				yield break;
 			foreach (var map in Find.Maps)
 			{
-				var blob = ActiveBlob(map);
-				if (blob != null)
-					yield return blob;
+				var symbiant = ActiveSymbiant(map);
+				if (symbiant != null)
+					yield return symbiant;
 			}
 		}
 
@@ -488,22 +488,22 @@ namespace ZombieLand
 			return hostThingId.NullOrEmpty() == false && hostThingId == pawn.ThingID;
 		}
 
-		public static ZombieBlob LinkedBlobFor(Pawn pawn)
+		public static ZombieSymbiant LinkedSymbiantFor(Pawn pawn)
 		{
-			return LinkedBlobFor(pawn, false);
+			return LinkedSymbiantFor(pawn, false);
 		}
 
-		static ZombieBlob LinkedBlobFor(Pawn pawn, bool allowDead)
+		static ZombieSymbiant LinkedSymbiantFor(Pawn pawn, bool allowDead)
 		{
 			if (CanEverBeLinkedHostFast(pawn, allowDead) == false)
 				return null;
 			if (pawn.Spawned)
 			{
-				var mapBlob = ActiveBlob(pawn.Map);
-				if (mapBlob != null && mapBlob.IsLinkedTo(pawn))
-					return mapBlob;
+				var mapSymbiant = ActiveSymbiant(pawn.Map);
+				if (mapSymbiant != null && mapSymbiant.IsLinkedTo(pawn))
+					return mapSymbiant;
 			}
-			return ActiveBlobs().FirstOrDefault(blob => blob.IsLinkedTo(pawn) || blob.ResolveHost() == pawn);
+			return ActiveSymbiants().FirstOrDefault(symbiant => symbiant.IsLinkedTo(pawn) || symbiant.ResolveHost() == pawn);
 		}
 
 		public static bool HasZombieTargetingProtection(Pawn pawn)
@@ -512,25 +512,25 @@ namespace ZombieLand
 				return false;
 			if (DebugDisableSymbiosisBenefits || CanEverBeLinkedHostFast(pawn) == false)
 				return false;
-			return SymbioteBenefitFactor(pawn) >= ZombieIgnoreMinBenefit;
+			return SymbiantBenefitFactor(pawn) >= ZombieIgnoreMinBenefit;
 		}
 
-		public static float SymbioteBenefitFactor(Pawn pawn)
+		public static float SymbiantBenefitFactor(Pawn pawn)
 		{
 			if (pawn?.Spawned != true || pawn.Map == null)
 				return 0f;
 			if (DebugDisableSymbiosisBenefits || CanEverBeLinkedHostFast(pawn) == false)
 				return 0f;
-			return LinkedBlobFor(pawn)?.BenefitFactor ?? 0f;
+			return LinkedSymbiantFor(pawn)?.BenefitFactor ?? 0f;
 		}
 
-		public static void ApplySymbioteSkillBonus(SkillRecord skill, ref int level)
+		public static void ApplySymbiantSkillBonus(SkillRecord skill, ref int level)
 		{
 			var pawn = skill?.Pawn;
-			var factor = SymbioteBenefitFactor(pawn);
+			var factor = SymbiantBenefitFactor(pawn);
 			if (factor <= 0f)
 				return;
-			var bonus = Mathf.RoundToInt(Mathf.Max(0, ZombieSettings.Values.blobSymbioteMaxSkillBonus) * factor);
+			var bonus = Mathf.RoundToInt(Mathf.Max(0, ZombieSettings.Values.symbiantMaxSkillBonus) * factor);
 			if (bonus > 0)
 				level = Mathf.Clamp(level + bonus, 0, SkillRecord.MaxLevel);
 		}
@@ -539,54 +539,54 @@ namespace ZombieLand
 		{
 			if (CanEverBeLinkedHostFast(pawn) == false)
 				return false;
-			return LinkedBlobFor(pawn)?.CanSafelySever == true;
+			return LinkedSymbiantFor(pawn)?.CanSafelySever == true;
 		}
 
 		public static void NotifyHostKilled(Pawn pawn)
 		{
 			if (CanEverBeLinkedHostFast(pawn, true) == false)
 				return;
-			var blob = LinkedBlobFor(pawn, true);
-			if (blob == null)
+			var symbiant = LinkedSymbiantFor(pawn, true);
+			if (symbiant == null)
 				return;
-			blob.CollapseFromHostDeath();
+			symbiant.CollapseFromHostDeath();
 		}
 
-		public static bool IsBlobCell(Map map, IntVec3 cell, out ZombieBlob blob)
+		public static bool IsSymbiantCell(Map map, IntVec3 cell, out ZombieSymbiant symbiant)
 		{
-			blob = null;
+			symbiant = null;
 			if (map == null || cell.InBounds(map) == false)
 				return false;
-			blob = ActiveBlob(map);
-			return blob != null && blob.ContainsCell(cell);
+			symbiant = ActiveSymbiant(map);
+			return symbiant != null && symbiant.ContainsCell(cell);
 		}
 
-		public static bool IsBlobCellForAffectedPawn(Pawn pawn, IntVec3 cell, out ZombieBlob blob)
+		public static bool IsSymbiantCellForAffectedPawn(Pawn pawn, IntVec3 cell, out ZombieSymbiant symbiant)
 		{
-			blob = null;
-			if (CanBeAffectedByBlobCellFast(pawn) == false)
+			symbiant = null;
+			if (CanBeAffectedBySymbiantCellFast(pawn) == false)
 				return false;
 			var map = pawn.Map;
 			if (cell.InBounds(map) == false)
 				return false;
-			blob = ActiveBlob(map);
-			if (blob == null)
+			symbiant = ActiveSymbiant(map);
+			if (symbiant == null)
 				return false;
-			return blob.ContainsCell(cell);
+			return symbiant.ContainsCell(cell);
 		}
 
-		public static bool IsBlobCellForSlowedPawn(Pawn pawn, IntVec3 cell, out ZombieBlob blob)
+		public static bool IsSymbiantCellForSlowedPawn(Pawn pawn, IntVec3 cell, out ZombieSymbiant symbiant)
 		{
-			blob = null;
-			if (CanBeSlowedByBlobCellFast(pawn) == false)
+			symbiant = null;
+			if (CanBeSlowedBySymbiantCellFast(pawn) == false)
 				return false;
 			var map = pawn.Map;
 			if (cell.InBounds(map) == false)
 				return false;
-			blob = ActiveBlob(map);
-			if (blob == null)
+			symbiant = ActiveSymbiant(map);
+			if (symbiant == null)
 				return false;
-			return blob.ContainsCell(cell);
+			return symbiant.ContainsCell(cell);
 		}
 
 		public static int CountCellsInRoom(Room room)
@@ -594,10 +594,10 @@ namespace ZombieLand
 			var map = room?.Map;
 			if (map == null)
 				return 0;
-			var blob = ActiveBlob(map);
-			if (blob == null)
+			var symbiant = ActiveSymbiant(map);
+			if (symbiant == null)
 				return 0;
-			return blob.CountCellsInRoomInternal(room);
+			return symbiant.CountCellsInRoomInternal(room);
 		}
 
 		int CountCellsInRoomInternal(Room room)
@@ -630,7 +630,7 @@ namespace ZombieLand
 		static int CalculateFullBenefitCells(int eligibleCells)
 		{
 			var maxCells = Mathf.Max(1, MaxCells);
-			var coverage = Mathf.Clamp(ZombieSettings.Values?.blobFullBenefitRoomCoverage ?? 0.20f, 0.01f, 1f);
+			var coverage = Mathf.Clamp(ZombieSettings.Values?.symbiantFullBenefitRoomCoverage ?? 0.20f, 0.01f, 1f);
 			var target = Mathf.Max(20, Mathf.CeilToInt(eligibleCells * coverage));
 			return Mathf.Clamp(target, 1, maxCells);
 		}
@@ -643,9 +643,9 @@ namespace ZombieLand
 		int CalculateSeveranceMaturityCells(int fullBenefitCells)
 		{
 			var settings = ZombieSettings.Values;
-			var coverage = Mathf.Clamp(settings?.blobSeveranceMaturityCoverage ?? 0.50f, 0.01f, 1f);
-			var min = Mathf.Max(1, settings?.blobSeveranceMaturityMinCells ?? 10);
-			var max = Mathf.Max(min, settings?.blobSeveranceMaturityMaxCells ?? 80);
+			var coverage = Mathf.Clamp(settings?.symbiantSeveranceMaturityCoverage ?? 0.50f, 0.01f, 1f);
+			var min = Mathf.Max(1, settings?.symbiantSeveranceMaturityMinCells ?? 10);
+			var max = Mathf.Max(min, settings?.symbiantSeveranceMaturityMaxCells ?? 80);
 			var target = Mathf.CeilToInt(fullBenefitCells * coverage);
 			var upper = Mathf.Max(1, Mathf.Min(max, MaxCells));
 			var lower = Mathf.Min(min, upper);
@@ -660,9 +660,9 @@ namespace ZombieLand
 		int CalculateSeveranceReserveRequired(int fullBenefitCells)
 		{
 			var settings = ZombieSettings.Values;
-			var coverage = Mathf.Clamp(settings?.blobSeveranceReserveCoverage ?? 0.25f, 0.01f, 1f);
-			var min = Mathf.Max(1, settings?.blobSeveranceReserveMin ?? 12);
-			var max = Mathf.Max(min, settings?.blobSeveranceReserveMax ?? 60);
+			var coverage = Mathf.Clamp(settings?.symbiantSeveranceReserveCoverage ?? 0.25f, 0.01f, 1f);
+			var min = Mathf.Max(1, settings?.symbiantSeveranceReserveMin ?? 12);
+			var max = Mathf.Max(min, settings?.symbiantSeveranceReserveMax ?? 60);
 			var target = Mathf.CeilToInt(fullBenefitCells * coverage);
 			var upper = Mathf.Max(1, Mathf.Min(max, MaxCells));
 			var lower = Mathf.Min(min, upper);
@@ -720,7 +720,7 @@ namespace ZombieLand
 			var ticks = GenTicks.TicksGame;
 			if (force == false && lastSymbiosisMetricTick != int.MinValue && ticks - lastSymbiosisMetricTick < SymbiosisMetricRefreshInterval)
 				return;
-			var map = BlobMap;
+			var map = SymbiantMap;
 			cachedEligibleColonyRoomCells = EligibleColonyRoomCellCount(map);
 			cachedFullBenefitCells = CalculateFullBenefitCells(cachedEligibleColonyRoomCells);
 			cachedIntegratedVisibleCells = CalculateIntegratedVisibleCells(map);
@@ -774,7 +774,7 @@ namespace ZombieLand
 		{
 			if (ResolveHost() != null)
 				return true;
-			var map = BlobMap;
+			var map = SymbiantMap;
 			if (map == null)
 				return false;
 			var candidates = EligibleHosts(map, this).ToArray();
@@ -784,14 +784,14 @@ namespace ZombieLand
 			return true;
 		}
 
-		static IEnumerable<Pawn> EligibleHosts(Map map, ZombieBlob blob)
+		static IEnumerable<Pawn> EligibleHosts(Map map, ZombieSymbiant symbiant)
 		{
 			if (map?.mapPawns?.FreeColonistsSpawned == null)
 				return Enumerable.Empty<Pawn>();
-			return map.mapPawns.FreeColonistsSpawned.Where(pawn => IsEligibleHost(pawn, blob));
+			return map.mapPawns.FreeColonistsSpawned.Where(pawn => IsEligibleHost(pawn, symbiant));
 		}
 
-		static bool IsEligibleHost(Pawn pawn, ZombieBlob blob)
+		static bool IsEligibleHost(Pawn pawn, ZombieSymbiant symbiant)
 		{
 			if (pawn?.Spawned != true)
 				return false;
@@ -801,8 +801,8 @@ namespace ZombieLand
 				return false;
 			if (pawn.InfectionState() >= InfectionState.Infecting)
 				return false;
-			var linkedBlob = LinkedBlobFor(pawn);
-			return linkedBlob == null || linkedBlob == blob;
+			var linkedSymbiant = LinkedSymbiantFor(pawn);
+			return linkedSymbiant == null || linkedSymbiant == symbiant;
 		}
 
 		void AssignHost(Pawn pawn)
@@ -830,35 +830,35 @@ namespace ZombieLand
 			if (DebugDisableHostHediffSync)
 				return;
 			var pawn = ResolveHost();
-			if (pawn?.health?.hediffSet == null || CustomDefs.BlobSymbiosis == null)
+			if (pawn?.health?.hediffSet == null || CustomDefs.SymbiantSymbiosis == null)
 				return;
-			var hediff = pawn.health.hediffSet.GetFirstHediffOfDef(CustomDefs.BlobSymbiosis) as Hediff_BlobSymbiosis;
+			var hediff = pawn.health.hediffSet.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) as Hediff_SymbiantSymbiosis;
 			if (hediff == null)
 			{
-				hediff = HediffMaker.MakeHediff(CustomDefs.BlobSymbiosis, pawn) as Hediff_BlobSymbiosis;
+				hediff = HediffMaker.MakeHediff(CustomDefs.SymbiantSymbiosis, pawn) as Hediff_SymbiantSymbiosis;
 				if (hediff != null)
 					pawn.health.AddHediff(hediff);
 			}
 			if (hediff != null)
 			{
-				hediff.blobThingId = ThingID;
+				hediff.symbiantThingId = ThingID;
 				hediff.Severity = BenefitFactor;
 			}
 		}
 
 		static void RemoveHostHediff(Pawn pawn)
 		{
-			if (pawn?.health?.hediffSet == null || CustomDefs.BlobSymbiosis == null)
+			if (pawn?.health?.hediffSet == null || CustomDefs.SymbiantSymbiosis == null)
 				return;
 			foreach (var hediff in pawn.health.hediffSet.hediffs
-				.Where(hediff => hediff.def == CustomDefs.BlobSymbiosis)
+				.Where(hediff => hediff.def == CustomDefs.SymbiantSymbiosis)
 				.ToArray())
 				pawn.health.RemoveHediff(hediff);
 		}
 
 		public static void AddCell(Map map, IntVec3 cell)
 		{
-			ActiveBlob(map)?.AddCell(cell);
+			ActiveSymbiant(map)?.AddCell(cell);
 		}
 
 		public static int AddCells(Map map, IEnumerable<IntVec3> newCells)
@@ -868,13 +868,13 @@ namespace ZombieLand
 			var newCellArray = newCells?.ToArray() ?? Array.Empty<IntVec3>();
 			if (newCellArray.Length == 0)
 				return 0;
-			return ActiveBlob(map)?.AddCells(newCellArray) ?? 0;
+			return ActiveSymbiant(map)?.AddCells(newCellArray) ?? 0;
 		}
 
 		internal static void ReleaseAllRenderResources()
 		{
-			foreach (var blob in renderResourceOwners.ToArray())
-				blob.ReleaseRenderResources(false);
+			foreach (var symbiant in renderResourceOwners.ToArray())
+				symbiant.ReleaseRenderResources(false);
 			renderResourceOwners.Clear();
 		}
 
@@ -902,8 +902,8 @@ namespace ZombieLand
 		public override void SpawnSetup(Map map, bool respawningAfterLoad)
 		{
 			base.SpawnSetup(map, respawningAfterLoad);
-			EnsureBlobDefaults();
-			RegisterActiveBlob(this, map);
+			EnsureSymbiantDefaults();
+			RegisterActiveSymbiant(this, map);
 			EnsureHiddenFromPawnSystems(map);
 		}
 
@@ -915,14 +915,14 @@ namespace ZombieLand
 
 		public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
 		{
-			ForgetActiveBlob(this);
+			ForgetActiveSymbiant(this);
 			ReleaseRenderResources();
 			base.DeSpawn(mode);
 		}
 
 		public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
 		{
-			ForgetActiveBlob(this);
+			ForgetActiveSymbiant(this);
 			if (safeSeveranceInProgress == false && hostCollapseInProgress == false)
 				HandleUncontrolledDestroy();
 			ReleaseRenderResources();
@@ -1134,9 +1134,9 @@ namespace ZombieLand
 			return true;
 		}
 
-		public void BlobTick()
+		public void SymbiantTick()
 		{
-			if (DebugDisableBlobTick)
+			if (DebugDisableSymbiantTick)
 				return;
 			var ticks = GenTicks.TicksGame;
 			if (ticks % SymbiosisMetricRefreshInterval == Mathf.Abs(thingIDNumber % SymbiosisMetricRefreshInterval))
@@ -1154,7 +1154,7 @@ namespace ZombieLand
 
 		void ResetExpansionClock()
 		{
-			var hours = Mathf.Max(1, ZombieSettings.Values.blobExpansionIntervalHours);
+			var hours = Mathf.Max(1, ZombieSettings.Values.symbiantExpansionIntervalHours);
 			nextExpansionTick = GenTicks.TicksGame + hours * GenDate.TicksPerHour;
 		}
 
@@ -1193,7 +1193,7 @@ namespace ZombieLand
 						continue;
 					}
 
-					if (ZombieSettings.Values.blobCanBreakConstructedWalls == false)
+					if (ZombieSettings.Values.symbiantCanBreakConstructedWalls == false)
 						continue;
 
 					var wall = BreakableConstructedWall(map, candidate);
@@ -1336,11 +1336,11 @@ namespace ZombieLand
 			lastRecessionPulseCells = ShrinkCells(pulseSize, minRemainingCells);
 			UpdateSymbiosisState();
 			cancelNextBreach = true;
-			feedPausedUntilTick = GenTicks.TicksGame + Mathf.Max(0, ZombieSettings.Values.blobPostFeedPauseHours) * GenDate.TicksPerHour;
+			feedPausedUntilTick = GenTicks.TicksGame + Mathf.Max(0, ZombieSettings.Values.symbiantPostFeedPauseHours) * GenDate.TicksPerHour;
 			if (Spawned)
 			{
 				CustomDefs.ZombieEating.PlayOneShot(SoundInfo.InMap(this));
-				MoteMaker.ThrowText(DrawPos, Map, "BlobFedMote".Translate(pulseSize, lastRecessionPulseCells), 3.65f);
+				MoteMaker.ThrowText(DrawPos, Map, "SymbiantFedMote".Translate(pulseSize, lastRecessionPulseCells), 3.65f);
 			}
 			return true;
 		}
@@ -1348,12 +1348,12 @@ namespace ZombieLand
 		int RecessionPulseSize(Thing feed)
 		{
 			var baseSize = 1;
-			if (feed.def == CustomDefs.BlobCoagulantPack)
+			if (feed.def == CustomDefs.SymbiantCoagulantPack)
 			{
-				baseSize = ZombieSettings.Values.blobCoagulantPotency switch
+				baseSize = ZombieSettings.Values.symbiantCoagulantPotency switch
 				{
-					BlobCoagulantPotency.Cheap => 2,
-					BlobCoagulantPotency.Expensive => 5,
+					SymbiantCoagulantPotency.Cheap => 2,
+					SymbiantCoagulantPotency.Expensive => 5,
 					_ => 3
 				};
 			}
@@ -1387,14 +1387,14 @@ namespace ZombieLand
 		{
 			if (feed == null || feed.Destroyed)
 				return false;
-			if (feed.def == CustomDefs.BlobCoagulantPack)
+			if (feed.def == CustomDefs.SymbiantCoagulantPack)
 				return true;
 			if (feed is Corpse corpse)
 			{
 				var pawn = corpse.InnerPawn;
 				if (pawn == null || pawn.RaceProps?.Humanlike != true)
 					return false;
-				return pawn is not Zombie && pawn is not ZombieBlob && pawn is not ZombieSpitter;
+				return pawn is not Zombie && pawn is not ZombieSymbiant && pawn is not ZombieSpitter;
 			}
 			return false;
 		}
@@ -1411,7 +1411,7 @@ namespace ZombieLand
 
 		int ShrinkCells(int count, int minRemainingCells)
 		{
-			EnsureBlobDefaults();
+			EnsureSymbiantDefaults();
 			var removed = 0;
 			var minRemaining = Mathf.Clamp(minRemainingCells, 0, Mathf.Max(0, orderedCells.Count));
 			while (removed < count && orderedCells.Count > minRemaining)
@@ -1558,7 +1558,7 @@ namespace ZombieLand
 				UnityEngine.Object.Destroy(metaballTexture);
 			metaballTexture = new Texture2D(textureWidth, textureHeight, TextureFormat.RGBA32, false, true)
 			{
-				name = $"ZombieBlobMetaballs_{textureWidth}x{textureHeight}",
+				name = $"ZombieSymbiantMetaballs_{textureWidth}x{textureHeight}",
 				wrapMode = TextureWrapMode.Clamp,
 				filterMode = FilterMode.Bilinear
 			};
@@ -1573,7 +1573,7 @@ namespace ZombieLand
 			return t * t * (3f - 2f * t);
 		}
 
-		void EnsureBlobDefaults()
+		void EnsureSymbiantDefaults()
 		{
 			cells ??= [];
 			if (cells.Count == 0)
@@ -1607,12 +1607,12 @@ namespace ZombieLand
 
 		void EnsureRenderResources()
 		{
-			EnsureBlobDefaults();
+			EnsureSymbiantDefaults();
 			if (metaballTexture == null)
 			{
 				metaballTexture = new Texture2D(MetaballTextureMinSize, MetaballTextureMinSize, TextureFormat.RGBA32, false, true)
 				{
-					name = $"ZombieBlobMetaballs_{MetaballTextureMinSize}x{MetaballTextureMinSize}",
+					name = $"ZombieSymbiantMetaballs_{MetaballTextureMinSize}x{MetaballTextureMinSize}",
 					wrapMode = TextureWrapMode.Clamp,
 					filterMode = FilterMode.Bilinear
 				};
@@ -1624,14 +1624,14 @@ namespace ZombieLand
 
 		void EnsureMetaballMaterial()
 		{
-			var shader = Assets.ZombieBlobShader ?? ShaderDatabase.Transparent;
+			var shader = Assets.ZombieSymbiantShader ?? ShaderDatabase.Transparent;
 			if (metaballMaterial == null || metaballMaterial.shader != shader)
 			{
 				if (metaballMaterial != null)
 					UnityEngine.Object.Destroy(metaballMaterial);
 				metaballMaterial = new Material(shader)
 				{
-					name = "ZombieBlobMetaballs",
+					name = "ZombieSymbiantMetaballs",
 					color = Color.white,
 					mainTexture = metaballTexture
 				};
@@ -1643,15 +1643,15 @@ namespace ZombieLand
 		{
 			if (metaballMaterial == null)
 				return;
-			metaballMaterial.name = "ZombieBlobMetaballs";
+			metaballMaterial.name = "ZombieSymbiantMetaballs";
 			metaballMaterial.color = Color.white;
 			metaballMaterial.mainTexture = metaballTexture;
-			SetMaterialFloatIfPresent(metaballMaterial, BlobOpacityMinId, BlobOpacityMin);
-			SetMaterialFloatIfPresent(metaballMaterial, BlobOpacityMaxId, BlobOpacityMax);
-			SetMaterialFloatIfPresent(metaballMaterial, BlobNoiseScaleId, BlobNoiseScale);
-			SetMaterialFloatIfPresent(metaballMaterial, BlobWavePhaseSpeedId, BlobWavePhaseSpeed);
-			SetMaterialFloatIfPresent(metaballMaterial, BlobWaveShadeStrengthId, BlobWaveShadeStrength);
-			SetMaterialFloatIfPresent(metaballMaterial, BlobEdgeContrastId, BlobEdgeContrast);
+			SetMaterialFloatIfPresent(metaballMaterial, SymbiantOpacityMinId, SymbiantOpacityMin);
+			SetMaterialFloatIfPresent(metaballMaterial, SymbiantOpacityMaxId, SymbiantOpacityMax);
+			SetMaterialFloatIfPresent(metaballMaterial, SymbiantNoiseScaleId, SymbiantNoiseScale);
+			SetMaterialFloatIfPresent(metaballMaterial, SymbiantWavePhaseSpeedId, SymbiantWavePhaseSpeed);
+			SetMaterialFloatIfPresent(metaballMaterial, SymbiantWaveShadeStrengthId, SymbiantWaveShadeStrength);
+			SetMaterialFloatIfPresent(metaballMaterial, SymbiantEdgeContrastId, SymbiantEdgeContrast);
 		}
 
 		static void SetMaterialFloatIfPresent(Material material, int propertyId, float value)
@@ -1662,8 +1662,8 @@ namespace ZombieLand
 
 		void UpdateMetaballMaterialTime()
 		{
-			if (metaballMaterial != null && metaballMaterial.HasProperty(BlobNoiseTimeId))
-				metaballMaterial.SetFloat(BlobNoiseTimeId, RenderNoiseTimeSeconds);
+			if (metaballMaterial != null && metaballMaterial.HasProperty(SymbiantNoiseTimeId))
+				metaballMaterial.SetFloat(SymbiantNoiseTimeId, RenderNoiseTimeSeconds);
 		}
 
 		float GetSize(IntVec3 cell)
@@ -1700,7 +1700,7 @@ namespace ZombieLand
 
 			var offset = new Vector3(centerX, 0, centerZ);
 			var position = drawLoc + offset;
-			position.y = AltitudeLayer.MoteLow.AltitudeFor(BlobRenderAltitudeOffset);
+			position.y = AltitudeLayer.MoteLow.AltitudeFor(SymbiantRenderAltitudeOffset);
 			UpdateMetaballMaterialTime();
 			Graphics.DrawMesh(mesh, position, Quaternion.identity, metaballMaterial, 0);
 		}
@@ -1710,7 +1710,7 @@ namespace ZombieLand
 			var linkedHost = LinkedHost;
 			var hostLabel = linkedHost == null ? "none" : linkedHost.LabelShortCap;
 			var benefitPercent = Mathf.RoundToInt(BenefitFactor * 100f);
-			return "ZombieBlobInspect".Translate(CellCount, MaxCells, hostLabel, benefitPercent, Mathf.FloorToInt(decouplingReserve), DecouplingReserveMax, FeedPulsesRemaining);
+			return "ZombieSymbiantInspect".Translate(CellCount, MaxCells, hostLabel, benefitPercent, Mathf.FloorToInt(decouplingReserve), DecouplingReserveMax, FeedPulsesRemaining);
 		}
 
 		public override IEnumerable<Gizmo> GetGizmos()
@@ -1720,8 +1720,8 @@ namespace ZombieLand
 
 			yield return new Command_Action
 			{
-				defaultLabel = (feedRequested ? "CancelFeedZombieBlob" : "FeedZombieBlob").Translate(),
-				defaultDesc = "FeedZombieBlobDesc".Translate(),
+				defaultLabel = (feedRequested ? "CancelFeedZombieSymbiant" : "FeedZombieSymbiant").Translate(),
+				defaultDesc = "FeedZombieSymbiantDesc".Translate(),
 				icon = TexCommand.DesirePower,
 				action = () => feedRequested = !feedRequested
 			};
@@ -1750,7 +1750,7 @@ namespace ZombieLand
 			Scribe_Values.Look(ref maturedForSeverance, "maturedForSeverance");
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
 			{
-				EnsureBlobDefaults();
+				EnsureSymbiantDefaults();
 				if (host != null)
 					hostThingId = host.ThingID;
 				UpdateSymbiosisState();

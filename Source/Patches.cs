@@ -538,7 +538,7 @@ namespace ZombieLand
 		{
 			static bool RunTicking(Pawn pawn)
 			{
-				if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+				if (pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 					return true;
 
 				if (pawn.RaceProps.Humanlike)
@@ -637,7 +637,7 @@ namespace ZombieLand
 		{
 			static bool Prefix(Pawn ___pawn, ref bool __result)
 			{
-				if (___pawn is ZombieBlob || ___pawn is ZombieSpitter)
+				if (___pawn is ZombieSymbiant || ___pawn is ZombieSpitter)
 				{
 					__result = false;
 					return false;
@@ -658,7 +658,7 @@ namespace ZombieLand
 		{
 			static bool Prefix(Pawn pawn, LocalTargetInfo target, ref string failStr, ref Action __result)
 			{
-				if (target.Thing is ZombieBlob)
+				if (target.Thing is ZombieSymbiant)
 				{
 					failStr = null;
 					__result = null;
@@ -680,7 +680,7 @@ namespace ZombieLand
 		{
 			static bool Prefix(LocalTargetInfo target, ref string failStr, ref Action __result)
 			{
-				if (target.Thing is ZombieBlob)
+				if (target.Thing is ZombieSymbiant)
 				{
 					failStr = null;
 					__result = null;
@@ -882,7 +882,7 @@ namespace ZombieLand
 			static bool Prefix(IAttackTarget t, ref bool __result)
 			{
 				var thing = t?.Thing;
-				if (thing is ZombieBlob)
+				if (thing is ZombieSymbiant)
 				{
 					__result = false;
 					return false;
@@ -909,7 +909,7 @@ namespace ZombieLand
 		{
 			static void Postfix(Thing t, Pawn pawn, ref bool __result)
 			{
-				if (t is ZombieBlob)
+				if (t is ZombieSymbiant)
 					__result = false;
 				else if (__result && t is Zombie zombie && pawn.SeesZombieAsThreat(zombie) == false)
 					__result = false;
@@ -1141,9 +1141,9 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(Pawn_JobTracker.StartJob))]
 		static class Pawn_JobTracker_StartJob_Patch
 		{
-			static readonly HashSet<JobDef> allowedBlobJobs = new()
+			static readonly HashSet<JobDef> allowedSymbiantJobs = new()
 			{
-				CustomDefs.Blob,
+				CustomDefs.Symbiant,
 				JobDefOf.Goto,
 				JobDefOf.Wait,
 				JobDefOf.Wait_MaintainPosture,
@@ -1153,7 +1153,7 @@ namespace ZombieLand
 			{
 				CustomDefs.Stumble,
 				CustomDefs.Sabotage,
-				CustomDefs.Blob,
+				CustomDefs.Symbiant,
 				CustomDefs.Spitter,
 				DefDatabase<JobDef>.GetNamed("ExtractZombieSerum"),
 				DefDatabase<JobDef>.GetNamed("DoubleTap"),
@@ -1166,7 +1166,7 @@ namespace ZombieLand
 
 			static bool Prefix(Job newJob, Pawn ___pawn, ref int ___jobsGivenThisTick, ref string ___jobsGivenThisTickTextual, ref bool ___startingNewJob)
 			{
-				if (newJob != null && newJob.targetA.Thing is ZombieBlob && (newJob.def == JobDefOf.AttackMelee || newJob.def == JobDefOf.AttackStatic))
+				if (newJob != null && newJob.targetA.Thing is ZombieSymbiant && (newJob.def == JobDefOf.AttackMelee || newJob.def == JobDefOf.AttackStatic))
 				{
 					___jobsGivenThisTick = 0;
 					___jobsGivenThisTickTextual = "";
@@ -1175,9 +1175,9 @@ namespace ZombieLand
 					return false;
 				}
 
-				if (___pawn is not Zombie && ___pawn is not ZombieBlob && ___pawn is not ZombieSpitter)
+				if (___pawn is not Zombie && ___pawn is not ZombieSymbiant && ___pawn is not ZombieSpitter)
 					return true;
-				if (___pawn is ZombieBlob && allowedBlobJobs.Contains(newJob.def) == false)
+				if (___pawn is ZombieSymbiant && allowedSymbiantJobs.Contains(newJob.def) == false)
 				{
 					___jobsGivenThisTick = 0;
 					___jobsGivenThisTickTextual = "";
@@ -1373,7 +1373,7 @@ namespace ZombieLand
 					else
 						__result /= 20;
 				}
-				else if (instigator is ZombieBlob || instigator is ZombieSpitter)
+				else if (instigator is ZombieSymbiant || instigator is ZombieSpitter)
 					__result = 0;
 			}
 		}
@@ -1393,7 +1393,7 @@ namespace ZombieLand
 					else
 						__result -= 10000f;
 				}
-				else if (prey is ZombieBlob)
+				else if (prey is ZombieSymbiant)
 					__result = -10000f;
 				else if (prey is ZombieSpitter)
 					__result = 0f;
@@ -2186,24 +2186,24 @@ namespace ZombieLand
 		}
 
 		[HarmonyPatch(typeof(Pawn_FilthTracker), nameof(Pawn_FilthTracker.Notify_EnteredNewCell))]
-		static class Pawn_FilthTracker_Notify_EnteredNewCell_BlobSplash_Patch
+		static class Pawn_FilthTracker_Notify_EnteredNewCell_SymbiantSplash_Patch
 		{
 			static void Postfix(Pawn_FilthTracker __instance)
 			{
-				// Called after pathing enters a cell; keep exits before blob lookup.
-				if (CustomDefs.BlobSplash == null)
+				// Called after pathing enters a cell; keep exits before symbiant lookup.
+				if (CustomDefs.SymbiantSplash == null)
 					return;
 				var pawn = __instance?.pawn;
 				if (pawn == null || pawn.Spawned == false || pawn.Map == null || pawn.Flying)
 					return;
-				if (ZombieBlob.IsBlobCellForSlowedPawn(pawn, pawn.Position, out _) == false)
+				if (ZombieSymbiant.IsSymbiantCellForSlowedPawn(pawn, pawn.Position, out _) == false)
 					return;
-				CustomDefs.BlobSplash.PlayOneShot(SoundInfo.InMap(pawn));
+				CustomDefs.SymbiantSplash.PlayOneShot(SoundInfo.InMap(pawn));
 			}
 		}
 
 		[HarmonyPatch(typeof(Pawn_PathFollower), "TryEnterNextPathCell")]
-		static class Pawn_PathFollower_TryEnterNextPathCell_BlobDoor_Patch
+		static class Pawn_PathFollower_TryEnterNextPathCell_SymbiantDoor_Patch
 		{
 			static AccessTools.FieldRef<Building_Door, int> doorTicksUntilCloseRef;
 
@@ -2212,7 +2212,7 @@ namespace ZombieLand
 				var field = typeof(Building_Door).Field("ticksUntilClose");
 				if (field == null)
 				{
-					Error("Cannot find Building_Door.ticksUntilClose for blob doorway slowdown patch");
+					Error("Cannot find Building_Door.ticksUntilClose for symbiant doorway slowdown patch");
 					return false;
 				}
 				doorTicksUntilCloseRef = AccessTools.FieldRefAccess<Building_Door, int>(field);
@@ -2222,7 +2222,7 @@ namespace ZombieLand
 			static void Prefix(Pawn_PathFollower __instance, Pawn ___pawn, out IntVec3 __state)
 			{
 				__state = IntVec3.Invalid;
-				if (ZombieBlob.DebugDisablePathCost || ZombieSettings.Values.blobPathCost <= 1)
+				if (ZombieSymbiant.DebugDisablePathCost || ZombieSettings.Values.symbiantPathCost <= 1)
 					return;
 				var pawn = ___pawn;
 				if (pawn == null || pawn.Spawned == false || pawn.Map == null || pawn.Flying)
@@ -2232,7 +2232,7 @@ namespace ZombieLand
 					return;
 				if (nextCell.GetDoor(pawn.Map) == null)
 					return;
-				if (ZombieBlob.IsBlobCellForSlowedPawn(pawn, nextCell, out _) == false)
+				if (ZombieSymbiant.IsSymbiantCellForSlowedPawn(pawn, nextCell, out _) == false)
 					return;
 				if (__instance.NextCellDoorToWaitForOrManuallyOpen() == null)
 					return;
@@ -2246,13 +2246,13 @@ namespace ZombieLand
 				var pawn = ___pawn;
 				if (pawn == null || pawn.Position != __state)
 					return;
-				if (ZombieBlob.IsBlobCellForSlowedPawn(pawn, __instance.nextCell, out _) == false)
+				if (ZombieSymbiant.IsSymbiantCellForSlowedPawn(pawn, __instance.nextCell, out _) == false)
 					return;
 				var door = __instance.nextCell.GetDoor(pawn.Map);
 				if (door == null)
 					return;
 
-				var cost = Mathf.Max(__instance.nextCellCostTotal, ZombieSettings.Values.blobPathCost);
+				var cost = Mathf.Max(__instance.nextCellCostTotal, ZombieSettings.Values.symbiantPathCost);
 				__instance.nextCellCostTotal = Mathf.Max(__instance.nextCellCostTotal, cost);
 				__instance.nextCellCostLeft = Mathf.Max(__instance.nextCellCostLeft, cost);
 				door.Notify_PawnApproaching(pawn, cost);
@@ -2717,7 +2717,7 @@ namespace ZombieLand
 
 			static bool ShouldBeAverageNeed(Pawn pawn)
 			{
-				return infectedColonists.Contains(pawn) || ZombieBlob.HasZombieTargetingProtection(pawn);
+				return infectedColonists.Contains(pawn) || ZombieSymbiant.HasZombieTargetingProtection(pawn);
 			}
 
 			[HarmonyPriority(Priority.First)]
@@ -2811,7 +2811,7 @@ namespace ZombieLand
 		{
 			static bool NoMentalState(Pawn pawn)
 			{
-				return Need_CurLevel_Patch.infectedColonists.Contains(pawn) || ZombieBlob.HasZombieTargetingProtection(pawn);
+				return Need_CurLevel_Patch.infectedColonists.Contains(pawn) || ZombieSymbiant.HasZombieTargetingProtection(pawn);
 			}
 
 			[HarmonyPriority(Priority.First)]
@@ -2861,7 +2861,7 @@ namespace ZombieLand
 
 			static void Postfix(HediffSet __instance, ref float __result)
 			{
-				var factor = ZombieBlob.SymbioteBenefitFactor(__instance.pawn);
+				var factor = ZombieSymbiant.SymbiantBenefitFactor(__instance.pawn);
 				if (factor > 0f)
 					__result *= 1f - 0.75f * factor;
 			}
@@ -2904,7 +2904,7 @@ namespace ZombieLand
 
 			static void Postfix(Pawn ___pawn, ref float __result)
 			{
-				var factor = ZombieBlob.SymbioteBenefitFactor(___pawn);
+				var factor = ZombieSymbiant.SymbiantBenefitFactor(___pawn);
 				if (factor > 0f)
 					__result = Mathf.Lerp(__result, Mathf.Max(__result, 1f), factor);
 			}
@@ -2990,7 +2990,7 @@ namespace ZombieLand
 			{
 				if (request.Faction?.def != ZombieDefOf.Zombies)
 					return true;
-				if (request.KindDef == ZombieDefOf.ZombieBlob)
+				if (request.KindDef == ZombieDefOf.ZombieSymbiant)
 					return true;
 				if (request.KindDef == ZombieDefOf.ZombieSpitter)
 					return true;
@@ -3070,7 +3070,7 @@ namespace ZombieLand
 			[HarmonyPriority(Priority.First)]
 			static bool Prefix(Pawn __instance, ref bool __result)
 			{
-				if (__instance is Zombie || __instance is ZombieBlob || __instance is ZombieSpitter)
+				if (__instance is Zombie || __instance is ZombieSymbiant || __instance is ZombieSpitter)
 				{
 					__result = false;
 					return false;
@@ -3979,7 +3979,7 @@ namespace ZombieLand
 		{
 			static void Postfix(SkillRecord __instance, ref int __result)
 			{
-				ZombieBlob.ApplySymbioteSkillBonus(__instance, ref __result);
+				ZombieSymbiant.ApplySymbiantSkillBonus(__instance, ref __result);
 			}
 		}
 
@@ -3989,7 +3989,7 @@ namespace ZombieLand
 		{
 			static void Postfix(SkillRecord __instance, ref int __result)
 			{
-				ZombieBlob.ApplySymbioteSkillBonus(__instance, ref __result);
+				ZombieSymbiant.ApplySymbiantSkillBonus(__instance, ref __result);
 			}
 		}
 
@@ -4184,7 +4184,7 @@ namespace ZombieLand
 
 			static void Postfix(Thing thing, StatDef stat, ref float __result)
 			{
-				if (ZombieBlob.DebugDisableCellStatEffects)
+				if (ZombieSymbiant.DebugDisableCellStatEffects)
 					return;
 				if (stat != StatDefOf.MedicalTendSpeed
 					&& stat != StatDefOf.WorkSpeedGlobal
@@ -4194,7 +4194,7 @@ namespace ZombieLand
 					return;
 				if (thing is not Pawn pawn)
 					return;
-				if (ZombieBlob.IsBlobCellForAffectedPawn(pawn, pawn.Position, out _) == false)
+				if (ZombieSymbiant.IsSymbiantCellForAffectedPawn(pawn, pawn.Position, out _) == false)
 					return;
 				if (stat == StatDefOf.MedicalTendSpeed)
 					__result *= 0.65f;
@@ -4203,7 +4203,7 @@ namespace ZombieLand
 			}
 		}
 
-		// patch so blob-infested rooms feel disrupted without direct pawn damage
+		// patch so symbiant-infested rooms feel disrupted without direct pawn damage
 		//
 		[HarmonyPatch(typeof(RoomStatWorker_Beauty))]
 		[HarmonyPatch(nameof(RoomStatWorker_Beauty.GetScore))]
@@ -4211,10 +4211,10 @@ namespace ZombieLand
 		{
 			static void Postfix(Room room, ref float __result)
 			{
-				var blobCells = ZombieBlob.CountCellsInRoom(room);
-				if (blobCells <= 0)
+				var symbiantCells = ZombieSymbiant.CountCellsInRoom(room);
+				if (symbiantCells <= 0)
 					return;
-				__result -= Mathf.Min(40f, 4f + blobCells * 2f);
+				__result -= Mathf.Min(40f, 4f + symbiantCells * 2f);
 			}
 		}
 
@@ -4224,7 +4224,7 @@ namespace ZombieLand
 		{
 			static void Postfix(Room room, ref float __result)
 			{
-				if (ZombieBlob.CountCellsInRoom(room) <= 0)
+				if (ZombieSymbiant.CountCellsInRoom(room) <= 0)
 					return;
 				__result = Mathf.Min(__result, 0f);
 			}
@@ -4278,7 +4278,7 @@ namespace ZombieLand
 			static bool Prefix(Pawn_GeneTracker __instance, ref Gene __result)
 			{
 				var pawn = __instance.pawn;
-				if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+				if (pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 				{
 					__result = null;
 					return false;
@@ -4294,7 +4294,7 @@ namespace ZombieLand
 			static bool Prefix(Pawn_GeneTracker __instance, ref Gene __result)
 			{
 				var pawn = __instance.pawn;
-				if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+				if (pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 				{
 					__result = null;
 					return false;
@@ -4310,7 +4310,7 @@ namespace ZombieLand
 			static bool Prefix(Pawn_StoryTracker __instance, ref Color __result)
 			{
 				var pawn = __instance.pawn;
-				if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+				if (pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 				{
 					__result = Color.white;
 					return false;
@@ -4328,7 +4328,7 @@ namespace ZombieLand
 			[HarmonyPriority(Priority.First)]
 			static bool Prefix(Thing __instance, ref float __result)
 			{
-				if (__instance is Zombie || __instance is ZombieBlob || __instance is ZombieSpitter || __instance is ZombieCorpse)
+				if (__instance is Zombie || __instance is ZombieSymbiant || __instance is ZombieSpitter || __instance is ZombieCorpse)
 				{
 					__result = 21f; // fake normal conditions
 					return false;
@@ -5022,7 +5022,7 @@ namespace ZombieLand
 				}
 
 				var pawn = __instance;
-				ZombieBlob.NotifyHostKilled(pawn);
+				ZombieSymbiant.NotifyHostKilled(pawn);
 				var raceProps = pawn.RaceProps;
 
 				if (raceProps.Humanlike == false || raceProps.IsFlesh == false)
@@ -5182,7 +5182,7 @@ namespace ZombieLand
 		//
 		static bool IsZombielandPawn(Pawn pawn)
 		{
-			return pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter;
+			return pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter;
 		}
 
 		static bool IsZombielandSocialPawn(Pawn pawn)
@@ -5585,11 +5585,11 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(Pawn_HealthTracker.MakeDowned))]
 		static class Pawn_HealthTracker_MakeDowned_Patch
 		{
-			static bool Prefix(Pawn ___pawn) => ___pawn is not ZombieBlob && ___pawn is not ZombieSpitter;
+			static bool Prefix(Pawn ___pawn) => ___pawn is not ZombieSymbiant && ___pawn is not ZombieSpitter;
 
 			static void Postfix(Pawn ___pawn)
 			{
-				if (___pawn is Zombie || ___pawn is ZombieBlob || ___pawn is ZombieSpitter)
+				if (___pawn is Zombie || ___pawn is ZombieSymbiant || ___pawn is ZombieSpitter)
 					return;
 				if (___pawn == null || ___pawn.Map == null)
 					return;
@@ -5757,7 +5757,7 @@ namespace ZombieLand
 
 			static void Postfix(Pawn pawn)
 			{
-				if (pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
+				if (pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 					return;
 
 				var map = pawn.Map ?? pawn.MapHeld ?? prevMapField?.GetValue(pawn) as Map;
@@ -6073,8 +6073,8 @@ namespace ZombieLand
 					else
 						__result = GenMath.LerpDouble(0, 5, 14, 400, Tools.Difficulty());
 				}
-				if (ZombieBlob.DebugDisablePathCost == false && ZombieBlob.IsBlobCellForSlowedPawn(pawn, c, out _))
-					__result = Mathf.Max(__result, ZombieSettings.Values.blobPathCost);
+				if (ZombieSymbiant.DebugDisablePathCost == false && ZombieSymbiant.IsSymbiantCellForSlowedPawn(pawn, c, out _))
+					__result = Mathf.Max(__result, ZombieSettings.Values.symbiantPathCost);
 			}
 		}
 
@@ -6179,8 +6179,8 @@ namespace ZombieLand
 		{
 			static void Prefix(Pawn ___pawn, ref DamageInfo dinfo)
 			{
-				if (___pawn is ZombieBlob blob)
-					blob.PreApplyLinkedDamage(ref dinfo);
+				if (___pawn is ZombieSymbiant symbiant)
+					symbiant.PreApplyLinkedDamage(ref dinfo);
 			}
 
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
