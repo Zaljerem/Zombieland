@@ -143,6 +143,9 @@ namespace ZombieLand
 				beauty = room.GetStat(RoomStatDefOf.Beauty),
 				impressiveness = room.GetStat(RoomStatDefOf.Impressiveness)
 			};
+			var playerFaction = Find.FactionManager?.AllFactionsListForReading?.FirstOrDefault(faction => faction?.def?.isPlayer == true);
+			var blobHostileToPlayer = blob != null && playerFaction != null && blob.HostileTo(playerFaction);
+			var blobActiveThreatToPlayer = blob != null && playerFaction != null && GenHostility.IsActiveThreatTo(blob, playerFaction, false, false);
 			return new
 			{
 				success = true,
@@ -166,8 +169,19 @@ namespace ZombieLand
 						min = ZombieBlob.RenderOpacityMin,
 						max = ZombieBlob.RenderOpacityMax,
 						noiseScale = ZombieBlob.RenderNoiseScale,
-						noiseDrift = ZombieBlob.RenderNoiseDrift,
-						noiseTickScale = ZombieBlob.RenderNoiseTickScale
+						wavePhaseSpeed = ZombieBlob.RenderWavePhaseSpeed,
+						waveShadeStrength = ZombieBlob.RenderWaveShadeStrength,
+						edgeContrast = ZombieBlob.RenderEdgeContrast,
+						noiseTimeSeconds = ZombieBlob.RenderNoiseTimeSeconds
+					},
+					pawnSystems = new
+					{
+						registeredInMapPawnLists = blob.RegisteredInMapPawnLists,
+						hostileToPlayer = blobHostileToPlayer,
+						activeThreatToPlayer = blobActiveThreatToPlayer,
+						faction = blob.Faction?.def?.defName,
+						kindIsFighter = blob.kindDef?.isFighter ?? false,
+						combatPower = blob.kindDef?.combatPower ?? 0f
 					},
 					cellCount = blob.CellCount,
 					maxCells = ZombieBlob.MaxCells,

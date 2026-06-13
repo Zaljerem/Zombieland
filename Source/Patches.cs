@@ -656,10 +656,33 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(FloatMenuUtility.GetMeleeAttackAction))]
 		static class FloatMenuUtility_GetMeleeAttackAction_Patch
 		{
-			static bool Prefix(Pawn pawn, ref Action __result)
+			static bool Prefix(Pawn pawn, LocalTargetInfo target, ref string failStr, ref Action __result)
 			{
+				if (target.Thing is ZombieBlob)
+				{
+					failStr = null;
+					__result = null;
+					return false;
+				}
 				if (pawn.equipment?.Primary is Chainsaw chainsaw && chainsaw.running)
 				{
+					failStr = null;
+					__result = null;
+					return false;
+				}
+				return true;
+			}
+		}
+		//
+		[HarmonyPatch(typeof(FloatMenuUtility))]
+		[HarmonyPatch(nameof(FloatMenuUtility.GetRangedAttackAction))]
+		static class FloatMenuUtility_GetRangedAttackAction_Patch
+		{
+			static bool Prefix(LocalTargetInfo target, ref string failStr, ref Action __result)
+			{
+				if (target.Thing is ZombieBlob)
+				{
+					failStr = null;
 					__result = null;
 					return false;
 				}
@@ -858,7 +881,13 @@ namespace ZombieLand
 		{
 			static bool Prefix(IAttackTarget t, ref bool __result)
 			{
-				if (t.Thing is not Zombie zombie)
+				var thing = t?.Thing;
+				if (thing is ZombieBlob)
+				{
+					__result = false;
+					return false;
+				}
+				if (thing is not Zombie zombie)
 					return true;
 				if (zombie.Spawned == false || zombie.Downed || zombie.IsRopedOrConfused)
 				{
@@ -880,7 +909,9 @@ namespace ZombieLand
 		{
 			static void Postfix(Thing t, Pawn pawn, ref bool __result)
 			{
-				if (__result && t is Zombie zombie && pawn.SeesZombieAsThreat(zombie) == false)
+				if (t is ZombieBlob)
+					__result = false;
+				else if (__result && t is Zombie zombie && pawn.SeesZombieAsThreat(zombie) == false)
 					__result = false;
 			}
 		}
@@ -1110,6 +1141,14 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(Pawn_JobTracker.StartJob))]
 		static class Pawn_JobTracker_StartJob_Patch
 		{
+			static readonly HashSet<JobDef> allowedBlobJobs = new()
+			{
+				CustomDefs.Blob,
+				JobDefOf.Goto,
+				JobDefOf.Wait,
+				JobDefOf.Wait_MaintainPosture,
+			};
+
 			static readonly HashSet<JobDef> allowedJobs = new()
 			{
 				CustomDefs.Stumble,
@@ -1127,8 +1166,25 @@ namespace ZombieLand
 
 			static bool Prefix(Job newJob, Pawn ___pawn, ref int ___jobsGivenThisTick, ref string ___jobsGivenThisTickTextual, ref bool ___startingNewJob)
 			{
+				if (newJob != null && newJob.targetA.Thing is ZombieBlob && (newJob.def == JobDefOf.AttackMelee || newJob.def == JobDefOf.AttackStatic))
+				{
+					___jobsGivenThisTick = 0;
+					___jobsGivenThisTickTextual = "";
+					___startingNewJob = false;
+					___pawn.ClearReservationsForJob(newJob);
+					return false;
+				}
+
 				if (___pawn is not Zombie && ___pawn is not ZombieBlob && ___pawn is not ZombieSpitter)
 					return true;
+				if (___pawn is ZombieBlob && allowedBlobJobs.Contains(newJob.def) == false)
+				{
+					___jobsGivenThisTick = 0;
+					___jobsGivenThisTickTextual = "";
+					___startingNewJob = false;
+					___pawn.ClearReservationsForJob(newJob);
+					return false;
+				}
 				if (allowedJobs.Contains(newJob.def))
 					return true;
 
@@ -1337,7 +1393,9 @@ namespace ZombieLand
 					else
 						__result -= 10000f;
 				}
-				else if (prey is ZombieBlob || prey is ZombieSpitter)
+				else if (prey is ZombieBlob)
+					__result = -10000f;
+				else if (prey is ZombieSpitter)
 					__result = 0f;
 			}
 		}
@@ -2124,6 +2182,23 @@ namespace ZombieLand
 				});
 
 				return list;
+			}
+		}
+
+		[HarmonyPatch(typeof(Pawn_FilthTracker), nameof(Pawn_FilthTracker.Notify_EnteredNewCell))]
+		static class Pawn_FilthTracker_Notify_EnteredNewCell_BlobSplash_Patch
+		{
+			static void Postfix(Pawn_FilthTracker __instance)
+			{
+				// Called after pathing enters a cell; keep exits before blob lookup.
+				if (CustomDefs.BlobSplash == null)
+					return;
+				var pawn = __instance?.pawn;
+				if (pawn == null || pawn.Spawned == false || pawn.Map == null || pawn.Flying)
+					return;
+				if (ZombieBlob.IsBlobCellForAffectedPawn(pawn, pawn.Position, out _) == false)
+					return;
+				CustomDefs.BlobSplash.PlayOneShot(SoundInfo.InMap(pawn));
 			}
 		}
 

@@ -166,7 +166,7 @@ public class CreateAssetBundles
 	static void LogMaterial(string arch, string assetName, Material material)
 	{
 		Debug.Log($"Zombieland bundle inspect {arch}: material={assetName}, shader={material.shader?.name ?? "null"}, renderQueue={material.renderQueue}, color={GetMaterialColor(material)}");
-		foreach (var property in new[] { "_MainTex", "_BumpMap", "_Mode", "_SrcBlend", "_DstBlend", "_ZWrite", "_Cull", "_BlobOpacityMin", "_BlobOpacityMax", "_BlobNoiseScale", "_BlobNoiseDrift", "_BlobNoiseTime" })
+		foreach (var property in new[] { "_MainTex", "_BumpMap", "_Mode", "_SrcBlend", "_DstBlend", "_ZWrite", "_Cull", "_BlobOpacityMin", "_BlobOpacityMax", "_BlobNoiseScale", "_BlobFlowSpeed", "_BlobWaveShadeStrength", "_BlobEdgeContrast", "_BlobNoiseTime" })
 		{
 			if (material.HasProperty(property) == false)
 				continue;

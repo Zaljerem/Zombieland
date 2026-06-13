@@ -41,9 +41,9 @@
 		<destroyGearOnDrop>true</destroyGearOnDrop>
 		<canStrip>false</canStrip>
 		<forceNormalGearQuality>false</forceNormalGearQuality>
-		<combatPower>800</combatPower>
+		<combatPower>0</combatPower>
 		<defaultFactionType>Zombies</defaultFactionType>
-		<isFighter>true</isFighter>
+		<isFighter>false</isFighter>
 		<itemQuality>Shoddy</itemQuality>
 		<backstoryCryptosleepCommonality>0.0</backstoryCryptosleepCommonality>
 		<initialWillRange>0~0</initialWillRange>

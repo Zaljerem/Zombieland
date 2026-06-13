@@ -226,12 +226,12 @@ namespace ZombieLand
 
 		public override IEnumerable<Thing> PotentialWorkThingsGlobal(Pawn pawn)
 		{
-			if (pawn.IsColonist == false)
+			if (pawn?.Map == null || pawn.IsColonist == false)
 				return Enumerable.Empty<Thing>();
-			return pawn.Map.mapPawns.AllPawns
-				.OfType<ZombieBlob>()
-				.Where(blob => blob.DestroyedOrNull() == false && blob.Spawned && blob.FeedRequested && blob.FeedPulsesRemaining > 0)
-				.Cast<Thing>();
+			var blob = ZombieBlob.ActiveBlob(pawn.Map);
+			if (blob.DestroyedOrNull() || blob.Spawned == false || blob.FeedRequested == false || blob.FeedPulsesRemaining <= 0)
+				return Enumerable.Empty<Thing>();
+			return new Thing[] { blob };
 		}
 
 		public override bool HasJobOnThing(Pawn pawn, Thing t, bool forced = false)

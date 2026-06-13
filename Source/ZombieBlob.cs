@@ -41,17 +41,21 @@ namespace ZombieLand
 		const float MetaballMaxAlpha = 0.40f;
 		const float MetaballEdgeStart = 0.45f;
 		const float MetaballEdgeFull = 1.80f;
-		const float BlobOpacityMin = 0.28f;
-		const float BlobOpacityMax = 0.78f;
-		const float BlobNoiseScale = 0.96f;
-		const float BlobNoiseDrift = 0.05f;
-		const float BlobNoiseTickScale = 4f / 2500f;
+		const float BlobOpacityMin = 0.42f;
+		const float BlobOpacityMax = 0.76f;
+		const float BlobNoiseScale = 2.00f;
+		const float BlobWavePhaseSpeed = 0.45f;
+		const float BlobWaveShadeStrength = 0.68f;
+		const float BlobEdgeContrast = 0.95f;
+		const float BlobNormalTicksPerSecond = 60f;
 		const float BlobRenderAltitudeOffset = -0.25f;
 		const int SymbiosisMetricRefreshInterval = 250;
 		static readonly int BlobOpacityMinId = Shader.PropertyToID("_BlobOpacityMin");
 		static readonly int BlobOpacityMaxId = Shader.PropertyToID("_BlobOpacityMax");
 		static readonly int BlobNoiseScaleId = Shader.PropertyToID("_BlobNoiseScale");
-		static readonly int BlobNoiseDriftId = Shader.PropertyToID("_BlobNoiseDrift");
+		static readonly int BlobWavePhaseSpeedId = Shader.PropertyToID("_BlobFlowSpeed");
+		static readonly int BlobWaveShadeStrengthId = Shader.PropertyToID("_BlobWaveShadeStrength");
+		static readonly int BlobEdgeContrastId = Shader.PropertyToID("_BlobEdgeContrast");
 		static readonly int BlobNoiseTimeId = Shader.PropertyToID("_BlobNoiseTime");
 		// static readonly float[] elementSizes = [1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f];
 
@@ -106,11 +110,14 @@ namespace ZombieLand
 		public Vector2 RenderWorldSize => new(renderWidth, renderHeight);
 		public string RenderShaderName => metaballMaterial?.shader?.name;
 		public bool RenderUsesBlobShader => Assets.ZombieBlobShader != null && metaballMaterial?.shader == Assets.ZombieBlobShader;
+		public bool RegisteredInMapPawnLists => (MapHeld?.mapPawns?.AllPawnsSpawned?.Contains(this) ?? false);
 		public static float RenderOpacityMin => BlobOpacityMin;
 		public static float RenderOpacityMax => BlobOpacityMax;
 		public static float RenderNoiseScale => BlobNoiseScale;
-		public static float RenderNoiseDrift => BlobNoiseDrift;
-		public static float RenderNoiseTickScale => BlobNoiseTickScale;
+		public static float RenderWavePhaseSpeed => BlobWavePhaseSpeed;
+		public static float RenderWaveShadeStrength => BlobWaveShadeStrength;
+		public static float RenderEdgeContrast => BlobEdgeContrast;
+		public static float RenderNoiseTimeSeconds => GenTicks.TicksGame / BlobNormalTicksPerSecond;
 		public static int MaxCells => Mathf.Clamp(DebugMaxCellsOverride > 0 ? DebugMaxCellsOverride : (ZombieSettings.Values?.blobMaxCells ?? 400), 1, MAX_METABALLS);
 		Map BlobMap => Spawned ? Map : host?.MapHeld ?? MapHeld;
 		public Pawn LinkedHost => ResolveHost();
@@ -399,20 +406,39 @@ namespace ZombieLand
 			if (mapsWithoutActiveBlob.Contains(map))
 				return null;
 
-			var pawns = map.mapPawns?.AllPawns;
-			if (pawns != null)
+			foreach (var blob in SpawnedBlobThings(map))
 			{
-				for (var i = 0; i < pawns.Count; i++)
+				if (IsActiveBlobOnMap(blob, map))
 				{
-					if (pawns[i] is ZombieBlob blob && IsActiveBlobOnMap(blob, map))
-					{
-						RegisterActiveBlob(blob, map);
-						return blob;
-					}
+					blob.EnsureHiddenFromPawnSystems(map);
+					RegisterActiveBlob(blob, map);
+					return blob;
 				}
 			}
 			mapsWithoutActiveBlob.Add(map);
 			return null;
+		}
+
+		static IEnumerable<ZombieBlob> SpawnedBlobThings(Map map)
+		{
+			var lister = map?.listerThings;
+			if (lister == null)
+				yield break;
+
+			var def = CustomDefs.ZombieBlob;
+			if (def != null)
+			{
+				var things = lister.ThingsOfDef(def);
+				if (things != null)
+					for (var i = 0; i < things.Count; i++)
+						if (things[i] is ZombieBlob blob)
+							yield return blob;
+				yield break;
+			}
+
+			foreach (var thing in lister.AllThings)
+				if (thing is ZombieBlob blob)
+					yield return blob;
 		}
 
 		static IEnumerable<ZombieBlob> ActiveBlobs()
@@ -841,6 +867,13 @@ namespace ZombieLand
 			base.SpawnSetup(map, respawningAfterLoad);
 			EnsureBlobDefaults();
 			RegisterActiveBlob(this, map);
+			EnsureHiddenFromPawnSystems(map);
+		}
+
+		void EnsureHiddenFromPawnSystems(Map map = null)
+		{
+			map ??= MapHeld;
+			map?.mapPawns?.DeRegisterPawn(this);
 		}
 
 		public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
@@ -1579,7 +1612,9 @@ namespace ZombieLand
 			SetMaterialFloatIfPresent(metaballMaterial, BlobOpacityMinId, BlobOpacityMin);
 			SetMaterialFloatIfPresent(metaballMaterial, BlobOpacityMaxId, BlobOpacityMax);
 			SetMaterialFloatIfPresent(metaballMaterial, BlobNoiseScaleId, BlobNoiseScale);
-			SetMaterialFloatIfPresent(metaballMaterial, BlobNoiseDriftId, BlobNoiseDrift);
+			SetMaterialFloatIfPresent(metaballMaterial, BlobWavePhaseSpeedId, BlobWavePhaseSpeed);
+			SetMaterialFloatIfPresent(metaballMaterial, BlobWaveShadeStrengthId, BlobWaveShadeStrength);
+			SetMaterialFloatIfPresent(metaballMaterial, BlobEdgeContrastId, BlobEdgeContrast);
 		}
 
 		static void SetMaterialFloatIfPresent(Material material, int propertyId, float value)
@@ -1591,7 +1626,7 @@ namespace ZombieLand
 		void UpdateMetaballMaterialTime()
 		{
 			if (metaballMaterial != null && metaballMaterial.HasProperty(BlobNoiseTimeId))
-				metaballMaterial.SetFloat(BlobNoiseTimeId, GenTicks.TicksGame * BlobNoiseTickScale);
+				metaballMaterial.SetFloat(BlobNoiseTimeId, RenderNoiseTimeSeconds);
 		}
 
 		float GetSize(IntVec3 cell)

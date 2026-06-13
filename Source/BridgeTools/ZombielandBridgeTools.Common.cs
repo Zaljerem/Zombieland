@@ -1078,13 +1078,17 @@ namespace ZombieLand
 
 		static Pawn[] CurrentZombies(Map map)
 		{
-			if (map?.mapPawns?.AllPawnsSpawned == null)
+			if (map == null)
 				return Array.Empty<Pawn>();
 
-			return map.mapPawns.AllPawnsSpawned
-				.Where(pawn => pawn is Zombie || pawn is ZombieBlob || pawn is ZombieSpitter)
-				.Cast<Pawn>()
-				.ToArray();
+			var pawns = new List<Pawn>();
+			if (map.mapPawns?.AllPawnsSpawned != null)
+				pawns.AddRange(map.mapPawns.AllPawnsSpawned.Where(pawn => pawn is Zombie || pawn is ZombieSpitter));
+
+			var blob = ZombieBlob.ActiveBlob(map);
+			if (blob != null && pawns.Contains(blob) == false)
+				pawns.Add(blob);
+			return pawns.ToArray();
 		}
 
 		static bool TryFindZombie(Map map, string target, out Pawn pawn, out string error)

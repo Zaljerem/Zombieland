@@ -44,6 +44,20 @@ The blob is not a second spitter and not a normal combat target. The interesting
 - `blobCoagulantPotency = Normal`
 - Technical render/buffer ceiling is `ZombieBlob.MAX_METABALLS = 4000`; the gameplay default cap remains 400. Larger values are for stress testing or later balancing, not the v1 default.
 
+## Runtime Category And Combat Isolation
+
+- V1 keeps `ZombieBlob : Pawn` as an implementation shell to avoid a broad save/XML/job/bridge migration while rendering, growth, feeding, and room disruption are still settling.
+- Semantically, the blob is not a creature. It is room-scale goo with a custom renderer, cell set, feed interaction, host link, path cost, and room disruption.
+- The pawn shell must therefore opt out of ordinary pawn and combat systems:
+  - `PawnKindDef_ZombieBlob` is not a fighter and has zero combat power,
+  - the active blob unregisters itself from `map.mapPawns` after spawn/load,
+  - active blob discovery uses the map-keyed blob cache and `listerThings`, not `map.mapPawns`,
+  - attack target cache registration skips blobs,
+  - ordinary target selection, story danger, fleeing, predation, auto-attack, and explicit attack jobs reject blobs,
+  - the blob itself may run only the blob job plus inert wait/goto fallback jobs and must not start melee/static attack jobs.
+- This is an intentional interim compromise. The cleaner long-term architecture is a custom `ThingWithComps` or `Thing`-based blob entity with only the specific systems we need. Do that as a separate migration after v1 behavior and rendering are stable, not mixed into the current combat/rendering stabilization slice.
+- Compatibility expectation: hiding from `map.mapPawns` reduces interaction with vanilla and mod code that scans ordinary map pawns. It does not make the blob invisible to every possible mod because it is still a spawned `Thing` and still inherits from `Pawn` until the future category migration.
+
 ## Spawn And Host Link
 
 - Spawn only if blob infestation is enabled and no `ZombieBlob` already exists on the map.
@@ -193,13 +207,17 @@ The blob is not a second spitter and not a normal combat target. The interesting
 - Texture fill must use local spatial sampling, not an all-metaballs-for-every-pixel loop. Higher adaptive resolutions are only acceptable because each pixel samples nearby blob cells from a precomputed cell-radius map.
 - Bulk cell changes, including bridge stress setup and future fixture setup, must batch coordinate changes and rebuild the render mesh/texture once. Never add hundreds or thousands of cells through a loop that rebuilds the CPU texture for every cell.
 - Runtime motion must be render-parameter-only. Do not mutate gameplay cells, metaball coordinates, or texture pixels for jiggle or opacity animation; per-cell in/out tweening is deferred until it can be shader- or mesh-parameter-driven without hurting max dev-speed TPS.
-- The `Custom/ZombieBlob` shader samples the CPU mask and applies a stable, blurred, clustered noise field in world X/Z to vary alpha. C# passes `_BlobOpacityMin`, `_BlobOpacityMax`, `_BlobNoiseScale`, `_BlobNoiseDrift`, and a slow game-tick `_BlobNoiseTime`; the texture remains unchanged while the visual opacity drifts.
-- Opacity modulation is multiplicative over the CPU mask, not a new opaque decal. Current visual-tuning trial values are min 0.28 and max 0.78: the low end stays visible, and the high end is pulled down so variation reads as thickness rather than bright solid plastic.
-- Spatial noise frequency is currently in a 4x follow-up test: scale 0.96, exactly 4x the original 0.24 broad-patch trial. The 6x test made the variation clearly visible but too busy, so this pass keeps the learning while backing off the frequency.
-- Temporal noise response is also in a 4x failure-friendly test: `_BlobNoiseTime` advances at `4 / 2500` per game tick instead of the prior `1 / 2500`. Bridge render state exposes `noiseTickScale` so live tests can confirm the loaded DLL is using the faster time parameter.
+- The `Custom/ZombieBlob` shader samples the CPU mask and applies a stable, shader-only standing-wave interference field in world X/Z to vary alpha. C# passes `_BlobOpacityMin`, `_BlobOpacityMax`, `_BlobNoiseScale`, `_BlobFlowSpeed`, `_BlobWaveShadeStrength`, `_BlobEdgeContrast`, and `_BlobNoiseTime`; the texture remains unchanged while local wave amplitudes rise and fall.
+- Opacity modulation is multiplicative over the CPU mask, not a new opaque decal. Current visual-tuning trial values are min 0.42 and max 0.76, keeping stronger low/high contrast while lifting the low-opacity floor.
+- The current shader trial intentionally replaces the clustered random noise with x, z, diagonal, and cross-product standing modes at close frequencies plus a small non-translating sine-domain warp. The goal is ocean-like interference where local minima/maxima flip, cancel, and build without a readable travel direction.
+- Wave-contour shading is shader-only. A wider, darker green color band follows the midpoint of the opacity wave with soft edges so thicker/thinner regions read as shaded goo rather than only alpha noise.
+- Edge contrast is a soft dark-green/near-black shader band based on the CPU mask edge. It must mostly live in the outer falloff: broad body-facing edge bands desaturate the goo without making the visible border read stronger. The current trial uses a narrow outer core plus feather and a small rim-local alpha lift so the area between the green body and the outer fade has outline-like impact without becoming a hard RimWorld-style black cutout.
+- `_BlobNoiseTime` is normal-speed seconds (`GenTicks.TicksGame / 60`), and `_BlobFlowSpeed` is a 0.45 wave-phase speed. At 1x gameplay the interference pattern changes with game ticks through standing-mode amplitude changes, not field translation.
+- Bridge render state exposes `wavePhaseSpeed` and `noiseTimeSeconds` so live tests can confirm the loaded DLL is using the interference-wave parameterization.
 - Alpha and edge thresholds should preserve the original translucent transfer look from the first working CPU-rendered blob. Do not fix hole artifacts by filling the whole field into an opaque decal; real holes should be addressed through draw order, altitude, geometry, or cell-field shape.
 - Per-cell metaball radius tuning currently uses a slightly fatter join profile: radius factor 0.45, minimum radius 0.55, max radius 0.95. This is meant to close small gaps between specks without making isolated outliers much larger.
 - The blob mesh is drawn below walls, doors, buildings, items, pawns, and overlays. RimWorld 1.6 places `Item` above all building layers, so v1 chooses correct wall/building ordering over half-submerged floor items.
+- Pawn footstep feedback is handled as a movement-entry side effect, not a tick effect. Patch `Pawn_FilthTracker.Notify_EnteredNewCell`, the RimWorld notification called by `Pawn_PathFollower.TryEnterNextPathCell` immediately after `pawn.Position = nextCell`. Keep cheap exits before blob lookup, reuse `ZombieBlob.IsBlobCellForAffectedPawn`, and play `BlobSplash` once for each real path-cell entry into blob goo. Keep this patch independent from the existing contamination patch on the same method because contamination can be disabled.
 - Suppress RimWorld 1.6 pawn render-tree body drawing for `ZombieBlob`; the CPU blob mesh is the only blob body render. This removes the extra body-shaped artifact while preserving selection and UI overlays.
 - When cell bounds change, render bounds, mesh dimensions, texture dimensions, and the cell-radius map must be rebuilt before the CPU mask update. The current runtime should not keep stale normalized metaball positions at all.
 - RimWorld's dynamic draw cull must see the blob's full visual footprint. `ZombieBlob.DrawSize` is therefore derived from relative blob bounds plus render padding, and bridge state exposes `occupiedDrawRect` so tests can verify camera/view overlap even when the pawn anchor cell is offscreen.
@@ -225,6 +243,7 @@ The blob is not a second spitter and not a normal combat target. The interesting
 - Be conservative with limbo pawns: capsules, mothballed pawns, world pawns, generated pawns during world/faction setup, and badly initialized modded pawns are unaffected unless they are clearly spawned on a real map and in a supported interaction category.
 - Do not call logging global helpers such as `Faction.OfPlayer` from early pawn predicates. Use null-safe pawn-owned state such as `pawn.Faction?.IsPlayer == true` only after null/destroyed/dead/spawned/map checks.
 - Never scan `map.mapPawns.AllPawns` from hot paths. Use cached RimWorld groups such as free colonists when selecting hosts, and maintain a map-keyed active-blob cache for runtime interactions.
+- Never use `map.mapPawns` as the primary blob discovery mechanism. The blob is deliberately removed from ordinary pawn lists, so bridge tools, work givers, and runtime blob lookups must use `ZombieBlob.ActiveBlob(map)` or `listerThings`.
 - The active-blob cache must key by the actual `Map` object, not only `map.uniqueID`. RimWorld save/load can reuse `uniqueID = 0`; a numeric-keyed static cache can otherwise report a stale blob on a freshly loaded no-blob map.
 - `IsBlobCell` and `ContainsCell` must remain pure, allocation-free membership checks. They must not normalize blob data, rebuild render state, scan rooms, or touch symbiosis metrics.
 - Blob cell membership should reject by map and blob bounds before hash lookup. Room-stat disruption should reject by room/blob bounds overlap before walking blob cells.
@@ -274,7 +293,13 @@ The blob is not a second spitter and not a normal combat target. The interesting
 - Current 4x opacity-frequency plus 4x temporal-response test on 2026-06-13 local time:
   - live bridge state in `blob rendering minimal` confirmed opacity min 0.28, opacity max 0.78, noise scale 0.96, noise drift 0.05, and noise tick scale 0.0016,
   - static screenshot `zl_blob_noise_4x_time_4x_blob_rendering_minimal__cell_rect.png` shows a calmer pattern than the 6x pass,
-  - the attempted unpaused temporal-response run hit unrelated save pawn ticking errors in `Verse.Pawn_AgeTracker.AgeTickInterval` for Jake/Jackalope, so this pass has not yet produced a clean moving-shader validation.
+  - the attempted unpaused temporal-response run hit unrelated save pawn ticking errors in `Verse.Pawn_AgeTracker.AgeTickInterval` for Jake/Jackalope; later decompiler inspection mapped the stack offset to `ExpectationsUtility.CurrentExpectationFor(pawn.MapHeld).order`, so this is treated as converted-save/map expectation noise for this fixture, not a blob-rendering failure signal.
+- Current standing-wave opacity trial on 2026-06-13 local time:
+  - visible wave scale remains `_BlobNoiseScale = 2.00`, which is 75% of the prior 1.50-scale pass's feature size,
+  - `_BlobFlowSpeed = 0.45`, a 1.8x increase over the prior 0.25 standing-wave phase speed,
+  - opacity is min 0.42 and max 0.76 for stronger contrast with a lifted low-opacity floor,
+  - shader-only contour shading follows a widened soft band around the midpoint of the opacity wave; current strength is 0.68 and the test shade target remains a deliberately very dark green,
+  - edge contrast follow-up after the 0.70 two-lobe pass lost overall saturation while leaving the border too similar: `_BlobEdgeContrast = 0.95`, with the broad inner lobe removed, a narrower outer mask-falloff band, near-black green edge tint, and a rim-local alpha lift so the visible border gets more impact without washing down the blob body.
 
 ## Implementation Checklist
 
@@ -330,6 +355,7 @@ The blob is not a second spitter and not a normal combat target. The interesting
 - Verify disabling blob events while a blob already exists stops future spawns but does not silently delete the active blob.
 - Verify lowering `blobMaxCells` below the current cell count prevents further expansion without deleting existing cells.
 - Verify multi-map and save/load behavior: one active blob per map, no cross-map host selection, bridge state reports the intended map, and loading a no-blob save after a blob map does not return stale static-cache blob state.
+- Verify combat isolation: bridge state must report `registeredInMapPawnLists = false`, `hostileToPlayer = false`, `activeThreatToPlayer = false`, `kindIsFighter = false`, and `combatPower = 0`; drafted colonists, animals, enemies, predators, and forced attack jobs must not attack the blob, while the feed job still finds it.
 - Runtime render smoke: stress a 15-20 cell blob, capture the map, and verify it renders as connected translucent goo with no magenta shader failure and no full-square bounds artifact.
 - Shader activation smoke: bridge state for the active blob must report `renderShader = Custom/ZombieBlob` and `renderUsesBlobShader = true` after rebuilding the current-platform asset bundle and restarting RimWorld.
 - In the `blob rendering` save, verify walls are above the blob, the old body-shaped artifact near the meal is gone, and items/overlays render consistently above the blob.

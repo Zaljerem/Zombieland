@@ -52,6 +52,7 @@ namespace ZombieLand
 		public static SoundDef BallSpit;
 		public static SoundDef BallImpact;
 		public static SoundDef SpitterMove;
+		public static SoundDef BlobSplash;
 		public static JobDef Stumble;
 		public static JobDef Sabotage;
 		public static JobDef Spitter;

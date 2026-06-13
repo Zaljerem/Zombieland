@@ -4,11 +4,13 @@ Shader "Custom/ZombieBlob"
 	{
 		_MainTex ("Blob Mask", 2D) = "white" {}
 		_Color ("Tint", Color) = (1, 1, 1, 1)
-		_BlobOpacityMin ("Blob Opacity Min", Range(0, 1)) = 0.28
-		_BlobOpacityMax ("Blob Opacity Max", Range(0, 1)) = 0.78
-		_BlobNoiseScale ("Blob Noise Scale", Float) = 0.96
-		_BlobNoiseDrift ("Blob Noise Drift", Float) = 0.05
-		_BlobNoiseTime ("Blob Noise Time", Float) = 0
+		_BlobOpacityMin ("Blob Opacity Min", Range(0, 1)) = 0.42
+		_BlobOpacityMax ("Blob Opacity Max", Range(0, 1)) = 0.76
+		_BlobNoiseScale ("Blob Wave Scale", Float) = 2.00
+		_BlobFlowSpeed ("Blob Wave Phase Speed", Float) = 0.45
+		_BlobWaveShadeStrength ("Blob Wave Shade Strength", Range(0, 1)) = 0.68
+		_BlobEdgeContrast ("Blob Edge Contrast", Range(0, 1)) = 0.95
+		_BlobNoiseTime ("Blob Noise Time Seconds", Float) = 0
 	}
 
 	SubShader
@@ -33,7 +35,9 @@ Shader "Custom/ZombieBlob"
 			float _BlobOpacityMin;
 			float _BlobOpacityMax;
 			float _BlobNoiseScale;
-			float _BlobNoiseDrift;
+			float _BlobFlowSpeed;
+			float _BlobWaveShadeStrength;
+			float _BlobEdgeContrast;
 			float _BlobNoiseTime;
 
 			struct appdata
@@ -58,34 +62,27 @@ Shader "Custom/ZombieBlob"
 				return output;
 			}
 
-			float Hash21(float2 p)
+			float GooWave(float2 worldXZ)
 			{
-				p = frac(p * float2(123.34, 456.21));
-				p += dot(p, p + 45.32);
-				return frac(p.x * p.y);
-			}
-
-			float SmoothValueNoise(float2 p)
-			{
-				float2 i = floor(p);
-				float2 f = frac(p);
-				f = f * f * (3.0 - 2.0 * f);
-
-				float a = Hash21(i);
-				float b = Hash21(i + float2(1.0, 0.0));
-				float c = Hash21(i + float2(0.0, 1.0));
-				float d = Hash21(i + float2(1.0, 1.0));
-				return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
-			}
-
-			float ClusteredNoise(float2 p)
-			{
-				float n = SmoothValueNoise(p);
-				n += SmoothValueNoise(p * 1.73 + float2(19.17, -7.31)) * 0.22;
-				n += SmoothValueNoise(p * 3.31 + float2(-3.43, 29.79)) * 0.08;
-				n /= 1.30;
-
-				return smoothstep(0.32, 0.68, n);
+				float scale = max(_BlobNoiseScale, 0.001);
+				float phase = _BlobNoiseTime * _BlobFlowSpeed;
+				float2 dirA = normalize(float2(1.0, 1.0));
+				float2 dirB = normalize(float2(1.0, -1.0));
+				float2 q = worldXZ;
+				float2 warp = float2(
+					sin(dot(q, float2(0.31, 0.73)) * scale * 0.42 + 1.10),
+					cos(dot(q, float2(-0.79, 0.26)) * scale * 0.39 - 0.60)
+				) * ((0.18 + 0.04 * sin(phase * 0.29 + 0.70)) / scale);
+				float2 p = q + warp;
+				float x = p.x * scale;
+				float z = p.y * scale;
+				float waveX = sin(x * 1.00 + 0.35) * sin(phase * 0.61 + 0.20);
+				float waveZ = sin(z * 1.04 + 1.85) * sin(phase * 0.55 + 1.60);
+				float waveA = sin(dot(p, dirA) * scale * 1.02 + 2.55) * sin(phase * 0.47 + 2.80);
+				float waveB = sin(dot(p, dirB) * scale * 0.98 - 1.20) * sin(phase * 0.43 + 4.10);
+				float waveCross = sin(x * 0.92 + 0.80) * sin(z * 0.96 - 1.30) * sin(phase * 0.37 + 2.20);
+				float field = waveX * 0.25 + waveZ * 0.25 + waveA * 0.22 + waveB * 0.22 + waveCross * 0.18;
+				return smoothstep(-0.50, 0.50, field);
 			}
 
 			fixed4 frag(v2f input) : SV_Target
@@ -94,15 +91,22 @@ Shader "Custom/ZombieBlob"
 				if (color.a <= 0.001)
 					return color;
 
-				float scale = max(_BlobNoiseScale, 0.001);
-				float drift = _BlobNoiseTime * _BlobNoiseDrift;
-				float2 p = input.worldXZ * scale;
-				float cluster = ClusteredNoise(p + float2(drift, -drift * 0.73));
-				cluster = lerp(cluster, ClusteredNoise(p * 0.47 + float2(37.1, 11.8) - drift * 0.31), 0.18);
+				float maskAlpha = color.a;
+				float cluster = GooWave(input.worldXZ);
+				float shadeBand = saturate(1.0 - abs(cluster - 0.50) / 0.42);
+				shadeBand = shadeBand * shadeBand * (3.0 - 2.0 * shadeBand);
+				float3 waveShade = lerp(float3(1.0, 1.0, 1.0), float3(0.03, 0.20, 0.04), saturate(shadeBand * _BlobWaveShadeStrength));
+				float edgeCore = smoothstep(0.012, 0.055, maskAlpha) * (1.0 - smoothstep(0.115, 0.235, maskAlpha));
+				float edgeFeather = smoothstep(0.004, 0.025, maskAlpha) * (1.0 - smoothstep(0.210, 0.360, maskAlpha));
+				float edgeBand = saturate(edgeCore * 1.55 + edgeFeather * 0.35);
+				float edgeImpact = saturate(edgeBand * _BlobEdgeContrast);
+				float3 edgeShade = lerp(float3(1.0, 1.0, 1.0), float3(0.00, 0.04, 0.00), edgeImpact);
+				color.rgb *= waveShade * edgeShade;
 
 				float minOpacity = saturate(min(_BlobOpacityMin, _BlobOpacityMax));
 				float maxOpacity = saturate(max(_BlobOpacityMin, _BlobOpacityMax));
-				color.a *= lerp(minOpacity, maxOpacity, cluster);
+				float opacity = lerp(minOpacity, maxOpacity, cluster);
+				color.a = saturate(color.a * opacity + edgeImpact * (1.0 - saturate(maskAlpha * 1.65)) * 0.12);
 				return color;
 			}
 			ENDCG

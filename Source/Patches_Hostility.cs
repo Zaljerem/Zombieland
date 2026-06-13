@@ -36,12 +36,11 @@ namespace ZombieLand
 			var isEnemy = isAnimal == false && attackerFactionDef != null && attackerFaction.HostileTo(Faction.OfPlayer);
 			var isFriendly = isAnimal == false && isEnemy == false && isPlayer == false;
 
+			rawTargets.RemoveAll(thing => thing.Thing is ZombieBlob);
+
 			// remove spitter for everyone except player
 			if (isPlayer == false)
-			{
-				rawTargets.RemoveAll(thing => thing.Thing is ZombieBlob);
 				rawTargets.RemoveAll(thing => thing.Thing is ZombieSpitter);
-			}
 
 			// remove electric zombies if verb is unsuited
 			if (verb.CanHarmElectricZombies() == false)
@@ -271,12 +270,11 @@ namespace ZombieLand
 			// make ranged weapons (i.e. turrets) ignore electrical or roped zombies
 			if (searcher is not Pawn attacker)
 			{
-				if (verb.CanHarmElectricZombies())
-					return;
-
 				validator = (Thing t) =>
 				{
-					if (t is Zombie zombie && (zombie.IsActiveElectric || zombie.IsRopedOrConfused))
+					if (t is ZombieBlob)
+						return false;
+					if (verb.CanHarmElectricZombies() == false && t is Zombie zombie && (zombie.IsActiveElectric || zombie.IsRopedOrConfused))
 						return false;
 					return oldValidator(t);
 				};
@@ -286,7 +284,15 @@ namespace ZombieLand
 
 			// attacker is zombie? use default
 			if (attacker is Zombie)
+			{
+				validator = (Thing t) =>
+				{
+					if (t is ZombieBlob)
+						return false;
+					return oldValidator(t);
+				};
 				return;
+			}
 
 			var attackerFaction = attacker.Faction;
 			var attackerFactionDef = attackerFaction?.def;
@@ -297,6 +303,8 @@ namespace ZombieLand
 			{
 				validator = (Thing t) =>
 				{
+					if (t is ZombieBlob)
+						return false;
 					if (t is Zombie zombie && zombie.IsRopedOrConfused)
 						return false;
 					return oldValidator(t);
@@ -335,7 +343,15 @@ namespace ZombieLand
 			}
 
 			if (attackerFactionDef == null)
+			{
+				validator = (Thing t) =>
+				{
+					if (t is ZombieBlob)
+						return false;
+					return oldValidator(t);
+				};
 				return;
+			}
 
 			// attacker is friendly (disabled because the postfix deals with that)
 
@@ -489,7 +505,7 @@ namespace ZombieLand
 			yield return SymbolExtensions.GetMethodInfo(() => AttackTargetFinder.FriendlyFireBlastRadiusTargetScoreOffset(default, default, default));
 		}
 
-		static List<Thing> RemoveZombies(List<Thing> input) => input.Where(i => i is not Zombie).ToList();
+		static List<Thing> RemoveZombies(List<Thing> input) => input.Where(i => i is not Zombie && i is not ZombieBlob).ToList();
 
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
@@ -508,6 +524,17 @@ namespace ZombieLand
 	[HarmonyPatch(new Type[] { typeof(Thing), typeof(Thing) })]
 	static class GenHostility_HostileTo_Thing_Thing_Patch
 	{
+		[HarmonyPriority(Priority.First)]
+		static bool Prefix(Thing a, Thing b, ref bool __result)
+		{
+			if (a is ZombieBlob || b is ZombieBlob)
+			{
+				__result = false;
+				return false;
+			}
+			return true;
+		}
+
 		static void Postfix(Thing a, Thing b, ref bool __result)
 		{
 			if (a is not Pawn pawn || pawn.ActivePartOfColony() || pawn is Zombie || b is not Zombie)
@@ -527,7 +554,12 @@ namespace ZombieLand
 	{
 		static bool Prefix(ref bool __result, Thing t, Faction fac)
 		{
-			if ((t is ZombieBlob || t is ZombieSpitter) && (fac?.def?.isPlayer ?? false) == false)
+			if (t is ZombieBlob)
+			{
+				__result = false;
+				return false;
+			}
+			if (t is ZombieSpitter && (fac?.def?.isPlayer ?? false) == false)
 			{
 				__result = false;
 				return false;
@@ -567,6 +599,11 @@ namespace ZombieLand
 		[HarmonyPriority(Priority.First)]
 		static bool Prefix(ref bool __result, IAttackTarget target, Faction faction)
 		{
+			if (target is ZombieBlob)
+			{
+				__result = false;
+				return false;
+			}
 			if (IsZombielandPawnTarget(target) == false) // must skip non zombies bc next patch requires it
 				return true;
 
@@ -618,7 +655,9 @@ namespace ZombieLand
 		{
 			if (target is Zombie zombie)
 				return zombie.IsRopedOrConfused == false;
-			if (target is ZombieBlob || target is ZombieSpitter)
+			if (target is ZombieBlob)
+				return false;
+			if (target is ZombieSpitter)
 				return faction?.def?.isPlayer ?? false;
 			return GenHostility.IsActiveThreatTo(target, faction, ignoreHives, canBeFogged); // ok to call patched method bc we filtered out zombies
 		}
@@ -681,6 +720,11 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(AttackTargetsCache.RegisterTarget))]
 		static class AttackTargetsCache_RegisterTarget_Patch
 		{
+			static bool Prefix(IAttackTarget target)
+			{
+				return target?.Thing is not ZombieBlob;
+			}
+
 			static void Postfix(IAttackTarget target)
 			{
 				var thing = target.Thing;
@@ -699,16 +743,19 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(AttackTargetsCache.DeregisterTarget))]
 		static class AttackTargetsCache_DeregisterTarget_Patch
 		{
-			static void Prefix(IAttackTarget target)
+			static bool Prefix(IAttackTarget target)
 			{
-				var thing = target.Thing;
+				var thing = target?.Thing;
+				if (thing is ZombieBlob)
+					return false;
 				if (thing == null || IsZombielandTarget(target))
-					return;
+					return true;
 				var map = thing.MapHeld;
 				if (map == null)
-					return;
+					return true;
 				if (playerHostilesWithoutZombies.TryGetValue(map, out var targets))
 					_ = targets.Remove(target);
+				return true;
 			}
 		}
 	}
