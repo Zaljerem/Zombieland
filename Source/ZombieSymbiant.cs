@@ -71,6 +71,7 @@ namespace ZombieLand
 		Vector2 drawCullSize = Vector2.one;
 		int nextExpansionTick;
 		int feedPausedUntilTick;
+		int lastSymbiantTick = -1;
 		int lastRecessionPulseCells;
 		bool cancelNextBreach;
 		bool feedRequested;
@@ -158,6 +159,7 @@ namespace ZombieLand
 		public int FeedPulsesRemaining => Mathf.Max(0, DecouplingFeedPulsesPerDay - DecouplingFeedPulsesToday);
 		public bool CanSafelySever => LinkedHost != null && HasMaturedForSeverance && decouplingReserve >= DecouplingReserveMax - 0.01f && CellCount <= 3;
 		public static float ZombieIgnoreMinBenefit => Mathf.Clamp(ZombieSettings.Values?.symbiantZombieIgnoreMinBenefit ?? 0.5f, 0f, 1f);
+		public static float HostHediffSeverity(float benefitFactor) => Mathf.Max(0.001f, Mathf.Clamp01(benefitFactor));
 
 		internal static object SetDebugPerfProfile(string profile)
 		{
@@ -833,16 +835,21 @@ namespace ZombieLand
 			if (pawn?.health?.hediffSet == null || CustomDefs.SymbiantSymbiosis == null)
 				return;
 			var hediff = pawn.health.hediffSet.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) as Hediff_SymbiantSymbiosis;
+			var severity = HostHediffSeverity(BenefitFactor);
 			if (hediff == null)
 			{
 				hediff = HediffMaker.MakeHediff(CustomDefs.SymbiantSymbiosis, pawn) as Hediff_SymbiantSymbiosis;
 				if (hediff != null)
+				{
+					hediff.symbiantThingId = ThingID;
+					hediff.Severity = severity;
 					pawn.health.AddHediff(hediff);
+				}
 			}
 			if (hediff != null)
 			{
 				hediff.symbiantThingId = ThingID;
-				hediff.Severity = BenefitFactor;
+				hediff.Severity = severity;
 			}
 		}
 
@@ -1139,6 +1146,9 @@ namespace ZombieLand
 			if (DebugDisableSymbiantTick)
 				return;
 			var ticks = GenTicks.TicksGame;
+			if (lastSymbiantTick == ticks)
+				return;
+			lastSymbiantTick = ticks;
 			if (ticks % SymbiosisMetricRefreshInterval == Mathf.Abs(thingIDNumber % SymbiosisMetricRefreshInterval))
 			{
 				EnsureHostLink();

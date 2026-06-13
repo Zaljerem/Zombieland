@@ -10,7 +10,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 
 - One active symbiant per map.
 - A symbiant has one authoritative linked host pawn. The link state lives on the symbiant, not in the host hediff.
-- `SymbiantSymbiosis` is a display/sync hediff only. If DLC or another mod removes it while the symbiant link still exists, the symbiant should recreate it.
+- `SymbiantSymbiosis` is a display/sync hediff only. If DLC or another mod removes it while the symbiant link still exists, the symbiant should recreate it. Because RimWorld removes zero-severity hediffs, linked hosts keep a tiny nonzero display severity even when the current benefit factor is zero.
 - Natural spawn still chooses a central, trafficked, colony-used room. The host is chosen independently from eligible colonists so players cannot trivially steer the spawn by moving one pawn to a disposable room.
 - Natural spawn requires an eligible host. Hostless symbiants are allowed only for debug/test spawning or explicit fallback tools, and hostless slime has its own lesser cleanup behavior rather than the full symbiant loop.
 - Safe severance requires symbiosis maturity. The symbiant must have reached a meaningful visible size or medium benefit at least once before reserve can enable surgery.
@@ -48,6 +48,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 
 - V1 keeps `ZombieSymbiant : Pawn` as an implementation shell to avoid a broad save/XML/job/bridge migration while rendering, growth, feeding, and room disruption are still settling.
 - Semantically, the symbiant is not a creature. It is room-scale goo with a custom renderer, cell set, feed interaction, host link, path cost, and room disruption.
+- Symbiant maintenance is driven by the map-level Zombieland tick manager, with a same-game-tick guard because the legacy symbiant job driver can still call the same method. Do not rely on ordinary pawn-list or zombie-list membership for host sync, growth, or repair.
 - The pawn shell must therefore opt out of ordinary pawn and combat systems:
   - `PawnKindDef_ZombieSymbiant` is not a fighter and has zero combat power,
   - the active symbiant unregisters itself from `map.mapPawns` after spawn/load,
@@ -312,7 +313,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Feeding: pulse strength, severance reserve cap, effective reserve maturity factor, daily pulse cap, safe visible minimum, growth pause, breach cancellation.
 - Surgery: defs, recipe worker, language, failure behavior.
 - Unsafe damage/collapse: reserve absorption, host trauma, host-death messy collapse, safe-destroy guard.
-- Bridge state: expose host, benefit factor, integrated visible cells, peak cells, maturity state, full-benefit cells, severance maturity cells, safe visible minimum, reserve, effective reserve, reserve required, feed cap, severance readiness, and stress-test symbiant occupancy counts.
+- Bridge state: expose host, host display-hediff severity, benefit factor, integrated visible cells, peak cells, maturity state, full-benefit cells, severance maturity cells, safe visible minimum, reserve, effective reserve, reserve required, feed cap, severance readiness, and stress-test symbiant occupancy counts. Keep a bridge action that removes the host display hediff so repair behavior remains directly testable.
 - Docs: keep this file, `TEST_COVERAGE.md`, `TEST_SCENARIOS.md`, and `coverage/ZL_COVERAGE_INDEX.tsv` aligned with the symbiant design.
 
 ## Implementation Stages
@@ -353,7 +354,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Verify unsafe destruction without reserve harms/kills the linked host.
 - Verify host death by ordinary damage, player action, despawn/deletion edge cases, and caravan/map-leave edges collapses the symbiant without recursion and without reward drops.
 - Verify linked host temporarily leaving the map preserves the link if the pawn is expected to return, but prevents benefit and surgery while unavailable.
-- Verify `SymbiantSymbiosis` hediff removal by another system is repaired from symbiant state.
+- Verify `SymbiantSymbiosis` hediff removal by another system is repaired from symbiant state, including an early zero-benefit symbiant where the display hediff must not be removed by RimWorld's base zero-severity rule. Use the bridge `removeHostHediff` mode as the deterministic stand-in for DLC/mod removal.
 - Verify zombie targeting behavior at low, medium, and high benefit; hard ignore must not apply to a one-cell symbiant.
 - Verify disabling symbiant events while a symbiant already exists stops future spawns but does not silently delete the active symbiant.
 - Verify lowering `symbiantMaxCells` below the current cell count prevents further expansion without deleting existing cells.

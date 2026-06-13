@@ -9,9 +9,9 @@ namespace ZombieLand
 {
 	public sealed partial class ZombielandBridgeTools
 	{
-		[Tool("zombieland/symbiant_infestation_state", Description = "Inspect or exercise the zombie symbiant state with spawn, expand, feedCoagulant, and stress modes.")]
+		[Tool("zombieland/symbiant_infestation_state", Description = "Inspect or exercise the zombie symbiant state with spawn, expand, feedCoagulant, removeHostHediff, and stress modes.")]
 		public static object SymbiantInfestationState(
-			[ToolParameter(Description = "Mode: read, spawn, expand, feedCoagulant, stress.", Required = false, DefaultValue = "read")] string mode = "read",
+			[ToolParameter(Description = "Mode: read, spawn, expand, feedCoagulant, removeHostHediff, stress.", Required = false, DefaultValue = "read")] string mode = "read",
 			[ToolParameter(Description = "Target x coordinate for spawn/stress. Use -1 with z -1 for automatic placement.", Required = false, DefaultValue = -1)] int x = -1,
 			[ToolParameter(Description = "Target z coordinate for spawn/stress. Use -1 with x -1 for automatic placement.", Required = false, DefaultValue = -1)] int z = -1,
 			[ToolParameter(Description = "Number of expansion pulses or stress cells.", Required = false, DefaultValue = 1)] int count = 1,
@@ -80,6 +80,20 @@ namespace ZombieLand
 					feedPulsesRemaining = symbiant?.FeedPulsesRemaining ?? 0
 				};
 			}
+			else if (mode.Equals("removeHostHediff", StringComparison.OrdinalIgnoreCase))
+			{
+				var linkedHost = symbiant?.LinkedHost;
+				var hediffs = linkedHost?.health?.hediffSet?.hediffs?
+					.Where(hediff => hediff.def == CustomDefs.SymbiantSymbiosis)
+					.ToArray() ?? Array.Empty<Hediff>();
+				foreach (var hediff in hediffs)
+					linkedHost.health.RemoveHediff(hediff);
+				action = new
+				{
+					host = linkedHost == null ? null : ZombieRuntimeActions.StableThingId(linkedHost),
+					removed = hediffs.Length
+				};
+			}
 			else if (mode.Equals("stress", StringComparison.OrdinalIgnoreCase))
 			{
 				if (symbiant == null)
@@ -135,6 +149,7 @@ namespace ZombieLand
 
 			symbiant = ZombieSymbiant.ActiveSymbiant(map);
 			var host = symbiant?.LinkedHost;
+			var hostSymbiosisHediff = host?.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) as Hediff_SymbiantSymbiosis;
 			var room = symbiant?.Position.GetRoom(map);
 			var roomDisruption = room == null ? null : new
 			{
@@ -194,7 +209,8 @@ namespace ZombieLand
 						label = host.LabelShortCap,
 						position = host.Spawned ? ZombieRuntimeActions.DescribeCell(host.Position) : null,
 						infectionState = host.InfectionState().ToString(),
-						hasSymbiosisHediff = host.health?.hediffSet?.HasHediff(CustomDefs.SymbiantSymbiosis) ?? false
+						hasSymbiosisHediff = hostSymbiosisHediff != null,
+						symbiosisHediffSeverity = hostSymbiosisHediff?.Severity ?? 0f
 					},
 					hostThingId = symbiant.HostThingId,
 					eligibleColonyRoomCells = symbiant.EligibleColonyRoomCells,

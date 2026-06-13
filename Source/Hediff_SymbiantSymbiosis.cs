@@ -14,8 +14,6 @@ namespace ZombieLand
 			{
 				if (ZombieSymbiant.DebugDisableHostHediffSync)
 					return false;
-				if (base.ShouldRemove)
-					return true;
 				return ZombieSymbiant.LinkedSymbiantFor(pawn) == null;
 			}
 		}
@@ -34,7 +32,7 @@ namespace ZombieLand
 				return;
 			}
 			symbiantThingId = symbiant.ThingID;
-			Severity = symbiant.BenefitFactor;
+			Severity = ZombieSymbiant.HostHediffSeverity(symbiant.BenefitFactor);
 		}
 
 		public override void ExposeData()

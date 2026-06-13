@@ -390,6 +390,7 @@ namespace ZombieLand
 				ticking[i].CustomTick(threatLevel);
 				ZombieTicker.zombiesTicked++;
 			}
+			ZombieSymbiant.ActiveSymbiant(map)?.SymbiantTick();
 		}
 
 		public int LiveZombieCount()
