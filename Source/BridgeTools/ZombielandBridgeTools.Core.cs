@@ -89,7 +89,8 @@ namespace ZombieLand
 					currentTicking = ZombieTicker.currentTicking,
 					managersCount = ZombieTicker.managers?.Count() ?? 0,
 					frameWatchRunning = ZombielandMod.frameWatch.IsRunning,
-					frameWatchElapsedMilliseconds = ZombielandMod.frameWatch.ElapsedMilliseconds
+					frameWatchElapsedMilliseconds = ZombielandMod.frameWatch.ElapsedMilliseconds,
+					saturation = ZombieTicker.DescribeSaturation(tickManager)
 				},
 				ideology,
 				ambientSound,
@@ -226,6 +227,7 @@ namespace ZombieLand
 					candidateCount = tickManager.CurrentZombiesTickingCandidatesCount,
 					candidateCapacity = tickManager.CurrentZombiesTickingCandidatesCapacity
 				},
+				saturation = ZombieTicker.DescribeSaturation(tickManager),
 				zombieGrid = DescribeZombieGridDensity(map),
 				frameWatch = new
 				{

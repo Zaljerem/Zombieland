@@ -13,8 +13,10 @@ namespace ZombieLand
 	{
 		// never use one value more than once per tick cycle and zombie!
 		Every2,
+		Every8,
 		Every10,
 		Every12,
+		Every30,
 		Every45,
 		Every50,
 		Every60,
@@ -73,6 +75,10 @@ namespace ZombieLand
 		public IntVec3 lastGotoPosition = IntVec3.Invalid;
 		public bool isHealing = false;
 		public float consciousness = 1f;
+		public float simulationTickRate = 1f;
+		public bool hasAttackCandidateNeighbor;
+		public int attackCandidateNeighborTick = -1;
+		public int nextAttackScanTick = 0;
 		public int paralyzedUntil = 0;
 		public Pawn ropedBy;
 		public bool IsConfused => Downed == false && ropedBy == null && (this.IsParalyzed() || consciousness <= Constants.MIN_CONSCIOUSNESS);

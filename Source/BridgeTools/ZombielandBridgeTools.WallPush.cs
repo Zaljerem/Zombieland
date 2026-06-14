@@ -52,7 +52,8 @@ namespace ZombieLand
 
 			var sourceDerivedProgressDelta = 0.01f;
 			var expectedLandingTicks = 102;
-			var maxTicks = 110;
+			var maxStartDelayTicks = Zombie.nthTickValues[(int)NthTick.Every8] + 1;
+			var maxTicks = expectedLandingTicks + maxStartDelayTicks + 10;
 			var effectiveMinimum = Math.Max(1, minimumZombies);
 			var primedGridCount = Math.Max(0, effectiveMinimum - 4);
 			grid.ChangeZombieCount(zombieCell, primedGridCount);
@@ -87,6 +88,7 @@ namespace ZombieLand
 
 			var samples = new List<object>();
 			var startedPush = false;
+			var startTick = -1;
 			var landed = false;
 			var landingTick = -1;
 			try
@@ -100,7 +102,11 @@ namespace ZombieLand
 				{
 					AdvanceGameTicks(1);
 					if (zombie.wallPushProgress >= 0f)
+					{
 						startedPush = true;
+						if (startTick < 0)
+							startTick = tick;
+					}
 					if (tick == 1 || tick % 10 == 0 || zombie.Position == destinationCell || zombie.wallPushProgress < 0f && startedPush)
 						samples.Add(CaptureSample(tick));
 					if (zombie.Position == destinationCell && zombie.wallPushProgress < 0f)
@@ -134,10 +140,13 @@ namespace ZombieLand
 					&& roofCleared,
 				sourceDerivedProgressDelta,
 				expectedLandingTicks,
+				maxStartDelayTicks,
 				maxTicks,
 				startedPush,
+				startTick,
 				landed,
 				landingTick,
+				landingTicksAfterStart = startTick < 0 || landingTick < 0 ? -1 : landingTick - startTick + 1,
 				effectiveMinimum,
 				primedGridCount,
 				gridCountAtZombieCell,
@@ -389,6 +398,7 @@ namespace ZombieLand
 				var originalHome = map.areaManager.Home[fixture.wallCell];
 				var beforeLetters = DangerousLetterCount();
 				var startedPush = false;
+				var startTick = -1;
 				try
 				{
 					map.areaManager.Home[fixture.wallCell] = homeWall;
@@ -396,8 +406,17 @@ namespace ZombieLand
 					ZombieSettings.Values.minimumZombiesForWallPushing = effectiveMinimum;
 					ZombieSettings.Values.dangerousSituationMessage = true;
 					zombie.jobs.StartJob(JobMaker.MakeJob(CustomDefs.Stumble), JobCondition.InterruptForced, null, true, false, null, null);
-					AdvanceGameTicks(1);
-					startedPush = zombie.wallPushProgress >= 0f;
+					var maxStartDelayTicks = Zombie.nthTickValues[(int)NthTick.Every8] + 1;
+					for (var tick = 1; tick <= maxStartDelayTicks; tick++)
+					{
+						AdvanceGameTicks(1);
+						startedPush = zombie.wallPushProgress >= 0f;
+						if (startedPush)
+						{
+							startTick = tick;
+							break;
+						}
+					}
 				}
 				finally
 				{
@@ -417,6 +436,7 @@ namespace ZombieLand
 					success,
 					homeWall,
 					startedPush,
+					startTick,
 					beforeLetters,
 					afterLetters,
 					letterDelta,
@@ -429,8 +449,8 @@ namespace ZombieLand
 				};
 			}
 
-			var outsideHome = RunCase("outsideHomeWall", root + new IntVec3(-12, 0, -12), false);
-			var insideHome = RunCase("insideHomeWall", root + new IntVec3(12, 0, -12), true);
+			var outsideHome = RunCase("outsideHomeWall", root + new IntVec3(-36, 0, -24), false);
+			var insideHome = RunCase("insideHomeWall", root + new IntVec3(36, 0, -24), true);
 			var caseResults = new[] { outsideHome, insideHome };
 
 			return new

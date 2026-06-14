@@ -115,7 +115,17 @@ namespace ZombieLand
 
 		public int GetZombieCount(IntVec3 position)
 		{
-			return GetPheromone(position, false)?.zombieCount ?? 0;
+			if (position.x < 0 || position.x >= mapSizeX || position.z < 0 || position.z >= mapSizeZ)
+				return 0;
+
+			var cell = grid[(position.z * mapSizeX) + position.x];
+			return cell?.zombieCount ?? 0;
+		}
+
+		public int GetZombieCountInBounds(IntVec3 position)
+		{
+			var cell = grid[(position.z * mapSizeX) + position.x];
+			return cell?.zombieCount ?? 0;
 		}
 
 		public void ChangeZombieCount(IntVec3 position, int change)

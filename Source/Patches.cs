@@ -437,6 +437,7 @@ namespace ZombieLand
 					realTimeToTickThrough += Time.deltaTime;
 
 				var n1 = realTimeToTickThrough / curTimePerTick;
+				ZombieTicker.UpdateSaturation(ZombielandMod.frameWatch.ElapsedMilliseconds, n1);
 				var n2 = __instance.TickRateMultiplier * 2f;
 				var loopEstimate = Mathf.FloorToInt(Mathf.Min(n1, n2));
 
@@ -2549,6 +2550,7 @@ namespace ZombieLand
 				var pos = pawn.Position;
 				if (pos == value)
 					return;
+				map.GetComponent<ZombieAttackTargetIndex>()?.InvalidateFor(pawn);
 
 				if (pawn is ZombieSpitter)
 				{
@@ -4018,7 +4020,7 @@ namespace ZombieLand
 					if (stat == StatDefOf.MoveSpeed)
 					{
 						var tm = Find.TickManager;
-						var multiplier = defaultHumanMoveSpeed / ZombieTicker.PercentTicking;
+						var multiplier = defaultHumanMoveSpeed / Mathf.Clamp(zombie.simulationTickRate, 0.05f, 1f);
 
 						if (zombie.health.Downed)
 						{

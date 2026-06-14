@@ -1386,7 +1386,11 @@ namespace ZombieLand
 			var originalHome = map.areaManager.Home[fixture.wallCell];
 			var originalRoof = map.roofGrid.RoofAt(fixture.destinationCell);
 			var beforeLetters = DangerousLetterCount();
+			var expectedLandingTicks = 102;
+			var maxStartDelayTicks = Zombie.nthTickValues[(int)NthTick.Every8] + 1;
+			var maxTicks = expectedLandingTicks + maxStartDelayTicks + 10;
 			var startedPush = false;
+			var startTick = -1;
 			var landed = false;
 			var landingTick = -1;
 			var samples = new List<object>();
@@ -1403,11 +1407,15 @@ namespace ZombieLand
 				ZombieSettings.Values.minimumZombiesForWallPushing = effectiveMinimum;
 				ZombieSettings.Values.dangerousSituationMessage = true;
 				zombie.jobs.StartJob(JobMaker.MakeJob(CustomDefs.Stumble), JobCondition.InterruptForced, null, true, false, null, null);
-				for (var tick = 1; tick <= 110; tick++)
+				for (var tick = 1; tick <= maxTicks; tick++)
 				{
 					AdvanceGameTicks(1);
 					if (zombie.wallPushProgress >= 0f)
+					{
 						startedPush = true;
+						if (startTick < 0)
+							startTick = tick;
+					}
 					if (tick == 1 || tick % 20 == 0 || zombie.wallPushProgress < 0f && startedPush)
 					{
 						samples.Add(new
@@ -1448,8 +1456,13 @@ namespace ZombieLand
 					&& roofAfterLanding == null
 					&& letterDelta == 1,
 				startedPush,
+				startTick,
 				landed,
 				landingTick,
+				landingTicksAfterStart = startTick < 0 || landingTick < 0 ? -1 : landingTick - startTick + 1,
+				expectedLandingTicks,
+				maxStartDelayTicks,
+				maxTicks,
 				effectiveMinimum,
 				primedGridCount,
 				beforeLetters,

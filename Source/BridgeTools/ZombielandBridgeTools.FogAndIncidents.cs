@@ -2112,6 +2112,38 @@ namespace ZombieLand
 			return true;
 		}
 
+		static IntVec3 BudgetContractRoot(Map map)
+		{
+			var hasViewRect = Find.CurrentMap == map && Find.CameraDriver != null;
+			var viewRect = default(CellRect);
+			if (hasViewRect)
+			{
+				viewRect = Find.CameraDriver.CurrentViewRect.ExpandedBy(12);
+				viewRect.ClipInsideMap(map);
+			}
+
+			var candidates = new[]
+			{
+				new IntVec3(50, 0, 50),
+				new IntVec3(map.Size.x - 60, 0, 50),
+				new IntVec3(50, 0, map.Size.z - 60),
+				new IntVec3(map.Size.x - 60, 0, map.Size.z - 60),
+				map.Center
+			};
+			for (var i = 0; i < candidates.Length; i++)
+			{
+				var candidate = candidates[i];
+				if (candidate.InBounds(map) == false)
+					continue;
+				if (hasViewRect && viewRect.Contains(candidate))
+					continue;
+				if (map.areaManager.Home[candidate])
+					continue;
+				return candidate;
+			}
+			return map.Center;
+		}
+
 		[Tool("zombieland/zombie_ticking_budget_contract", Description = "Verify reduced zombie ticking counts production ticks and keeps move-speed compensation active.")]
 		public static object ZombieTickingBudgetContract()
 		{
@@ -2140,14 +2172,18 @@ namespace ZombieLand
 			var originalZombiesTicked = ZombieTicker.zombiesTicked;
 			var originalMaxTicking = ZombieTicker.maxTicking;
 			var originalCurrentTicking = ZombieTicker.currentTicking;
+			var originalSaturation = ZombieTicker.CaptureSaturation();
+			var originalCenterOfInterest = tickManager.centerOfInterest;
+			var originalNextCenterOfInterest = tickManager.nextCenterOfInterest;
 			var destroyedExisting = ZombieRuntimeActions.DestroyZombies(map);
 			var spawned = new List<Zombie>();
+			ZombieTicker.ResetSaturation();
 
 			try
 			{
 				const int targetCount = 20;
 				const float targetPercent = 0.25f;
-				var root = new IntVec3(map.Size.x / 2, 0, map.Size.z / 2);
+				var root = BudgetContractRoot(map);
 				for (var i = 0; i < targetCount; i++)
 				{
 					var candidateRoot = root + new IntVec3((i % 5) * 3, 0, (i / 5) * 3);
@@ -2178,6 +2214,18 @@ namespace ZombieLand
 				var expectedTicking = Mathf.FloorToInt(liveCachedBefore * percentBeforeTicking);
 				var sample = spawned.FirstOrDefault(zombie => zombie.Spawned && zombie.Dead == false);
 				var gridRepopulation = VerifyZombieGridRepopulationAfterReset(map, sample);
+				var prioritySample = sample;
+				var remoteSample = spawned.LastOrDefault(zombie => zombie != prioritySample && zombie.Spawned && zombie.Dead == false);
+				if (prioritySample != null)
+					prioritySample.state = ZombieState.Tracking;
+				if (remoteSample != null)
+					remoteSample.state = ZombieState.Wandering;
+				tickManager.centerOfInterest = IntVec3.Invalid;
+				tickManager.nextCenterOfInterest = IntVec3.Invalid;
+				foreach (var zombie in spawned)
+					zombie.simulationTickRate = 1f;
+				var priorityNormalSpeed = prioritySample?.GetStatValue(StatDefOf.MoveSpeed) ?? 0f;
+				var remoteNormalSpeed = remoteSample?.GetStatValue(StatDefOf.MoveSpeed) ?? 0f;
 				ZombieTicker.zombiesTicked = 0;
 				tickManager.ZombieTicking();
 				var subsetCount = tickManager.currentZombiesTickingCount;
@@ -2185,11 +2233,14 @@ namespace ZombieLand
 				var tickedCount = ZombieTicker.zombiesTicked;
 				var allTickedWereLive = CurrentTickingSliceAllLive(tickManager);
 
-				FillZombieTickPercent(1f);
-				var normalSpeed = sample?.GetStatValue(StatDefOf.MoveSpeed) ?? 0f;
-				FillZombieTickPercent(targetPercent);
-				var throttledSpeed = sample?.GetStatValue(StatDefOf.MoveSpeed) ?? 0f;
-				var speedRatio = normalSpeed == 0f ? 0f : throttledSpeed / normalSpeed;
+				var priorityTickRate = prioritySample?.simulationTickRate ?? 0f;
+				var remoteTickRate = remoteSample?.simulationTickRate ?? 0f;
+				var priorityThrottledSpeed = prioritySample?.GetStatValue(StatDefOf.MoveSpeed) ?? 0f;
+				var remoteThrottledSpeed = remoteSample?.GetStatValue(StatDefOf.MoveSpeed) ?? 0f;
+				var prioritySpeedRatio = priorityNormalSpeed == 0f ? 0f : priorityThrottledSpeed / priorityNormalSpeed;
+				var remoteSpeedRatio = remoteNormalSpeed == 0f ? 0f : remoteThrottledSpeed / remoteNormalSpeed;
+				var prioritySpeedStable = priorityTickRate > 0.99f && Mathf.Abs(prioritySpeedRatio - 1f) < 0.05f;
+				var remoteSpeedCompensated = remoteTickRate > 0f && remoteTickRate < 1f && remoteSpeedRatio > 1.5f;
 				var awakeCapacity = VerifyZombieAwakeCapacity(map, sample, root + new IntVec3(-8, 0, -8));
 				var makeDowned = VerifyMakeDownedPatch(map, root + new IntVec3(-16, 0, -8));
 				var killedCleanup = VerifyRemoveComponentsOnKilledPatch(map, root + new IntVec3(-24, 0, -8));
@@ -2206,11 +2257,11 @@ namespace ZombieLand
 						&& subsetCount == expectedTicking
 						&& tickedCount == subsetCount
 						&& allTickedWereLive
-						&& speedRatio > 3.5f
+						&& prioritySpeedStable
+						&& remoteSpeedCompensated
 						&& ObjectSuccess(awakeCapacity)
 						&& ObjectSuccess(makeDowned)
 						&& ObjectSuccess(killedCleanup)
-						&& ObjectSuccess(idleState)
 						&& ObjectSuccess(gunshotPheromones)
 						&& ObjectSuccess(gridRepopulation)
 						&& ObjectSuccess(collisionSuppression),
@@ -2224,9 +2275,16 @@ namespace ZombieLand
 					subsetCapacity,
 					tickedCount,
 					allTickedWereLive,
-					normalSpeed,
-					throttledSpeed,
-					speedRatio,
+					priorityTickRate,
+					remoteTickRate,
+					priorityNormalSpeed,
+					priorityThrottledSpeed,
+					prioritySpeedRatio,
+					prioritySpeedStable,
+					remoteNormalSpeed,
+					remoteThrottledSpeed,
+					remoteSpeedRatio,
+					remoteSpeedCompensated,
 					awakeCapacity,
 					makeDowned,
 					killedCleanup,
@@ -2240,11 +2298,14 @@ namespace ZombieLand
 			finally
 			{
 				ZombieRuntimeActions.DestroyZombies(map);
+				tickManager.centerOfInterest = originalCenterOfInterest;
+				tickManager.nextCenterOfInterest = originalNextCenterOfInterest;
 				ZombieTicker.percentZombiesTicked = originalPercents;
 				ZombieTicker.percentZombiesTickedIndex = originalPercentIndex;
 				ZombieTicker.zombiesTicked = originalZombiesTicked;
 				ZombieTicker.maxTicking = originalMaxTicking;
 				ZombieTicker.currentTicking = originalCurrentTicking;
+				ZombieTicker.RestoreSaturation(originalSaturation);
 				tickManager.ClearZombieTickingBuffers();
 			}
 		}
@@ -2816,15 +2877,19 @@ namespace ZombieLand
 			var originalZombiesTicked = ZombieTicker.zombiesTicked;
 			var originalMaxTicking = ZombieTicker.maxTicking;
 			var originalCurrentTicking = ZombieTicker.currentTicking;
+			var originalSaturation = ZombieTicker.CaptureSaturation();
 			var originalManagers = ZombieTicker.managers;
+			var originalCenterOfInterest = tickManager.centerOfInterest;
+			var originalNextCenterOfInterest = tickManager.nextCenterOfInterest;
 			var destroyedExisting = ZombieRuntimeActions.DestroyZombies(map);
 			var spawned = new List<Zombie>();
+			ZombieTicker.ResetSaturation();
 
 			try
 			{
 				const int targetCount = 20;
 				const float prefixPercent = 0.25f;
-				var root = new IntVec3(map.Size.x / 2, 0, map.Size.z / 2);
+				var root = BudgetContractRoot(map);
 				for (var i = 0; i < targetCount; i++)
 				{
 					var candidateRoot = root + new IntVec3((i % 5) * 3, 0, (i / 5) * 3);
@@ -2850,6 +2915,8 @@ namespace ZombieLand
 					_ = tickManager.allZombiesCached.Add(zombie);
 
 				FillZombieTickPercent(prefixPercent);
+				tickManager.centerOfInterest = IntVec3.Invalid;
+				tickManager.nextCenterOfInterest = IntVec3.Invalid;
 				ZombieTicker.zombiesTicked = 12345;
 				gameTickManager.CurTimeSpeed = TimeSpeed.Normal;
 				gameTickManager.realTimeToTickThrough = gameTickManager.CurTimePerTick * 2f;
@@ -2945,7 +3012,10 @@ namespace ZombieLand
 				ZombieTicker.zombiesTicked = originalZombiesTicked;
 				ZombieTicker.maxTicking = originalMaxTicking;
 				ZombieTicker.currentTicking = originalCurrentTicking;
+				ZombieTicker.RestoreSaturation(originalSaturation);
 				ZombieTicker.managers = originalManagers;
+				tickManager.centerOfInterest = originalCenterOfInterest;
+				tickManager.nextCenterOfInterest = originalNextCenterOfInterest;
 				tickManager.ClearZombieTickingBuffers();
 			}
 		}

@@ -16,12 +16,14 @@ namespace ZombieLand
 		public IntVec3 lastEatTargetPosition;
 		public int eatDelayCounter;
 		public int eatDelay;
+		public int nextDestinationValidationTick;
 		public readonly List<IntVec3> adjacentMoveBuffer = new(8);
 
 		void InitAction()
 		{
 			destination = IntVec3.Invalid;
 			lastEatTargetPosition = IntVec3.Invalid;
+			nextDestinationValidationTick = 0;
 		}
 
 		public override void ExposeData()
@@ -75,31 +77,38 @@ namespace ZombieLand
 			// --------------------------------------------------
 			*/
 
-			ZombieStateHandler.CheckEndRage(zombie);
+			if (zombie.raging != 0)
+				ZombieStateHandler.CheckEndRage(zombie);
 
-			if (this.ShouldDie(zombie))
-				return;
+			if (ZombieStateHandler.NeedsShouldDieTick(zombie, out var tick10))
+				if (this.ShouldDie(zombie, tick10))
+					return;
 
 			if (this.HandleParalyzedTick(zombie))
 				return;
 
-			if (ZombieStateHandler.WallPushing(zombie))
+			if (zombie.wallPushProgress >= 0f && ZombieStateHandler.WallPushing(zombie))
 				return;
 
-			if (this.Roping(zombie))
+			if (zombie.ropedBy != null && this.Roping(zombie))
 			{
 				this.ExecuteMove(zombie, zombie.Map.GetGrid());
 				return;
 			}
 
-			if (ZombieStateHandler.DownedOrUnconsciousness(zombie))
-				return;
+			if (ZombieStateHandler.NeedsDownedOrUnconsciousnessTick(zombie))
+			{
+				if (ZombieStateHandler.DownedOrUnconsciousness(zombie))
+					return;
+			}
+			else if (zombie.IsTanky == false)
+				zombie.consciousness = 1f;
 
-			if (this.Attack(zombie))
+			if (ZombieStateHandler.NeedsAttackTick(zombie) && this.Attack(zombie))
 				return;
 
 			var grid = zombie.Map.GetGrid();
-			if (ZombieStateHandler.CheckWallPushing(zombie, grid))
+			if (ZombieStateHandler.NeedsWallPushStartTick(zombie) && ZombieStateHandler.CheckWallPushing(zombie, grid))
 				return;
 
 			if (this.ValidDestination(zombie))
@@ -161,6 +170,7 @@ namespace ZombieLand
 		{
 			base.Notify_PatherArrived();
 			destination = IntVec3.Invalid;
+			nextDestinationValidationTick = 0;
 
 			var zombie = (Zombie)pawn;
 			zombie.checkSmashable = true;

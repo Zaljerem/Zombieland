@@ -886,7 +886,7 @@ namespace ZombieLand
 			if (map.edificeGrid[dest] is Building_Door door && door.Open == false)
 				return false;
 			var idx = map.cellIndices.CellToIndex(dest);
-			var pathGrid = map.pathing.For(pawn).pathGrid;
+			var pathGrid = pawn is Zombie ? map.pathing.Normal.pathGrid : map.pathing.For(pawn).pathGrid;
 			if (pathGrid.pathGrid[idx] >= 10000)
 				return false;
 			return true;
@@ -1008,7 +1008,7 @@ namespace ZombieLand
 
 			if (thing is Pawn target)
 			{
-				if (Customization.DoesAttractsZombies(target) == false)
+				if (Customization.DoesAttractsZombies(target, out var forcedByAnomaly) == false)
 					return false;
 
 				if (target.equipment?.Primary is Chainsaw chainsaw && chainsaw.running && zombie.IsActiveElectric == false)
@@ -1018,12 +1018,12 @@ namespace ZombieLand
 				if (distance > Constants.MIN_ATTACKDISTANCE_SQUARED)
 					return false;
 
-				if (target.InfectionState() == InfectionState.Infecting)
+				if (target.RaceProps.Humanlike == false && target.InfectionState() == InfectionState.Infecting)
 					return false;
 				if (ZombieSymbiant.HasZombieTargetingProtection(target))
 					return false;
 
-				if (AnomalyTargeting.IsForcedTarget(target))
+				if (forcedByAnomaly)
 					return true;
 
 				if (mode == AttackMode.Everything)

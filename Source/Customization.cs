@@ -88,7 +88,11 @@ namespace ZombieLand
 		}
 
 		public static bool DoesAttractsZombies(Pawn pawn)
+			=> DoesAttractsZombies(pawn, out _);
+
+		public static bool DoesAttractsZombies(Pawn pawn, out bool forcedByAnomaly)
 		{
+			forcedByAnomaly = false;
 			if (pawn == null)
 				return false;
 			if (pawn is Zombie)
@@ -103,11 +107,15 @@ namespace ZombieLand
 				return false;
 			if (pawn.canBeDormant?.Awake == false)
 				return false;
-			if (pawn.RaceProps.Humanlike && pawn.InfectionState() >= InfectionState.Infecting)
+			var raceProps = pawn.RaceProps;
+			if (raceProps.Humanlike && pawn.InfectionState() >= InfectionState.Infecting)
 				return false;
 
 			if (AnomalyTargeting.TryGetAttractionOverride(pawn, out var anomalyAttracts))
+			{
+				forcedByAnomaly = anomalyAttracts;
 				return anomalyAttracts;
+			}
 
 			var i = 0;
 			var j = attractsZombiesEvaluators.Count;
@@ -119,9 +127,9 @@ namespace ZombieLand
 				i++;
 			}
 
-			if (pawn.RaceProps.Humanlike)
+			if (raceProps.Humanlike)
 			{
-				if (pawn.RaceProps.IsFlesh == false)
+				if (raceProps.IsFlesh == false)
 					return false;
 				if (AlienTools.IsFleshPawn(pawn) == false)
 					return false;
@@ -131,8 +139,8 @@ namespace ZombieLand
 			return ZombieSettings.Values.attackMode switch
 			{
 				AttackMode.Everything => true,
-				AttackMode.OnlyHumans => pawn.RaceProps.Humanlike,
-				AttackMode.OnlyColonists => pawn.RaceProps.Humanlike && pawn.IsColonist,
+				AttackMode.OnlyHumans => raceProps.Humanlike,
+				AttackMode.OnlyColonists => raceProps.Humanlike && pawn.IsColonist,
 				_ => false,
 			};
 		}
