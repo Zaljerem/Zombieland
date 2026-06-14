@@ -90,10 +90,13 @@ namespace ZombieLand
 
 		static void Prefix(Rect rect, Thing thing, float alpha)
 		{
+			if (thing == null)
+				return;
 			var contamination = thing.GetContamination();
 			if (contamination == 0)
 				return;
-			var texture = Constants.thingIconTextures[Mathf.FloorToInt(alpha * 4f + 0.2f)];
+			var textureIdx = Mathf.Clamp(Mathf.FloorToInt(alpha * 4f + 0.2f), 0, Constants.thingIconTextures.Length - 1);
+			var texture = Constants.thingIconTextures[textureIdx];
 			Tools.DrawBorderRect(rect, texture);
 			rect = rect.ExpandedBy(-1, -1);
 			rect.yMin = rect.yMax - rect.height * Tools.Boxed(contamination, 0, 1);

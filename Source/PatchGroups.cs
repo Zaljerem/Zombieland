@@ -636,6 +636,7 @@ namespace ZombieLand
 		static readonly HashSet<string> SocialPatchTypes = new()
 		{
 			"ZombieLand.Patches+Faction_TryAffectGoodwillWith_Patch",
+			"ZombieLand.Patches+TaleRecorder_RecordTale_Patch",
 			"ZombieLand.Patches+Thought_Memory_Save_Patch",
 			"ZombieLand.Patches+RelationsUtility_HasAnySocialMemoryWith_Patch",
 			"ZombieLand.Patches+Pawn_RelationsTracker_OpinionOf_Patch",

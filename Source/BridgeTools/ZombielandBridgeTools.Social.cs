@@ -985,6 +985,7 @@ namespace ZombieLand
 		public static object ZombieDeathThoughtSuppression()
 		{
 			var deathThoughtTargets = PatchedMethodsForPatchClass("PawnDiedOrDownedThoughtsUtility_TryGiveThoughts_Patch");
+			var nullTaleDefTargets = PatchedMethodsForPatchClass("TaleRecorder_RecordTale_Patch");
 			var killedChildConstructorTargets = PatchedMethodsForPatchClass("IndividualThoughtToAdd_Constructor_Patch");
 			var killedChildTaleTargets = PatchedMethodsForPatchClass("Thought_Tale_OpinionOffset_Patch");
 			var map = CurrentMap;
@@ -1112,6 +1113,17 @@ namespace ZombieLand
 			var childDamageInfo = new DamageInfo(DamageDefOf.Cut, 1f, instigator: observer);
 			PawnDiedOrDownedThoughtsUtility.TryGiveThoughts(childZombieVictim, childDamageInfo, PawnDiedOrDownedThoughtsKind.Died);
 			var memoriesAfterChildTryGive = TotalMemoryCount(observer);
+			Tale nullTaleDefResult = null;
+			string nullTaleDefError = null;
+			try
+			{
+				nullTaleDefResult = TaleRecorder.RecordTale(null, Array.Empty<object>());
+			}
+			catch (Exception ex)
+			{
+				nullTaleDefError = $"{ex.GetType().Name}: {ex.Message}";
+			}
+			var nullTaleDefHandled = nullTaleDefResult == null && nullTaleDefError == null;
 			var childThoughtDelta = memoriesAfterChildTryGive - memoriesBeforeChildTryGive;
 			var memoryDefsAfterChild = MemoryDefCounts(observer);
 			var childKilledThoughtMemories = observer.needs?.mood?.thoughts?.memories?.Memories?
@@ -1185,6 +1197,8 @@ namespace ZombieLand
 			return new
 			{
 				success = deathThoughtTargets.Length > 0
+					&& nullTaleDefTargets.Length > 0
+					&& nullTaleDefHandled
 					&& killedChildConstructorTargets.Length > 0
 					&& killedChildTaleTargets.Length > 0
 					&& humanThoughtDelta > 0
@@ -1194,6 +1208,7 @@ namespace ZombieLand
 				patchTargets = new
 				{
 					deathThoughts = deathThoughtTargets,
+					nullTaleDef = nullTaleDefTargets,
 					killedChildConstructor = killedChildConstructorTargets,
 					killedChildTaleOpinion = killedChildTaleTargets
 				},
@@ -1209,6 +1224,8 @@ namespace ZombieLand
 				childThoughtSurfaceUnavailable,
 				childThoughtSkipReason,
 				childThoughtEvidenceSatisfied,
+				nullTaleDefHandled,
+				nullTaleDefError,
 				memoriesBefore,
 				memoriesAfterHumanKill,
 				memoriesAfterHumanTryGive,

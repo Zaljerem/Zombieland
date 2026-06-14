@@ -5193,6 +5193,21 @@ namespace ZombieLand
 			return IsZombielandPawn(pawn);
 		}
 
+		[HarmonyPatch(typeof(TaleRecorder))]
+		[HarmonyPatch(nameof(TaleRecorder.RecordTale))]
+		static class TaleRecorder_RecordTale_Patch
+		{
+			[HarmonyPriority(Priority.First)]
+			static bool Prefix(TaleDef def, ref Tale __result)
+			{
+				if (def != null)
+					return true;
+
+				__result = null;
+				return false;
+			}
+		}
+
 		[HarmonyPatch(typeof(Thought_Memory), nameof(Thought_Memory.Save), MethodType.Getter)]
 		static class Thought_Memory_Save_Patch
 		{
