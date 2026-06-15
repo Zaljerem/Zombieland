@@ -5643,6 +5643,7 @@ namespace ZombieLand
 			{
 				Tools.EnableTwinkie(ZombieSettings.Values.replaceTwinkie);
 				CustomDefs.Zombie.race.baseHealthScale = ZombieSettings.Values.healthFactor;
+				ZombieSymbiant.ClearActiveSymbiantCaches();
 			}
 		}
 
@@ -6194,16 +6195,23 @@ namespace ZombieLand
 
 		// suppress memories of zombie violence
 		//
+		[HarmonyPatch(typeof(Pawn))]
+		[HarmonyPatch(nameof(Pawn.PreApplyDamage))]
+		static class Pawn_PreApplyDamage_Patch
+		{
+			static bool Prefix(Pawn __instance, ref DamageInfo dinfo, ref bool absorbed)
+			{
+				if (__instance is not ZombieSymbiant symbiant)
+					return true;
+				symbiant.PreApplyLinkedDamage(ref dinfo, ref absorbed);
+				return absorbed == false;
+			}
+		}
+
 		[HarmonyPatch(typeof(Pawn_HealthTracker))]
 		[HarmonyPatch(nameof(Pawn_HealthTracker.PreApplyDamage))]
 		static class Pawn_HealthTracker_PreApplyDamage_Patch
 		{
-			static void Prefix(Pawn ___pawn, ref DamageInfo dinfo)
-			{
-				if (___pawn is ZombieSymbiant symbiant)
-					symbiant.PreApplyLinkedDamage(ref dinfo);
-			}
-
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
 			{
 				var m_TryGainMemory = typeof(MemoryThoughtHandler).MethodNamed(nameof(MemoryThoughtHandler.TryGainMemory), new Type[] { typeof(ThoughtDef), typeof(Pawn), typeof(Precept) });

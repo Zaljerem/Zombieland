@@ -11,6 +11,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - One active symbiant per map.
 - A symbiant has one authoritative linked host pawn. The link state lives on the symbiant, not in the host hediff.
 - `SymbiantSymbiosis` is a display/sync hediff only. If DLC or another mod removes it while the symbiant link still exists, the symbiant should recreate it. Because RimWorld removes zero-severity hediffs, linked hosts keep a tiny nonzero display severity even when the current benefit factor is zero.
+- The host relationship can survive temporary unavailable states such as despawn or cryptosleep containment, but active symbiosis effects are same-map only. Benefit factor, zombie targeting protection, and safe-severance surgery are disabled unless the host is spawned on the same map as the linked symbiant.
 - Natural spawn still chooses a central, trafficked, colony-used room. The host is chosen independently from eligible colonists so players cannot trivially steer the spawn by moving one pawn to a disposable room.
 - Natural spawn requires an eligible host. Hostless symbiants are allowed only for debug/test spawning or explicit fallback tools, and hostless slime has its own lesser cleanup behavior rather than the full symbiant loop.
 - Safe severance requires symbiosis maturity. The symbiant must have reached a meaningful visible size or medium benefit at least once before reserve can enable surgery.
@@ -19,7 +20,8 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Ordinary feeding no longer removes the final cell and no longer serves as complete removal.
 - Feeding creates or increases a decoupling reserve, can trigger a recession pulse, pauses growth, and can cancel the next breach, but it cannot shrink below the safe visible minimum.
 - The only safe removal path is host surgery: `SeverSymbiantSymbiosis`.
-- Unsafe symbiant destruction harms or kills the linked host unless enough effective reserve can absorb the trauma.
+- Ordinary weapons and direct pawn violence are not a removal path. The symbiant rejects normal damage and tells the player to feed it and prepare host surgery instead.
+- Non-gameplay destruction paths such as debug cleanup, mod deletion, or broken save cleanup detach the link without host trauma. They should not become ordinary player-facing gameplay.
 - If the linked host dies, the symbiant collapses messily. This is an emergency amputation path, not a clean exploit or reward source.
 
 ## Accepted Defaults
@@ -59,7 +61,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
   - the symbiant itself may run only the symbiant job plus inert wait/goto fallback jobs and must not start melee/static attack jobs.
 - This is an intentional interim compromise. The cleaner long-term architecture is a custom `ThingWithComps` or `Thing`-based symbiant entity with only the specific systems we need. Do that as a separate migration after v1 behavior and rendering are stable, not mixed into the current combat/rendering stabilization slice.
 - Compatibility expectation: hiding from `map.mapPawns` reduces interaction with vanilla and mod code that scans ordinary map pawns. It does not make the symbiant invisible to every possible mod because it is still a spawned `Thing` and still inherits from `Pawn` until the future category migration.
-- Bridge validation uses `zombieland/symbiant_combat_isolation_contract` to prove the current pawn-shell compromise in one fixture: map-pawn exclusion, hostility/active-threat/story-danger/flee rejection, player/enemy/animal/predator target rejection, explicit attack-job rejection, animal revenge/predation rejection, and feed-job discoverability. Current status: source added and build-clean; live bridge validation is still pending because the last RimWorld restart loop repeatedly inherited stale GABS bridge port state.
+- Bridge validation uses `zombieland/symbiant_combat_isolation_contract` to prove the current pawn-shell compromise in one fixture: map-pawn exclusion, hostility/active-threat/story-danger/flee rejection, player/enemy/animal/predator target rejection, explicit attack-job rejection, animal revenge/predation rejection, and feed-job discoverability. Live validation passed on 2026-06-15 (`op_774fe9087b374574b9005901333f3a4e`).
 
 ## Spawn And Host Link
 
@@ -98,6 +100,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Feeding can set `cancelNextBreach`, so a fed caged symbiant does not immediately answer the feed with a wall break.
 - At the configured max cells, expansion stops but the symbiant remains active until severed or collapsed. Existing larger symbiants are not deleted if the cap is lowered; they simply cannot expand further until below the cap.
 - Bridge validation uses `zombieland/symbiant_expansion_contract` to build a reversible two-room fixture and prove one real pulse into a normal room cell, one real pulse under a closed door without destroying it, and one real pulse through a player-built divider wall into the adjacent room.
+- Bridge validation uses `zombieland/symbiant_settings_contract` to prove disabled events prevent new natural spawns, re-enabled events allow spawns again, disabling events does not delete an active symbiant, and lowering `symbiantMaxCells` below the current cell count blocks expansion without deleting cells.
 
 ## Benefit Formula And Integrated Goo
 
@@ -148,7 +151,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Feeding consumes the input, increases decoupling reserve, plays wet/squish feedback, and pauses expansion for `symbiantPostFeedPauseHours`.
 - Feeding is capped by `symbiantDecouplingFeedPulsesPerDay` to prevent stockpiling enough material to instantly neutralize a newly spawned symbiant.
 - Feeding while caged cancels the next breach opportunity.
-- Feeding can be done before maturity, but effective reserve for shrink floors, linked damage, unsafe destruction, and surgery is limited by historical integration:
+- Feeding can be done before maturity, but effective reserve for shrink floors and surgery is limited by historical integration:
   - `reserveMaturityFactor = clamp01(peakIntegratedVisibleCells / severanceMaturityCells)`,
   - `effectiveDecouplingReserve = min(decouplingReserve, severanceReserveRequired * reserveMaturityFactor)`.
 - Feeding may shrink newest cells first, but only down to:
@@ -156,7 +159,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - `severanceReserveRequired = clamp(ceil(fullBenefitCells * symbiantSeveranceReserveCoverage), symbiantSeveranceReserveMin, symbiantSeveranceReserveMax)`.
 - The reserve cap is `severanceReserveRequired`. This keeps removal costly without scaling into an absurd number of corpse/coagulant jobs for large colonies.
 - Full reserve, maturity, and a symbiant of 3 cells or less enable safe severance surgery.
-- Bridge validation uses `zombieland/symbiant_feeding_contract` to create a temporary linked symbiant, verify coagulant pulse sizing, daily feed-cap rejection, safe visible minimum, growth pause, breach cancellation, recession shrink, coagulant potency tiers, and cleanup.
+- Bridge validation uses `zombieland/symbiant_feeding_contract` to create a temporary linked symbiant, verify coagulant pulse sizing, daily feed-cap rejection, safe visible minimum, growth pause, breach cancellation, recession shrink, coagulant potency tiers, prepared one-cell exploit blocking, and cleanup.
 
 ## Safe Severance
 
@@ -178,19 +181,19 @@ The symbiant is not a second spitter and not a normal combat target. The interes
   - keep the link active if the symbiant still exists.
 - Bridge validation uses `zombieland/symbiant_severance_contract` to verify surgery recipe ingredients, target gating, deterministic successful severance cleanup, and deterministic failed-severance reserve loss while preserving the link.
 
-## Unsafe Damage And Collapse
+## Damage Rejection And Collapse
 
 - Ordinary attacks are not the intended solution.
-- Direct symbiant damage is converted into reserve loss when effective reserve is available.
-- If damage exceeds effective reserve, the leftover trauma is reflected onto the linked host.
-- If the symbiant is destroyed without safe severance and effective reserve cannot absorb the trauma, the host is killed or heavily injured. V1 should prefer clear high-stakes consequences over silent bypass.
+- Direct symbiant damage is absorbed before RimWorld applies it. It does not drain reserve, injure the host, or shrink cells.
+- The player-facing consequence of attacking the symbiant is immediate feedback: ordinary violence cannot sever the bond. Feed it, shrink it, and use surgery on the linked host.
+- If a non-gameplay deletion path destroys the symbiant, the link and display hediff are removed without host trauma. This is for cleanup and compatibility, not an intended management route.
 - If the host dies for any reason, the linked symbiant collapses without recursively killing the already-dead host.
 - Host death is allowed as a brutal emergency solution, but it must not feel like clever free removal:
   - no coagulant, resource, or reward drops,
   - any remaining visible goo collapses into inert residue or a temporary room penalty,
   - nearby pawns are not randomly harmed in v1,
-  - the event messaging should make it clear that this was an unsafe severance outcome.
-- Bridge validation uses `zombieland/symbiant_unsafe_damage_contract` to verify reserve absorption, overflow host trauma, uncontrolled destruction without reserve, host-death collapse, and the required damage/kill patch targets.
+  - the event messaging should make it clear that the host death ended the symbiant.
+- Bridge validation uses `zombieland/symbiant_unsafe_damage_contract` to verify ordinary damage rejection, clean non-gameplay destruction detachment, host-death collapse, and the required damage/kill patch targets.
 
 ## Non-Lethal Room Disruption
 
@@ -260,6 +263,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Never scan `map.mapPawns.AllPawns` from hot paths. Use cached RimWorld groups such as free colonists when selecting hosts, and maintain a map-keyed active-symbiant cache for runtime interactions.
 - Never use `map.mapPawns` as the primary symbiant discovery mechanism. The symbiant is deliberately removed from ordinary pawn lists, so bridge tools, work givers, and runtime symbiant lookups must use `ZombieSymbiant.ActiveSymbiant(map)` or `listerThings`.
 - The active-symbiant cache must key by the actual `Map` object, not only `map.uniqueID`. RimWorld save/load can reuse `uniqueID = 0`; a numeric-keyed static cache can otherwise report a stale symbiant on a freshly loaded no-symbiant map.
+- Active/empty symbiant map caches are transient only. They are cleared on `GameDataSaveLoader.LoadGame`, `Root.Shutdown`, and `Game.FinalizeInit`; loaded symbiants re-register through `SpawnSetup`, and empty maps are re-marked only after a real `listerThings` scan.
 - `IsSymbiantCell` and `ContainsCell` must remain pure, allocation-free membership checks. They must not normalize symbiant data, rebuild render state, scan rooms, or touch symbiosis metrics.
 - Symbiant cell membership should reject by map and symbiant bounds before hash lookup. Room-stat disruption should reject by room/symbiant bounds overlap before walking symbiant cells.
 - Current verified measurement on 2026-06-12, MacBook Air M2 with low power mode off, dev map, 400-cell stress symbiant visible at Ultrafast:
@@ -308,7 +312,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
   - `symbiant rendering minimal` save loads centered and visual-ready with the extended zoom range from RimBridgeServer,
   - live bridge state reports 60 symbiant cells, draw size 11x11, `renderShader = Custom/ZombieSymbiant`, `renderUsesSymbiantShader = true`, opacity min 0.15, opacity max 1.00, noise scale 1.44, and noise drift 0.05,
   - focused screenshot `zl_symbiant_noise_6x_symbiant_rendering_minimal__cell_rect.png` shows the opacity variation clearly; this is useful as an extreme-frequency reference, not necessarily the final frequency,
-  - warning-or-higher logs contain only `[RimBridge] GABS environment differs from bridge config at /Users/ap/.gabs/rimworld/bridge.json; using bridge config.`, with no shader or symbiant errors.
+  - warning-or-higher logs contained only a bridge-side environment diagnostic, with no shader or symbiant errors.
 - Current 4x opacity-frequency plus 4x temporal-response test on 2026-06-13 local time:
   - live bridge state in `symbiant rendering minimal` confirmed opacity min 0.28, opacity max 0.78, noise scale 0.96, noise drift 0.05, and noise tick scale 0.0016,
   - static screenshot `zl_symbiant_noise_4x_time_4x_symbiant_rendering_minimal__cell_rect.png` shows a calmer pattern than the 6x pass,
@@ -327,7 +331,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Benefit hooks: integrated-goo benefit factor, zombie targeting protection at medium benefit or better, skill bonus, pain/capacity/need/mental-state effects.
 - Feeding: pulse strength, severance reserve cap, effective reserve maturity factor, daily pulse cap, safe visible minimum, growth pause, breach cancellation.
 - Surgery: defs, recipe worker, language, failure behavior.
-- Unsafe damage/collapse: reserve absorption, host trauma, host-death messy collapse, safe-destroy guard.
+- Damage/collapse: ordinary damage rejection, clean non-gameplay destruction detachment, host-death messy collapse, safe-destroy guard.
 - Bridge state: expose host, host display-hediff severity, benefit factor, integrated visible cells, peak cells, maturity state, full-benefit cells, severance maturity cells, safe visible minimum, reserve, effective reserve, reserve required, feed cap, severance readiness, and stress-test symbiant occupancy counts. Keep a bridge action that removes the host display hediff so repair behavior remains directly testable.
 - Docs: keep this file, `TEST_COVERAGE.md`, `TEST_SCENARIOS.md`, and `coverage/ZL_COVERAGE_INDEX.tsv` aligned with the symbiant design.
 
@@ -339,7 +343,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 4. Feeding, severance reserve, maturity gate, safe visible minimum, and feed caps.
 5. Host benefits using integrated visible goo.
 6. Safe severance surgery.
-7. Unsafe damage reflection and host-death messy collapse.
+7. Damage rejection and host-death messy collapse.
 8. Rendering cap, CPU metaball mask polish, GPU opacity shader polish, dormant renderer cleanup, and balancing passes.
 
 ## Release-Oriented Operating Mode
@@ -361,8 +365,10 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Spawn in a used bedroom/kitchen-style room: one initial cell, alert letter, and linked host when an eligible colonist exists.
 - Natural spawn with no eligible host is skipped without consuming the cooldown; debug hostless slime uses the lesser cleanup behavior.
 - Host eligibility rejects children, prisoners, slaves, guests, temporary joiners, quest lodgers, caravaning pawns, unavailable surgery targets, holograms, non-flesh optional-mod pawns, existing symbiant hosts, and late/active zombie infection cases.
-- Save/load preserves ordered cells, host link, recreated hediff, reserve, daily feed counter, feed request, cooldowns, and paused growth.
-- Save/load preserves peak visible cells, peak integrated cells, peak benefit factor, maturity state, reserve requirement, and feed cap reset timing.
+- Focused single-map save/load smoke passed on 2026-06-15: staged a linked 14-cell symbiant with reserve, feed pause, breach cancellation, missing host display hediff, and active renderer, saved/loaded `ZL_Symbiant_SaveLoad_Smoke`, then verified active-cache recovery, host link, cell order sample, reserve/feed counters, peak visible cells, renderer/shader state, and hediff repair (`op_bf0705e3cd064b7e9517a5e843aa453e`, `op_a87dc55ab9744f5dab873988fc975fe1`, `op_95dd4e0f0f2340b39fa97fff53b0e3f1`). The temporary save was deleted after cleanup.
+- Map-cache and same-process save switching passed on 2026-06-15: `zombieland/symbiant_map_cache_contract` proved empty-map negative-cache marking, spawn invalidation, map-pawn exclusion, cleanup invalidation, and explicit cache reset (`op_f97d0452dbae4710b0e67ad373523ca8`). A follow-up temp-save switch saved a map with a symbiant, saved a no-symbiant control, loaded the symbiant save, then loaded the no-symbiant save without restarting; the no-symbiant read returned `symbiant=null` after the prior symbiant had populated runtime cache state (`op_955b1fe0737b49f882a7e526c1832cdc`, `op_bfbcfaaec6c74c14983b5fd98ea0d233`, `op_b4e0592678e347198e65b88925dfc083`, `op_8d439e40bdce4196896c8ad7334445a9`, `op_4e963169e5d94987aa45f94f10f90cb4`, `op_8a9028b166e94d37998ee55bbfdb0734`). The temporary saves were deleted after the test.
+- Temporary host unavailable behavior passed on 2026-06-15: `zombieland/symbiant_host_availability_contract` despawned the linked host, verified the authoritative link and display hediff persisted while benefit, surgery, and zombie-targeting protection dropped to zero/false, respawned the same host and verified the link resumed, then repeated the dormant/resume check through a real `Building_CryptosleepCasket` containment/ejection round trip (`op_fd84034099df4c45ae11b7348cedcf7f`).
+- Broader save/load still needs a fixture pass for feed request persistence, room-integrated maturity/benefit state persistence, true multi-map behavior, host deletion, real-caravan edges, and gravship/transport containment edges.
 - Expansion into room cells and under a closed door.
 - Player wall cage breakout destroys one constructed wall and does not breach natural rock.
 - Colonist path cost increases on symbiant cells without direct injury, disease, random filth, or item destruction.
@@ -377,15 +383,19 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Verify reserve requirement is bounded separately from full benefit cells in small and large colonies.
 - Verify full reserve plus maturity plus 3-or-fewer visible cells enables `SeverSymbiantSymbiosis`.
 - Verify safe severance removes the link and symbiant without host trauma.
-- Verify unsafe destruction without reserve harms/kills the linked host.
-- Verify host death by ordinary damage, player action, despawn/deletion edge cases, and caravan/map-leave edges collapses the symbiant without recursion and without reward drops.
-- Verify linked host temporarily leaving the map preserves the link if the pawn is expected to return, but prevents benefit and surgery while unavailable.
+- Verify ordinary symbiant damage is rejected without reserve loss, cell loss, or host trauma.
+- Verify non-gameplay symbiant destruction detaches the link and display hediff without host trauma.
+- Verify host death by ordinary damage, player action, deletion edge cases, and real-caravan/map-leave edges collapses or preserves conservatively without recursion and without reward drops.
+- Verify linked host temporarily becoming unavailable preserves the link if the pawn is expected to return, but prevents benefit and surgery while unavailable.
 - Verify `SymbiantSymbiosis` hediff removal by another system is repaired from symbiant state, including an early zero-benefit symbiant where the display hediff must not be removed by RimWorld's base zero-severity rule. Use the bridge `removeHostHediff` mode as the deterministic stand-in for DLC/mod removal.
 - Verify zombie targeting behavior at low, medium, and high benefit; hard ignore must not apply to a one-cell symbiant.
 - Verify disabling symbiant events while a symbiant already exists stops future spawns but does not silently delete the active symbiant.
 - Verify lowering `symbiantMaxCells` below the current cell count prevents further expansion without deleting existing cells.
-- Verify multi-map and save/load behavior: one active symbiant per map, no cross-map host selection, bridge state reports the intended map, and loading a no-symbiant save after a symbiant map does not return stale static-cache symbiant state.
-- Verify combat isolation with `zombieland/symbiant_combat_isolation_contract`: bridge state must report `registeredInMapPawnLists = false`, `hostileToPlayer = false`, `activeThreatToPlayer = false`, `kindIsFighter = false`, and `combatPower = 0`; drafted colonists, animals, enemies, predators, and forced attack jobs must not attack the symbiant, while the feed job still finds it. The contract is build-clean but still needs a live run after GABS/RimWorld starts with matching bridge state.
+- Verify settings edges with `zombieland/symbiant_settings_contract`: disabled events block new natural spawns, enabled events allow fixture spawns, disabling with an active symbiant preserves it, and lowered max cells block expansion without deletion. Live validation passed on 2026-06-15 (`op_b36ac6ded3b04b09b3eabc7d9f170e83`).
+- Verify map-cache and save-switch behavior with `zombieland/symbiant_map_cache_contract` plus temp saves: empty-map negative cache, spawn invalidation, cleanup invalidation, explicit cache reset, and loading a no-symbiant save after a symbiant save in the same process must not return stale symbiant state. Live validation passed on 2026-06-15 (`op_f97d0452dbae4710b0e67ad373523ca8`, `op_8d439e40bdce4196896c8ad7334445a9`, `op_8a9028b166e94d37998ee55bbfdb0734`).
+- Verify temporary host map-leave/despawn/cryptosleep behavior with `zombieland/symbiant_host_availability_contract`: the link and display hediff persist while the host is unavailable, benefits/surgery/zombie-targeting protection turn off, and the same link resumes when the host returns. Live validation passed on 2026-06-15 (`op_fd84034099df4c45ae11b7348cedcf7f`).
+- Verify broader multi-map and save/load behavior beyond the focused single-map/cache smoke: one active symbiant per map, no cross-map host selection, bridge state reports the intended map, feed request persists, room-integrated maturity/benefit state persists, and host deletion/real-caravan/gravship edges behave conservatively.
+- Verify combat isolation with `zombieland/symbiant_combat_isolation_contract`: bridge state must report `registeredInMapPawnLists = false`, `hostileToPlayer = false`, `activeThreatToPlayer = false`, `kindIsFighter = false`, and `combatPower = 0`; drafted colonists, animals, enemies, predators, and forced attack jobs must not attack the symbiant, while the feed job still finds it. Live validation passed on 2026-06-15 (`op_774fe9087b374574b9005901333f3a4e`).
 - Runtime render smoke: stress a 15-20 cell symbiant, capture the map, and verify it renders as connected translucent goo with no magenta shader failure and no full-square bounds artifact.
 - Shader activation smoke: bridge state for the active symbiant must report `renderShader = Custom/ZombieSymbiant` and `renderUsesSymbiantShader = true` after rebuilding the current-platform asset bundle and restarting RimWorld.
 - In the `symbiant rendering` save, verify walls are above the symbiant, the old body-shaped artifact near the meal is gone, and items/overlays render consistently above the symbiant.

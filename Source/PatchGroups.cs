@@ -596,9 +596,10 @@ namespace ZombieLand
 			"ZombieLand.Patches+Hediff_ShouldRemove_Patch",
 			"ZombieLand.Patches+HediffSet_AddDirect_Patch",
 			"ZombieLand.Patches+ImmunityHandler_ImmunityHandlerTickInterval_Patch",
+			"ZombieLand.Patches+Pawn_PreApplyDamage_Patch",
 			"ZombieLand.Patches+Pawn_HealthTracker_PreApplyDamage_Patch",
 			"ZombieLand.Pawn_DrawTracker_Constructor_Patch"
-		};
+			};
 
 		static readonly HashSet<string> UIPatchTypes = new()
 		{

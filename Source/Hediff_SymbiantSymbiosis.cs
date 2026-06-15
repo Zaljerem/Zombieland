@@ -32,7 +32,7 @@ namespace ZombieLand
 				return;
 			}
 			symbiantThingId = symbiant.ThingID;
-			Severity = ZombieSymbiant.HostHediffSeverity(symbiant.BenefitFactor);
+			Severity = ZombieSymbiant.HostHediffSeverity(ZombieSymbiant.SymbiantBenefitFactor(pawn));
 		}
 
 		public override void ExposeData()

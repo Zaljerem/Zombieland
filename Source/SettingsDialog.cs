@@ -49,26 +49,29 @@ namespace ZombieLand
 				}
 
 				// Contamination
-				list.Dialog_Label("ZombielandContaminationTitle", headerColor);
-				list.Gap(6f);
-				var contaminationEnabled = Constants.CONTAMINATION;
-				list.Dialog_Checkbox("ContaminationEnabled", ref contaminationEnabled);
-				if (contaminationEnabled != Constants.CONTAMINATION)
+				if (DialogExtensions.Section<string>(":ZombielandContaminationTitle", ":ContaminationEnabled", ":ZombielandContamination"))
 				{
-					Constants.CONTAMINATION = contaminationEnabled;
-					var dict = Constants.Current();
-					Constants.Save(dict);
-					Find.WindowStack.Add(new Dialog_MessageBox("ZombielandRestartRequired".Translate(), "OK".Translate()));
+					list.Dialog_Label("ZombielandContaminationTitle", headerColor);
+					list.Gap(6f);
+					var contaminationEnabled = Constants.CONTAMINATION;
+					list.Dialog_Checkbox("ContaminationEnabled", ref contaminationEnabled);
+					if (contaminationEnabled != Constants.CONTAMINATION)
+					{
+						Constants.CONTAMINATION = contaminationEnabled;
+						var dict = Constants.Current();
+						Constants.Save(dict);
+						Find.WindowStack.Add(new Dialog_MessageBox("ZombielandRestartRequired".Translate(), "OK".Translate()));
+					}
+					if (Constants.CONTAMINATION)
+					{
+						list.Gap(4f);
+						var oldValue = settings.contaminationBaseFactor;
+						list.Dialog_FloatSlider("ZombielandContamination", _ => "{0:0%}", false, ref settings.contaminationBaseFactor, 0f, 5f);
+						if (oldValue != settings.contaminationBaseFactor)
+							ContaminationFactors.ApplyBaseFactor(settings.contamination, settings.contaminationBaseFactor);
+					}
+					list.Gap(12f);
 				}
-				if (Constants.CONTAMINATION && DialogExtensions.Section<string>(":ZombielandContaminationTitle", ":ZombielandContamination"))
-				{
-					list.Gap(4f);
-					var oldValue = settings.contaminationBaseFactor;
-					list.Dialog_FloatSlider("ZombielandContamination", _ => "{0:0%}", false, ref settings.contaminationBaseFactor, 0f, 5f);
-					if (oldValue != settings.contaminationBaseFactor)
-						ContaminationFactors.ApplyBaseFactor(settings.contamination, settings.contaminationBaseFactor);
-				}
-				list.Gap(12f);
 
 				// When?
 				if (DialogExtensions.Section<SpawnWhenType>(":WhenDoZombiesSpawn"))
@@ -198,7 +201,7 @@ namespace ZombieLand
 					list.Gap(24f);
 				}
 
-				if (DialogExtensions.Section<string>(":ZombieSymbiantTitle", ":SymbiantEnabled", ":SymbiantSpawnCooldownDays", ":SymbiantExpansionIntervalHours", ":SymbiantMaxCells", ":SymbiantCoagulantPotency"))
+				if (DialogExtensions.Section<SymbiantCoagulantPotency>(":ZombieSymbiantTitle", ":SymbiantEnabled", ":SymbiantSpawnCooldownDays", ":SymbiantExpansionIntervalHours", ":SymbiantMaxCells", ":SymbiantCoagulantPotency"))
 				{
 					list.Dialog_Label("ZombieSymbiantTitle", headerColor);
 					list.Dialog_Checkbox("SymbiantEnabled", ref settings.symbiantEnabled);
@@ -320,7 +323,7 @@ namespace ZombieLand
 				}
 
 				// Zombie loot
-				if (DialogExtensions.Section<string>(":ZombieHarvestingTitle", ":CorpsesExtractAmount", ":LootExtractAmount", ":CorpsesDaysToDessicated", ":BlacklistedApparel"))
+				if (DialogExtensions.Section<string>(":ZombieHarvestingTitle", ":CorpsesExtractAmount", ":LootExtractAmount", ":CorpsesDaysToDessicated", ":ExtractZombieArea", ":BlacklistedApparel"))
 				{
 					list.Dialog_Label("ZombieHarvestingTitle", headerColor);
 					list.Gap(8f);
@@ -373,7 +376,7 @@ namespace ZombieLand
 				}
 
 				// Actions
-				if (DialogExtensions.Section<string>(":ZombieActionsTitle", ":ZombieSettingsReset", ":ResetButton", ":UninstallZombieland", ":UninstallButton"))
+				if (DialogExtensions.Section<string>(":ZombieActionsTitle", ":ZombieSettingsReset", ":ResetButton", ":FactoryResetButton", ":UninstallZombieland", ":UninstallButton"))
 				{
 					list.Dialog_Label("ZombieActionsTitle", headerColor);
 					list.Gap(8f);

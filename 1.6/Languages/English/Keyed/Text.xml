@@ -32,13 +32,22 @@
 
 	<LetterLabelZombieSymbiant>{0} is linked to a symbiant</LetterLabelZombieSymbiant>
 	<LetterLabelZombieSymbiantNoHost>Symbiant seep surfaced</LetterLabelZombieSymbiantNoHost>
-	<ZombieSymbiant>A wet green seep has pushed up through cracks in {0}. It has linked itself to {1}; the more visible slime remains, the stronger the bond becomes. It is not a normal enemy and careless destruction may harm the host.</ZombieSymbiant>
+	<ZombieSymbiant>A wet green seep has pushed up through cracks in {0}. It has linked itself to {1}; the more visible slime remains, the stronger the bond becomes. It is not a normal enemy: ordinary violence will not sever the bond.</ZombieSymbiant>
 	<ZombieSymbiantNoHost>A wet green seep has pushed up through cracks in {0}. It has not linked to a colonist yet, but it should not be treated like an ordinary zombie.</ZombieSymbiantNoHost>
 	<ZombieSymbiantUnknownRoom>one of your rooms</ZombieSymbiantUnknownRoom>
-	<ZombieSymbiantInspect>Zombie symbiant cells: {0}/{1}\nLinked host: {2}\nSymbiosis strength: {3}%\nDecoupling reserve: {4}/{5}\nFeed pulses left today: {6}</ZombieSymbiantInspect>
+	<ZombieSymbiantInspect>Zombie symbiant cells: {0}/{1}\nLinked host: {2}\nSymbiosis strength: {3}%\nMaturity: {4}\nDecoupling reserve: {5}/{6}\nSafe visible minimum: {7}\nFeed pulses left today: {8}\nSeverance: {9}</ZombieSymbiantInspect>
+	<SymbiantMaturityReady>matured</SymbiantMaturityReady>
+	<SymbiantMaturityProgress>{0}/{1} integrated cells</SymbiantMaturityProgress>
+	<SymbiantSeveranceNoHost>no linked host</SymbiantSeveranceNoHost>
+	<SymbiantSeveranceNeedsMaturity>let the symbiosis mature before surgery</SymbiantSeveranceNeedsMaturity>
+	<SymbiantSeveranceNeedsReserve>feed it to fill the decoupling reserve</SymbiantSeveranceNeedsReserve>
+	<SymbiantSeveranceNeedsShrink>feed it down to 3 visible cells or fewer</SymbiantSeveranceNeedsShrink>
+	<SymbiantSeveranceReady>ready for surgery on the host</SymbiantSeveranceReady>
+	<SymbiantWeaponRejectedMessage>Ordinary violence cannot sever a symbiant. Feed it to build reserve, then use severance surgery on the linked host.</SymbiantWeaponRejectedMessage>
+	<SymbiantWeaponRejectedMote>weapons do nothing</SymbiantWeaponRejectedMote>
 	<FeedZombieSymbiant>Feed symbiant</FeedZombieSymbiant>
 	<CancelFeedZombieSymbiant>Cancel symbiant feeding</CancelFeedZombieSymbiant>
-	<FeedZombieSymbiantDesc>Colonists will feed the symbiant with a humanlike corpse or a symbiant coagulant pack. Each feeding builds decoupling reserve, may shrink excess slime, pauses growth, and cannot remove the final cells.</FeedZombieSymbiantDesc>
+	<FeedZombieSymbiantDesc>Colonists will feed the symbiant with a humanlike corpse or a symbiant coagulant pack. Each feeding builds decoupling reserve, may shrink excess slime, pauses growth, and cannot remove the final cells. When the inspect pane says severance is ready, operate on the linked host.</FeedZombieSymbiantDesc>
 	<FeedingZombieSymbiant>feeding zombie symbiant</FeedingZombieSymbiant>
 	<NoSymbiantFeed>No humanlike corpse or symbiant coagulant pack available</NoSymbiantFeed>
 	<SymbiantFeedLimitReached>Symbiant feed pulse limit reached today</SymbiantFeedLimitReached>

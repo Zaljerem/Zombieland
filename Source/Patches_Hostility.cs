@@ -320,7 +320,7 @@ namespace ZombieLand
 					if (t is ZombieSymbiant || t is ZombieSpitter)
 						return false;
 					if (t is Zombie)
-						return anomalyAttacksZombies;
+						return anomalyAttacksZombies && oldValidator(t);
 					return oldValidator(t);
 				};
 
@@ -335,7 +335,7 @@ namespace ZombieLand
 					if (t is ZombieSymbiant || t is ZombieSpitter)
 						return false;
 					if (t is Zombie)
-						return ZombieSettings.Values.animalsAttackZombies;
+						return ZombieSettings.Values.animalsAttackZombies && oldValidator(t);
 					return oldValidator(t);
 				};
 
@@ -363,6 +363,9 @@ namespace ZombieLand
 
 				if (t is Zombie zombie)
 				{
+					if (oldValidator(t) == false)
+						return false;
+
 					if (ZombieSettings.Values.enemiesAttackZombies == false)
 						return false;
 
@@ -387,6 +390,8 @@ namespace ZombieLand
 
 					if (distanceToTarget > maxZombieEngagementDistance)
 						return false;
+
+					return true;
 				}
 
 				return oldValidator(t);

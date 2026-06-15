@@ -88,6 +88,7 @@ namespace ZombieLand
 		bool hostCollapseInProgress;
 		bool uncontrolledDestroyHandled;
 		int lastSymbiosisMetricTick = int.MinValue;
+		int lastRejectedDamageMessageTick = int.MinValue;
 		int cachedEligibleColonyRoomCells;
 		int cachedFullBenefitCells = 20;
 		float cachedIntegratedVisibleCells;
@@ -456,19 +457,28 @@ namespace ZombieLand
 			return new { rect.minX, rect.maxX, rect.minZ, rect.maxZ };
 		}
 
-		static bool CanEverBeLinkedHostFast(Pawn pawn, bool allowDead = false)
+		static bool CanBeLinkedHostIdentityFast(Pawn pawn, bool allowDead = false)
 		{
 			if (pawn == null || pawn.Destroyed)
 				return false;
 			if (allowDead == false && pawn.Dead)
 				return false;
-			if (allowDead == false && (pawn.Spawned == false || pawn.Map == null))
-				return false;
 			if (pawn is Zombie || pawn is ZombieSymbiant || pawn is ZombieSpitter)
 				return false;
 			if (pawn.RaceProps?.Humanlike != true || pawn.RaceProps.IsFlesh == false)
 				return false;
+			return true;
+		}
+
+		static bool CanEverBeLinkedHostFast(Pawn pawn, bool allowDead = false)
+		{
+			if (CanBeLinkedHostIdentityFast(pawn, allowDead) == false)
+				return false;
+			if (allowDead == false && (pawn.Spawned == false || pawn.Map == null))
+				return false;
 			if (pawn.Faction?.IsPlayer != true || pawn.IsColonistPlayerControlled == false || pawn.IsPrisoner)
+				return false;
+			if (pawn.IsSlave || pawn.HostFaction != null || pawn.IsQuestLodger())
 				return false;
 			if (pawn.DevelopmentalStage == DevelopmentalStage.Newborn || pawn.DevelopmentalStage == DevelopmentalStage.Baby || pawn.DevelopmentalStage == DevelopmentalStage.Child)
 				return false;
@@ -520,7 +530,7 @@ namespace ZombieLand
 
 		static bool IsLinkedHostOnCurrentMapFast(Pawn pawn)
 		{
-			if (CanEverBeLinkedHostFast(pawn) == false)
+			if (CanBeLinkedHostIdentityFast(pawn) == false || pawn.Spawned == false || pawn.Map == null)
 				return false;
 			return ActiveSymbiant(pawn.Map)?.IsLinkedTo(pawn) == true;
 		}
@@ -626,9 +636,9 @@ namespace ZombieLand
 
 		static ZombieSymbiant LinkedSymbiantFor(Pawn pawn, bool allowDead)
 		{
-			if (CanEverBeLinkedHostFast(pawn, allowDead) == false)
+			if (CanBeLinkedHostIdentityFast(pawn, allowDead) == false)
 				return null;
-			if (pawn.Spawned)
+			if (pawn.Spawned && pawn.Map != null)
 			{
 				var mapSymbiant = ActiveSymbiant(pawn.Map);
 				if (mapSymbiant != null && mapSymbiant.IsLinkedTo(pawn))
@@ -637,22 +647,33 @@ namespace ZombieLand
 			return ActiveSymbiants().FirstOrDefault(symbiant => symbiant.IsLinkedTo(pawn) || symbiant.ResolveHost() == pawn);
 		}
 
-		public static bool HasZombieTargetingProtection(Pawn pawn)
+		static bool TryGetSameMapLinkedSymbiant(Pawn pawn, out ZombieSymbiant symbiant)
 		{
+			symbiant = null;
 			if (pawn?.Spawned != true || pawn.Map == null)
 				return false;
-			if (DebugDisableSymbiosisBenefits || CanEverBeLinkedHostFast(pawn) == false)
+			if (CanBeLinkedHostIdentityFast(pawn) == false)
 				return false;
-			return SymbiantBenefitFactor(pawn) >= ZombieIgnoreMinBenefit;
+			symbiant = LinkedSymbiantFor(pawn);
+			return symbiant != null
+				&& symbiant.Destroyed == false
+				&& symbiant.Spawned
+				&& symbiant.Map == pawn.Map
+				&& symbiant.IsLinkedTo(pawn);
+		}
+
+		public static bool HasZombieTargetingProtection(Pawn pawn)
+		{
+			if (DebugDisableSymbiosisBenefits)
+				return false;
+			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) && symbiant.BenefitFactor >= ZombieIgnoreMinBenefit;
 		}
 
 		public static float SymbiantBenefitFactor(Pawn pawn)
 		{
-			if (pawn?.Spawned != true || pawn.Map == null)
+			if (DebugDisableSymbiosisBenefits)
 				return 0f;
-			if (DebugDisableSymbiosisBenefits || CanEverBeLinkedHostFast(pawn) == false)
-				return 0f;
-			return LinkedSymbiantFor(pawn)?.BenefitFactor ?? 0f;
+			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) ? symbiant.BenefitFactor : 0f;
 		}
 
 		public static void ApplySymbiantSkillBonus(SkillRecord skill, ref int level)
@@ -668,14 +689,12 @@ namespace ZombieLand
 
 		public static bool CanSeverSymbiosis(Pawn pawn)
 		{
-			if (CanEverBeLinkedHostFast(pawn) == false)
-				return false;
-			return LinkedSymbiantFor(pawn)?.CanSafelySever == true;
+			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) && symbiant.CanSafelySever;
 		}
 
 		public static void NotifyHostKilled(Pawn pawn)
 		{
-			if (CanEverBeLinkedHostFast(pawn, true) == false)
+			if (CanBeLinkedHostIdentityFast(pawn, true) == false)
 				return;
 			var symbiant = LinkedSymbiantFor(pawn, true);
 			if (symbiant == null)
@@ -721,7 +740,7 @@ namespace ZombieLand
 				return false;
 			if (symbiant.ContainsCell(cell) == false)
 				return false;
-			return CanEverBeLinkedHostFast(pawn) == false || symbiant.IsLinkedTo(pawn) == false;
+			return symbiant.IsLinkedTo(pawn) == false;
 		}
 
 		public static int CountCellsInRoom(Room room)
@@ -968,7 +987,7 @@ namespace ZombieLand
 			if (pawn?.health?.hediffSet == null || CustomDefs.SymbiantSymbiosis == null)
 				return;
 			var hediff = pawn.health.hediffSet.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) as Hediff_SymbiantSymbiosis;
-			var severity = HostHediffSeverity(BenefitFactor);
+			var severity = HostHediffSeverity(SymbiantBenefitFactor(pawn));
 			if (hediff == null)
 			{
 				hediff = HediffMaker.MakeHediff(CustomDefs.SymbiantSymbiosis, pawn) as Hediff_SymbiantSymbiosis;
@@ -1016,6 +1035,30 @@ namespace ZombieLand
 			foreach (var symbiant in renderResourceOwners.ToArray())
 				symbiant.ReleaseRenderResources(false);
 			renderResourceOwners.Clear();
+		}
+
+		internal static void ClearActiveSymbiantCaches()
+		{
+			activeSymbiantByMap.Clear();
+			mapsWithoutActiveSymbiant.Clear();
+		}
+
+		internal static void ResetTransientStaticState()
+		{
+			ReleaseAllRenderResources();
+			ClearActiveSymbiantCaches();
+		}
+
+		internal static object DebugCacheState(Map map = null)
+		{
+			return new
+			{
+				activeCacheCount = activeSymbiantByMap.Count,
+				emptyCacheCount = mapsWithoutActiveSymbiant.Count,
+				currentMapActiveCached = map != null && activeSymbiantByMap.TryGetValue(map, out var cached) && IsActiveSymbiantOnMap(cached, map),
+				currentMapCachedSymbiant = map != null && activeSymbiantByMap.TryGetValue(map, out var cachedSymbiant) ? cachedSymbiant.ThingID : null,
+				currentMapMarkedEmpty = map != null && mapsWithoutActiveSymbiant.Contains(map)
+			};
 		}
 
 		void ReleaseRenderResources(bool unregister = true)
@@ -1195,20 +1238,6 @@ namespace ZombieLand
 				return;
 			PlayDisconnectedSound();
 
-			var requiredReserve = DecouplingReserveMax;
-			var effectiveReserve = EffectiveDecouplingReserve;
-			if (effectiveReserve >= requiredReserve - 0.01f)
-			{
-				decouplingReserve = 0f;
-				ApplyHostTrauma(Mathf.Max(12f, requiredReserve * 0.4f), false);
-			}
-			else
-			{
-				hostCollapseInProgress = true;
-				pawn.Kill(null);
-				hostCollapseInProgress = false;
-			}
-
 			RemoveHostHediff(pawn);
 			host = null;
 			hostThingId = null;
@@ -1242,43 +1271,27 @@ namespace ZombieLand
 				CustomDefs.SymbiantDisconnected?.PlayOneShotOnCamera(null);
 		}
 
-		void ApplyHostTrauma(float amount, bool killIfOverwhelmed)
+		void NotifyOrdinaryDamageRejected()
 		{
-			var pawn = ResolveHost();
-			if (pawn == null || pawn.Destroyed || pawn.Dead || pawn.health == null)
+			if (Spawned == false || Map == null)
 				return;
-			if (killIfOverwhelmed)
-			{
-				hostCollapseInProgress = true;
-				pawn.Kill(null);
-				hostCollapseInProgress = false;
+			var ticks = GenTicks.TicksGame;
+			if (ticks - lastRejectedDamageMessageTick < 600)
 				return;
-			}
-			var damage = Mathf.Clamp(amount, 1f, 80f);
-			_ = pawn.TakeDamage(new DamageInfo(DamageDefOf.Cut, damage, 0f, -1f, this));
+			lastRejectedDamageMessageTick = ticks;
+			Messages.Message("SymbiantWeaponRejectedMessage".Translate(), this, MessageTypeDefOf.RejectInput, false);
+			MoteMaker.ThrowText(DrawPos, Map, "SymbiantWeaponRejectedMote".Translate(), 3.65f);
 		}
 
-		public void PreApplyLinkedDamage(ref DamageInfo dinfo)
+		public void PreApplyLinkedDamage(ref DamageInfo dinfo, ref bool absorbed)
 		{
 			if (safeSeveranceInProgress || hostCollapseInProgress || ResolveHost() == null)
 				return;
-			var amount = dinfo.Amount;
-			if (amount <= 0f)
+			if (dinfo.Amount <= 0f)
 				return;
-			var effectiveReserve = EffectiveDecouplingReserve;
-			if (effectiveReserve > 0f)
-			{
-				var absorbed = Mathf.Min(effectiveReserve, amount);
-				decouplingReserve -= absorbed;
-				amount -= absorbed;
-			}
-			if (amount <= 0f)
-			{
-				dinfo.SetAmount(0f);
-				return;
-			}
-			ApplyHostTrauma(amount * 0.5f, false);
-			dinfo.SetAmount(amount);
+			dinfo.SetAmount(0f);
+			absorbed = true;
+			NotifyOrdinaryDamageRejected();
 		}
 
 		public bool TrySeverSymbiosis(Pawn pawn, Pawn doctor)
@@ -1881,12 +1894,42 @@ namespace ZombieLand
 			Graphics.DrawMesh(mesh, position, Quaternion.identity, metaballMaterial, 0);
 		}
 
+		string MaturityInspectLabel()
+		{
+			if (HasMaturedForSeverance)
+				return "SymbiantMaturityReady".Translate();
+			return "SymbiantMaturityProgress".Translate(Mathf.FloorToInt(PeakIntegratedVisibleCells), SeveranceMaturityCells);
+		}
+
+		string SeveranceInspectLabel()
+		{
+			if (LinkedHost == null)
+				return "SymbiantSeveranceNoHost".Translate();
+			if (HasMaturedForSeverance == false)
+				return "SymbiantSeveranceNeedsMaturity".Translate();
+			if (decouplingReserve < DecouplingReserveMax - 0.01f)
+				return "SymbiantSeveranceNeedsReserve".Translate();
+			if (CellCount > 3)
+				return "SymbiantSeveranceNeedsShrink".Translate();
+			return "SymbiantSeveranceReady".Translate();
+		}
+
 		public override string GetInspectString()
 		{
 			var linkedHost = LinkedHost;
 			var hostLabel = linkedHost == null ? "none" : linkedHost.LabelShortCap;
 			var benefitPercent = Mathf.RoundToInt(BenefitFactor * 100f);
-			return "ZombieSymbiantInspect".Translate(CellCount, MaxCells, hostLabel, benefitPercent, Mathf.FloorToInt(decouplingReserve), DecouplingReserveMax, FeedPulsesRemaining);
+			return "ZombieSymbiantInspect".Translate(
+				CellCount,
+				MaxCells,
+				hostLabel,
+				benefitPercent,
+				MaturityInspectLabel(),
+				Mathf.FloorToInt(decouplingReserve),
+				DecouplingReserveMax,
+				SafeVisibleMinimum,
+				FeedPulsesRemaining,
+				SeveranceInspectLabel());
 		}
 
 		public override IEnumerable<Gizmo> GetGizmos()
