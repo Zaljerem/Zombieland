@@ -121,6 +121,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
   - at or above `symbiantZombieIgnoreMinBenefit`: zombies deprioritize or ignore the host unless the host attacks/provokes them,
   - hard non-targeting must not activate from a one-cell symbiant.
 - Keeping the symbiant tiny gives weak benefits. Keeping it large gives the host more power but creates more room disruption.
+- Bridge validation uses `zombieland/symbiant_benefit_contract` to verify low-benefit one-cell behavior, display-hediff repair after removal, nonzero zero-benefit display severity, high-benefit zombie targeting protection, and skill-bonus scaling.
 
 ## Symbiosis Maturity
 

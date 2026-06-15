@@ -927,6 +927,212 @@ namespace ZombieLand
 			};
 		}
 
+		[Tool("zombieland/symbiant_benefit_contract", Description = "Verify host display-hediff repair, low/high benefit scaling, zombie targeting threshold, and skill bonus behavior.")]
+		public static object SymbiantBenefitContract(
+			[ToolParameter(Description = "Destroy the temporary symbiant, colonist, fixture buildings, and letters after capturing evidence.", Required = false, DefaultValue = true)] bool cleanup = true)
+		{
+			var map = CurrentMap;
+			if (map == null)
+				return new { success = false, error = "No current map is loaded." };
+			var activeBefore = ZombieSymbiant.ActiveSymbiant(map);
+			if (activeBefore != null)
+				return new { success = false, error = "An active symbiant already exists on the current map.", activeSymbiant = ZombieRuntimeActions.StableThingId(activeBefore) };
+
+			var settingsSnapshot = SnapshotZombieSettings();
+			var beforeLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>()).ToHashSet();
+			SymbiantNaturalSpawnFixture fixture = null;
+			ZombieSymbiant symbiant = null;
+			object fixtureSetup = null;
+			object error = null;
+			object initial = null;
+			object repair = null;
+			object high = null;
+			object skill = null;
+			var addedCells = 0;
+
+			try
+			{
+				ApplyZombieSettingsOverride(settings =>
+				{
+					settings.showZombieEventLetters = false;
+					settings.symbiantMaxCells = 25;
+					settings.symbiantFullBenefitRoomCoverage = 0.01f;
+					settings.symbiantZombieIgnoreMinBenefit = 0.50f;
+					settings.symbiantMaxSkillBonus = 6;
+				});
+				if (TrySetupSymbiantNaturalSpawnFixture(map, out fixture, out var fixtureError) == false)
+					return fixtureError;
+				fixtureSetup = DescribeSymbiantNaturalSpawnFixture(fixture);
+				symbiant = SpawnAssignedSymbiantForSeveranceContract(map, fixture);
+				var host = fixture.host;
+				RepairHostLink(symbiant);
+				initial = DescribeSymbiantBenefitCheck(symbiant, host);
+
+				var removedHediffs = RemoveSymbiantHediffs(host);
+				var afterRemoval = DescribeSymbiantBenefitCheck(symbiant, host);
+				RepairHostLink(symbiant);
+				var afterRepair = DescribeSymbiantBenefitCheck(symbiant, host);
+				repair = new
+				{
+					removedHediffs,
+					afterRemoval,
+					afterRepair,
+					minZeroBenefitSeverity = ZombieSymbiant.HostHediffSeverity(0f),
+					success = removedHediffs > 0
+						&& BenefitCheckHasHediff(afterRemoval) == false
+						&& BenefitCheckHasHediff(afterRepair)
+						&& BenefitCheckHediffSeverity(afterRepair) >= 0.001f
+						&& ZombieSymbiant.HostHediffSeverity(0f) >= 0.001f
+				};
+
+				var roomCells = fixture.room.interiorRect.Cells
+					.Where(cell => cell.InBounds(map) && cell.Standable(map))
+					.ToArray();
+				addedCells = ZombieSymbiant.AddCells(map, roomCells);
+				RepairHostLink(symbiant);
+				high = DescribeSymbiantBenefitCheck(symbiant, host);
+				skill = DescribeSymbiantSkillBonus(host);
+			}
+			catch (Exception ex)
+			{
+				error = ex.ToString();
+			}
+			finally
+			{
+				RestoreZombieSettings(settingsSnapshot);
+			}
+
+			var newLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
+				.Where(letter => beforeLetters.Contains(letter) == false)
+				.ToArray();
+			var cleanupResult = CleanupTemporarySymbiant(map, symbiant, cleanup);
+			var fixtureCleanup = CleanupSymbiantNaturalSpawnFixture(map, fixture, cleanup);
+			var letterCleanup = CleanupTemporaryLetters(newLetters, cleanup);
+			var activeAfterCleanup = ZombieSymbiant.ActiveSymbiant(map);
+			var success = error == null
+				&& BenefitCheckHasHediff(initial)
+				&& BenefitCheckFactor(initial) < 0.5f
+				&& BenefitCheckHasZombieProtection(initial) == false
+				&& ScenarioSucceeded(repair)
+				&& addedCells > 0
+				&& BenefitCheckFactor(high) >= 0.5f
+				&& BenefitCheckHasZombieProtection(high)
+				&& ScenarioSucceeded(skill)
+				&& (activeAfterCleanup == null || cleanup == false);
+
+			return new
+			{
+				success,
+				sourcePath = "ZombieSymbiant.EnsureHostLink/EnsureHostHediff -> BenefitFactor -> HasZombieTargetingProtection -> ApplySymbiantSkillBonus",
+				error,
+				fixtureSetup,
+				initial,
+				repair,
+				addedCells,
+				high,
+				skill,
+				cleanup = new
+				{
+					symbiant = cleanupResult,
+					fixture = fixtureCleanup,
+					letters = letterCleanup,
+					activeSymbiantAfterCleanup = ZombieRuntimeActions.StableThingId(activeAfterCleanup)
+				}
+			};
+		}
+
+		static void RepairHostLink(ZombieSymbiant symbiant)
+		{
+			AccessTools.Method(typeof(ZombieSymbiant), "EnsureHostLink")?.Invoke(symbiant, null);
+		}
+
+		static int RemoveSymbiantHediffs(Pawn host)
+		{
+			var hediffs = host?.health?.hediffSet?.hediffs?
+				.Where(hediff => hediff.def == CustomDefs.SymbiantSymbiosis)
+				.ToArray() ?? Array.Empty<Hediff>();
+			foreach (var hediff in hediffs)
+				host.health.RemoveHediff(hediff);
+			return hediffs.Length;
+		}
+
+		static object DescribeSymbiantBenefitCheck(ZombieSymbiant symbiant, Pawn host)
+		{
+			var hediff = host?.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) as Hediff_SymbiantSymbiosis;
+			return new
+			{
+				cellCount = symbiant?.CellCount ?? 0,
+				fullBenefitCells = symbiant?.FullBenefitCells ?? 0,
+				integratedVisibleCells = symbiant?.IntegratedVisibleCells ?? 0f,
+				peakIntegratedVisibleCells = symbiant?.PeakIntegratedVisibleCells ?? 0f,
+				benefitFactor = symbiant?.BenefitFactor ?? 0f,
+				peakBenefitFactor = symbiant?.PeakBenefitFactor ?? 0f,
+				zombieIgnoreMinBenefit = ZombieSymbiant.ZombieIgnoreMinBenefit,
+				hasZombieTargetingProtection = ZombieSymbiant.HasZombieTargetingProtection(host),
+				hasHediff = hediff != null,
+				hediffSeverity = hediff?.Severity ?? 0f,
+				hediffSymbiantThingId = hediff?.symbiantThingId,
+				expectedHostHediffSeverity = ZombieSymbiant.HostHediffSeverity(symbiant?.BenefitFactor ?? 0f)
+			};
+		}
+
+		static object DescribeSymbiantSkillBonus(Pawn host)
+		{
+			var skill = host?.skills?.GetSkill(SkillDefOf.Construction);
+			if (skill == null)
+				return new { success = false, error = "Linked host has no Construction skill record." };
+			var previousProfile = ZombieSymbiant.DebugPerfProfile;
+			object restoreAction = null;
+			try
+			{
+				_ = ZombieSymbiant.SetDebugPerfProfile("noTick");
+				skill.Level = 10;
+				var raw = skill.Level;
+				restoreAction = ZombieSymbiant.SetDebugPerfProfile(previousProfile);
+				var patched = skill.Level;
+				var bonus = Math.Max(1, Mathf.RoundToInt(ZombieSettings.Values.symbiantMaxSkillBonus * ZombieSymbiant.SymbiantBenefitFactor(host)));
+				var expected = Mathf.Clamp(raw + bonus, 0, SkillRecord.MaxLevel);
+				return new
+				{
+					success = raw == 10 && patched == expected && patched > raw,
+					skill = skill.def.defName,
+					raw,
+					patched,
+					bonus,
+					expected,
+					benefitFactor = ZombieSymbiant.SymbiantBenefitFactor(host),
+					maxSkillBonus = ZombieSettings.Values.symbiantMaxSkillBonus,
+					previousProfile,
+					restoreAction
+				};
+			}
+			finally
+			{
+				if (ZombieSymbiant.DebugPerfProfile != previousProfile)
+					_ = ZombieSymbiant.SetDebugPerfProfile(previousProfile);
+			}
+		}
+
+		static bool BenefitCheckHasHediff(object check)
+		{
+			return (bool?)check?.GetType().GetProperty("hasHediff")?.GetValue(check) == true;
+		}
+
+		static float BenefitCheckHediffSeverity(object check)
+		{
+			return (float?)check?.GetType().GetProperty("hediffSeverity")?.GetValue(check) ?? 0f;
+		}
+
+		static float BenefitCheckFactor(object check)
+		{
+			return (float?)check?.GetType().GetProperty("benefitFactor")?.GetValue(check) ?? 0f;
+		}
+
+		static bool BenefitCheckHasZombieProtection(object check)
+		{
+			return (bool?)check?.GetType().GetProperty("hasZombieTargetingProtection")?.GetValue(check) == true;
+		}
+
 		static int FindSurgeryOutcomeSeed(float chance, bool desiredOutcome)
 		{
 			for (var seed = 1; seed < 10000; seed++)
