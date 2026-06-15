@@ -69,6 +69,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Initial state is one occupied cell and a right-side green symbiant letter describing the wet seep, the room role, and the linked colonist. The letter should use two look targets when possible: one for the seep and one for the host.
 - There is no first-time modal dialog. Onboarding text lives in the symbiant letter, symbiant inspect text, host hediff, and the compact symbiant settings help.
 - Connection and disconnection use dedicated subtle symbiant sounds. The connection sound is attached to the green arrival letter when letters are enabled, and played directly only when the letter is suppressed.
+- Bridge validation uses `zombieland/symbiant_discovery_letter_contract` to spawn a temporary symbiant through `ZombieSymbiant.Spawn`, capture the generated green letter, verify the connection/disconnection defs, count look targets, and clean up the temporary symbiant without host trauma.
 - Choose a random eligible free colonist after spawn:
   - alive, spawned, humanlike, flesh,
   - player faction colonist,

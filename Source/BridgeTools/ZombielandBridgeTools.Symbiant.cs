@@ -9,6 +9,130 @@ namespace ZombieLand
 {
 	public sealed partial class ZombielandBridgeTools
 	{
+		[Tool("zombieland/symbiant_discovery_letter_contract", Description = "Spawn a temporary symbiant through the runtime spawn path and verify the green discovery letter, sound def, look targets, host link, and cleanup behavior.")]
+		public static object SymbiantDiscoveryLetterContract(
+			[ToolParameter(Description = "Target x coordinate. Use -1 with z -1 for automatic placement.", Required = false, DefaultValue = -1)] int x = -1,
+			[ToolParameter(Description = "Target z coordinate. Use -1 with x -1 for automatic placement.", Required = false, DefaultValue = -1)] int z = -1,
+			[ToolParameter(Description = "Destroy the temporary contract symbiant without host trauma after capturing evidence.", Required = false, DefaultValue = true)] bool cleanup = true)
+		{
+			var map = CurrentMap;
+			if (map == null)
+				return new { success = false, error = "No current map is loaded." };
+
+			var existingActive = ZombieSymbiant.ActiveSymbiant(map);
+			var existingActiveId = ZombieRuntimeActions.StableThingId(existingActive);
+			var root = x >= 0 && z >= 0 ? new IntVec3(x, 0, z) : new IntVec3(map.Size.x / 2, 0, map.Size.z / 2);
+			if (TryFindClearSpawnCell(map, root, 18f, out var cell, out var cellError) == false)
+				return cellError;
+
+			var originalShowLetters = ZombieSettings.Values.showZombieEventLetters;
+			var beforeSymbiantIds = CurrentZombies(map)
+				.OfType<ZombieSymbiant>()
+				.Select(ZombieRuntimeActions.StableThingId)
+				.ToHashSet(StringComparer.OrdinalIgnoreCase);
+			var beforeLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
+				.ToHashSet();
+			ZombieSymbiant spawned = null;
+			object spawnError = null;
+			object result;
+
+			try
+			{
+				ZombieSettings.Values.showZombieEventLetters = true;
+				ZombieSymbiant.Spawn(map, cell);
+				spawned = CurrentZombies(map)
+					.OfType<ZombieSymbiant>()
+					.Where(symbiant => beforeSymbiantIds.Contains(ZombieRuntimeActions.StableThingId(symbiant)) == false)
+					.OrderBy(symbiant => symbiant.Position.DistanceToSquared(cell))
+					.FirstOrDefault();
+				spawned ??= ZombieSymbiant.ActiveSymbiant(map);
+			}
+			catch (Exception ex)
+			{
+				spawnError = ex.ToString();
+			}
+			finally
+			{
+				ZombieSettings.Values.showZombieEventLetters = originalShowLetters;
+			}
+
+			var newLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
+				.Where(letter => beforeLetters.Contains(letter) == false)
+				.ToArray();
+			var matchingLetters = newLetters
+				.Where(letter => letter?.def == CustomDefs.SymbiantConnection)
+				.ToArray();
+			var host = spawned?.LinkedHost;
+			var expectedLabel = host == null
+				? "LetterLabelZombieSymbiantNoHost".Translate().ToString()
+				: "LetterLabelZombieSymbiant".Translate(host.LabelShortCap).ToString();
+			var primaryLetter = matchingLetters.FirstOrDefault();
+			var lookTargetCount = primaryLetter?.lookTargets?.targets?.Count ?? 0;
+			var expectedLookTargetCount = host == null ? 1 : 2;
+			var defOk = CustomDefs.SymbiantConnection != null
+				&& CustomDefs.SymbiantConnected != null
+				&& CustomDefs.SymbiantDisconnected != null
+				&& CustomDefs.SymbiantConnection.arriveSound == CustomDefs.SymbiantConnected;
+			var success = spawnError == null
+				&& spawned?.Spawned == true
+				&& matchingLetters.Length == 1
+				&& primaryLetter?.Label.ToString() == expectedLabel
+				&& lookTargetCount >= expectedLookTargetCount
+				&& defOk;
+
+			var cleanupResult = CleanupTemporarySymbiant(map, spawned, cleanup);
+			var activeAfterCleanup = ZombieSymbiant.ActiveSymbiant(map);
+			var letters = newLetters.Select(DescribeSymbiantDiscoveryLetter).ToArray();
+			var letterCleanup = CleanupTemporaryLetters(newLetters, cleanup);
+
+			result = new
+			{
+				success,
+				sourcePath = "ZombieSymbiant.Spawn -> CustomDefs.SymbiantConnection -> Find.LetterStack.ReceiveLetter",
+				spawnError,
+				requestedCell = ZombieRuntimeActions.DescribeCell(root),
+				spawnCell = ZombieRuntimeActions.DescribeCell(cell),
+				existingActiveSymbiantBefore = existingActiveId,
+				activeSymbiantAfterCleanup = ZombieRuntimeActions.StableThingId(activeAfterCleanup),
+				restoredExistingActive = existingActive == null
+					? activeAfterCleanup == null || cleanup == false
+					: activeAfterCleanup == existingActive || cleanup == false,
+				spawned = spawned == null ? null : new
+				{
+					id = ZombieRuntimeActions.StableThingId(spawned),
+					spawned = spawned.Spawned,
+					destroyed = spawned.Destroyed,
+					cellCount = spawned.CellCount,
+					position = spawned.Spawned ? ZombieRuntimeActions.DescribeCell(spawned.Position) : null,
+					host = host == null ? null : new
+					{
+						id = ZombieRuntimeActions.StableThingId(host),
+						label = host.LabelShortCap,
+						position = host.Spawned ? ZombieRuntimeActions.DescribeCell(host.Position) : null,
+						hasSymbiosisHediff = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null
+					}
+				},
+				defs = new
+				{
+					connectionLetter = CustomDefs.SymbiantConnection?.defName,
+					connectionLetterArriveSound = CustomDefs.SymbiantConnection?.arriveSound?.defName,
+					connectedSound = CustomDefs.SymbiantConnected?.defName,
+					disconnectedSound = CustomDefs.SymbiantDisconnected?.defName,
+					connectionLetterColor = CustomDefs.SymbiantConnection == null ? null : DescribeColor(CustomDefs.SymbiantConnection.color),
+					defOk
+				},
+				expectedLabel,
+				expectedLookTargetCount,
+				newLetterCount = newLetters.Length,
+				matchingLetterCount = matchingLetters.Length,
+				letters,
+				cleanup = cleanupResult,
+				letterCleanup
+			};
+
+			return result;
+		}
+
 		[Tool("zombieland/symbiant_infestation_state", Description = "Inspect or exercise the zombie symbiant state with spawn, expand, feedCoagulant, removeHostHediff, and stress modes.")]
 		public static object SymbiantInfestationState(
 			[ToolParameter(Description = "Mode: read, spawn, expand, feedCoagulant, removeHostHediff, stress.", Required = false, DefaultValue = "read")] string mode = "read",
@@ -262,6 +386,67 @@ namespace ZombieLand
 					ZombieSettings.Values.symbiantCanBreakConstructedWalls,
 					symbiantCoagulantPotency = ZombieSettings.Values.symbiantCoagulantPotency.ToString()
 				}
+			};
+		}
+
+		static object CleanupTemporarySymbiant(Map map, ZombieSymbiant symbiant, bool cleanup)
+		{
+			if (symbiant == null)
+				return new { requested = cleanup, cleaned = false, reason = "No temporary symbiant was spawned." };
+			if (cleanup == false)
+				return new { requested = false, cleaned = false, reason = "Cleanup disabled.", symbiant = ZombieRuntimeActions.StableThingId(symbiant) };
+			if (symbiant.Destroyed)
+				return new { requested = true, cleaned = false, reason = "Temporary symbiant was already destroyed.", symbiant = ZombieRuntimeActions.StableThingId(symbiant) };
+
+			var id = ZombieRuntimeActions.StableThingId(symbiant);
+			symbiant.DebugDestroyWithoutHostTrauma();
+			_ = ZombieSymbiant.ActiveSymbiant(map);
+			return new { requested = true, cleaned = symbiant.Destroyed, symbiant = id };
+		}
+
+		static object CleanupTemporaryLetters(Letter[] letters, bool cleanup)
+		{
+			if (cleanup == false || letters == null || letters.Length == 0 || Find.LetterStack == null)
+				return new { removed = 0, skipped = cleanup == false };
+
+			var removed = 0;
+			foreach (var letter in letters)
+			{
+				if (letter == null)
+					continue;
+				Find.LetterStack.RemoveLetter(letter);
+				removed++;
+			}
+
+			return new { removed, skipped = false };
+		}
+
+		static object DescribeSymbiantDiscoveryLetter(Letter letter)
+		{
+			if (letter == null)
+				return null;
+
+			var choice = letter as ChoiceLetter;
+			return new
+			{
+				label = letter.Label.ToString(),
+				text = choice?.Text.ToString(),
+				defName = letter.def?.defName,
+				arriveSound = letter.def?.arriveSound?.defName,
+				color = letter.def == null ? null : DescribeColor(letter.def.color),
+				letter.arrivalTick,
+				lookTargetCount = letter.lookTargets?.targets?.Count ?? 0,
+				lookTargets = letter.lookTargets?.targets?
+					.Select(target => new
+					{
+						valid = target.IsValid,
+						label = target.Label,
+						hasThing = target.HasThing,
+						thing = ZombieRuntimeActions.StableThingId(target.Thing),
+						cell = target.IsMapTarget ? ZombieRuntimeActions.DescribeCell(target.Cell) : null,
+						mapId = target.Map?.uniqueID
+					})
+					.ToArray()
 			};
 		}
 	}

@@ -300,7 +300,7 @@ namespace ZombieLand
 		static TaggedString SpawnRoomLabel(Map map, IntVec3 cell)
 		{
 			var role = cell.GetRoom(map)?.Role;
-			return role == null || role.label.NullOrEmpty() ? "ZombieSymbiantUnknownRoom".Translate() : role.LabelCap;
+			return role == null || role.defName == "None" || role.label.NullOrEmpty() ? "ZombieSymbiantUnknownRoom".Translate() : role.LabelCap;
 		}
 
 		static LookTargets SpawnLookTargets(ZombieSymbiant symbiant, Pawn linkedHost, Map map, IntVec3 cell)
@@ -967,6 +967,26 @@ namespace ZombieLand
 				HandleUncontrolledDestroy();
 			ReleaseRenderResources();
 			base.Destroy(mode);
+		}
+
+		internal void DebugDestroyWithoutHostTrauma()
+		{
+			if (Destroyed)
+				return;
+
+			safeSeveranceInProgress = true;
+			try
+			{
+				var pawn = ResolveHost();
+				RemoveHostHediff(pawn);
+				host = null;
+				hostThingId = null;
+				Destroy(DestroyMode.Vanish);
+			}
+			finally
+			{
+				safeSeveranceInProgress = false;
+			}
 		}
 
 		bool AddRelativeCell(IntVec3 relative)
