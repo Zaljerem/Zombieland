@@ -67,8 +67,8 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Spawn in an enclosed, non-huge, non-fogged, proper room that is home-area or colony-used.
 - Score spawn rooms by recent movement pheromone timestamps first, then by valuable room objects such as beds, worktables, storage, power, and kitchen-like utility buildings.
 - Initial state is one occupied cell and a right-side green symbiant letter describing the wet seep, the room role, and the linked colonist. The letter should use two look targets when possible: one for the seep and one for the host.
-- There is no first-time modal dialog. Onboarding text lives in the symbiant letter, symbiant inspect text, host hediff, and the compact symbiant settings help.
-- Connection and disconnection use dedicated subtle symbiant sounds. The connection sound is attached to the green arrival letter when letters are enabled, and played directly only when the letter is suppressed.
+- There is no first-time modal dialog. Onboarding text lives in the green symbiant side letter, symbiant inspect text, host hediff, and the compact symbiant settings help.
+- Connection and disconnection use dedicated subtle symbiant sounds. The connection sound is attached to the green arrival letter when letters are enabled, and played directly only when the letter is suppressed. The disconnection sound plays when the host link ends and the symbiant event is over.
 - Bridge validation uses `zombieland/symbiant_discovery_letter_contract` to spawn a temporary symbiant through `ZombieSymbiant.Spawn`, capture the generated green letter, verify the connection/disconnection defs, count look targets, and clean up the temporary symbiant without host trauma.
 - Bridge validation uses `zombieland/symbiant_natural_spawn_contract` to inspect the natural spawn plan, prove active-symbiant/no-host blockers, and optionally create a reversible bedroom fixture to exercise `TrySpawnInBestRoom` with cleanup on a current-loadout map.
 - Choose a random eligible free colonist after spawn:
@@ -154,6 +154,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - `severanceReserveRequired = clamp(ceil(fullBenefitCells * symbiantSeveranceReserveCoverage), symbiantSeveranceReserveMin, symbiantSeveranceReserveMax)`.
 - The reserve cap is `severanceReserveRequired`. This keeps removal costly without scaling into an absurd number of corpse/coagulant jobs for large colonies.
 - Full reserve, maturity, and a symbiant of 3 cells or less enable safe severance surgery.
+- Bridge validation uses `zombieland/symbiant_feeding_contract` to create a temporary linked symbiant, verify coagulant pulse sizing, daily feed-cap rejection, safe visible minimum, growth pause, breach cancellation, recession shrink, coagulant potency tiers, and cleanup.
 
 ## Safe Severance
 

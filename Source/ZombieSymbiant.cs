@@ -1497,7 +1497,10 @@ namespace ZombieLand
 				return false;
 			ResetDailyFeedCounter();
 			if (decouplingFeedPulsesToday >= DecouplingFeedPulsesPerDay)
+			{
+				lastRecessionPulseCells = 0;
 				return false;
+			}
 
 			UpdateSymbiosisState();
 			var pulseSize = RecessionPulseSize(feed);

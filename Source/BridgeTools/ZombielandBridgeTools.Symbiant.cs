@@ -69,10 +69,16 @@ namespace ZombieLand
 			var primaryLetter = matchingLetters.FirstOrDefault();
 			var lookTargetCount = primaryLetter?.lookTargets?.targets?.Count ?? 0;
 			var expectedLookTargetCount = host == null ? 1 : 2;
+			var connectionColor = CustomDefs.SymbiantConnection?.color;
+			var colorOk = connectionColor != null
+				&& connectionColor.Value.g > connectionColor.Value.r
+				&& connectionColor.Value.g > connectionColor.Value.b
+				&& connectionColor.Value.g >= 0.4f;
 			var defOk = CustomDefs.SymbiantConnection != null
 				&& CustomDefs.SymbiantConnected != null
 				&& CustomDefs.SymbiantDisconnected != null
-				&& CustomDefs.SymbiantConnection.arriveSound == CustomDefs.SymbiantConnected;
+				&& CustomDefs.SymbiantConnection.arriveSound == CustomDefs.SymbiantConnected
+				&& colorOk;
 			var success = spawnError == null
 				&& spawned?.Spawned == true
 				&& matchingLetters.Length == 1
@@ -119,6 +125,7 @@ namespace ZombieLand
 					connectedSound = CustomDefs.SymbiantConnected?.defName,
 					disconnectedSound = CustomDefs.SymbiantDisconnected?.defName,
 					connectionLetterColor = CustomDefs.SymbiantConnection == null ? null : DescribeColor(CustomDefs.SymbiantConnection.color),
+					colorOk,
 					defOk
 				},
 				expectedLabel,
@@ -377,6 +384,303 @@ namespace ZombieLand
 				map.roofGrid.SetRoof(pair.Key, pair.Value);
 			map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
 			return new { removed, restoredCells = fixture.originalHome.Count, skipped = false };
+		}
+
+		[Tool("zombieland/symbiant_feeding_contract", Description = "Verify symbiant feeding pulse sizing, reserve gain, safe minimum, growth pause, breach cancellation, daily cap, and coagulant potency tiers.")]
+		public static object SymbiantFeedingContract(
+			[ToolParameter(Description = "Destroy temporary symbiants, host, feed items, and letters after capturing evidence.", Required = false, DefaultValue = true)] bool cleanup = true)
+		{
+			var map = CurrentMap;
+			if (map == null)
+				return new { success = false, error = "No current map is loaded." };
+			var activeBefore = ZombieSymbiant.ActiveSymbiant(map);
+			if (activeBefore != null)
+				return new { success = false, error = "An active symbiant already exists on the current map.", activeSymbiant = ZombieRuntimeActions.StableThingId(activeBefore) };
+			if (CustomDefs.SymbiantCoagulantPack == null)
+				return new { success = false, error = "SymbiantCoagulantPack def is missing." };
+
+			var settingsSnapshot = SnapshotZombieSettings();
+			var beforeLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>()).ToHashSet();
+			var root = new IntVec3(map.Size.x / 2, 0, map.Size.z / 2);
+			if (TryFindClearSpawnCell(map, root, 32f, out var hostCell, out var hostCellError) == false)
+				return hostCellError;
+			if (TryFindClearSpawnCell(map, hostCell + new IntVec3(4, 0, 0), 32f, out var symbiantCell, out var symbiantCellError) == false)
+				return symbiantCellError;
+
+			Pawn tempHost = null;
+			ZombieSymbiant defaultSymbiant = null;
+			ZombieSymbiant potencySymbiant = null;
+			object defaultScenario = null;
+			object potencyScenario = null;
+			object cleanupDefault = null;
+			object cleanupPotency = null;
+			object cleanupHost = null;
+			object error = null;
+
+			try
+			{
+				ApplyZombieSettingsOverride(settings =>
+				{
+					settings.showZombieEventLetters = false;
+					settings.symbiantCoagulantPotency = SymbiantCoagulantPotency.Normal;
+					settings.symbiantDecouplingFeedPulsesPerDay = 2;
+					settings.symbiantPostFeedPauseHours = 16;
+					settings.symbiantMaxCells = Math.Max(settings.symbiantMaxCells, 400);
+				});
+
+				tempHost = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
+				GenSpawn.Spawn(tempHost, hostCell, map, Rot4.South);
+				DisablePawnWork(tempHost);
+				tempHost.needs?.AddOrRemoveNeedsAsAppropriate();
+				tempHost.mindState?.mentalStateHandler?.Reset();
+
+				ZombieSymbiant.Spawn(map, symbiantCell);
+				defaultSymbiant = ZombieSymbiant.ActiveSymbiant(map);
+				defaultScenario = RunSymbiantDefaultFeedingScenario(map, defaultSymbiant);
+				cleanupDefault = CleanupTemporarySymbiant(map, defaultSymbiant, cleanup);
+				defaultSymbiant = null;
+
+				ApplyZombieSettingsOverride(settings =>
+				{
+					settings.symbiantCoagulantPotency = SymbiantCoagulantPotency.Cheap;
+					settings.symbiantDecouplingFeedPulsesPerDay = 10;
+				});
+
+				ZombieSymbiant.Spawn(map, symbiantCell);
+				potencySymbiant = ZombieSymbiant.ActiveSymbiant(map);
+				potencyScenario = RunSymbiantCoagulantPotencyScenario(potencySymbiant);
+			}
+			catch (Exception ex)
+			{
+				error = ex.ToString();
+			}
+			finally
+			{
+				cleanupPotency = CleanupTemporarySymbiant(map, potencySymbiant, cleanup);
+				if (cleanup && tempHost != null && tempHost.Destroyed == false)
+				{
+					var id = ZombieRuntimeActions.StableThingId(tempHost);
+					tempHost.Destroy(DestroyMode.Vanish);
+					cleanupHost = new { cleaned = tempHost.Destroyed, host = id };
+				}
+				else
+					cleanupHost = new { cleaned = false, skipped = cleanup == false, host = ZombieRuntimeActions.StableThingId(tempHost) };
+				RestoreZombieSettings(settingsSnapshot);
+			}
+
+			var newLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
+				.Where(letter => beforeLetters.Contains(letter) == false)
+				.ToArray();
+			var letterCleanup = CleanupTemporaryLetters(newLetters, cleanup);
+			var activeAfterCleanup = ZombieSymbiant.ActiveSymbiant(map);
+			var success = error == null
+				&& ScenarioSucceeded(defaultScenario)
+				&& ScenarioSucceeded(potencyScenario)
+				&& (activeAfterCleanup == null || cleanup == false);
+
+			return new
+			{
+				success,
+				sourcePath = "ZombieSymbiant.TryFeed -> RecessionPulseSize -> ShrinkCells",
+				error,
+				spawn = new
+				{
+					hostCell = ZombieRuntimeActions.DescribeCell(hostCell),
+					symbiantCell = ZombieRuntimeActions.DescribeCell(symbiantCell),
+					tempHost = ZombieRuntimeActions.StableThingId(tempHost)
+				},
+				defaultScenario,
+				potencyScenario,
+				cleanup = new
+				{
+					defaultSymbiant = cleanupDefault,
+					potencySymbiant = cleanupPotency,
+					host = cleanupHost,
+					letters = letterCleanup,
+					activeSymbiantAfterCleanup = ZombieRuntimeActions.StableThingId(activeAfterCleanup)
+				}
+			};
+		}
+
+		static object RunSymbiantDefaultFeedingScenario(Map map, ZombieSymbiant symbiant)
+		{
+			if (symbiant == null)
+				return new { success = false, error = "No symbiant was spawned for the default feeding scenario." };
+
+			var host = symbiant.LinkedHost;
+			var initialCells = symbiant.CellCount;
+			var first = FeedSymbiantCoagulant(symbiant, "normal one-cell feed", 3);
+			var oneCellStayedVisible = first.afterCells == initialCells && first.removedCells == 0;
+			var pauseTicks = Math.Max(0, ZombieSettings.Values.symbiantPostFeedPauseHours) * GenDate.TicksPerHour;
+			var pauseApplied = first.feedPausedUntilTick >= first.beforeTick + pauseTicks;
+			var cancelBreach = symbiant.CancelNextBreach;
+
+			var targetCells = GenRadial.RadialCellsAround(symbiant.Position, 28f, true)
+				.Where(cell => cell.InBounds(map) && symbiant.ContainsCell(cell) == false)
+				.Take(119)
+				.ToArray();
+			var addedCells = ZombieSymbiant.AddCells(map, targetCells);
+			var largeBeforeCells = symbiant.CellCount;
+			var second = FeedSymbiantCoagulant(symbiant, "normal large-state feed", 4);
+			var third = FeedSymbiantCoagulant(symbiant, "daily cap rejection", 4);
+			var thirdBlocked = third.fed == false
+				&& Approximately(third.reserveDelta, 0f)
+				&& third.removedCells == 0
+				&& third.afterCells == third.beforeCells
+				&& symbiant.DecouplingFeedPulsesToday == 2;
+
+			var success = host != null
+				&& initialCells == 1
+				&& first.success
+				&& oneCellStayedVisible
+				&& pauseApplied
+				&& cancelBreach
+				&& addedCells >= 99
+				&& largeBeforeCells >= 100
+				&& second.success
+				&& second.removedCells == 4
+				&& thirdBlocked
+				&& symbiant.CellCount >= symbiant.SafeVisibleMinimum;
+
+			return new
+			{
+				success,
+				host = host == null ? null : new
+				{
+					id = ZombieRuntimeActions.StableThingId(host),
+					label = host.LabelShortCap
+				},
+				initialCells,
+				first,
+				oneCellStayedVisible,
+				pauseTicks,
+				pauseApplied,
+				cancelBreach,
+				addedCells,
+				largeBeforeCells,
+				second,
+				third,
+				thirdBlocked,
+				final = DescribeSymbiantFeedingState(symbiant)
+			};
+		}
+
+		static object RunSymbiantCoagulantPotencyScenario(ZombieSymbiant symbiant)
+		{
+			if (symbiant == null)
+				return new { success = false, error = "No symbiant was spawned for the coagulant potency scenario." };
+
+			ApplyZombieSettingsOverride(settings => settings.symbiantCoagulantPotency = SymbiantCoagulantPotency.Cheap);
+			var cheap = FeedSymbiantCoagulant(symbiant, "cheap coagulant", 2);
+			ApplyZombieSettingsOverride(settings => settings.symbiantCoagulantPotency = SymbiantCoagulantPotency.Normal);
+			var normal = FeedSymbiantCoagulant(symbiant, "normal coagulant", 3);
+			ApplyZombieSettingsOverride(settings => settings.symbiantCoagulantPotency = SymbiantCoagulantPotency.Expensive);
+			var expensive = FeedSymbiantCoagulant(symbiant, "expensive coagulant", 5);
+
+			var success = symbiant.LinkedHost != null
+				&& cheap.success
+				&& normal.success
+				&& expensive.success
+				&& cheap.removedCells == 0
+				&& normal.removedCells == 0
+				&& expensive.removedCells == 0
+				&& symbiant.CellCount == 1
+				&& symbiant.DecouplingFeedPulsesToday == 3;
+
+			return new
+			{
+				success,
+				cheap,
+				normal,
+				expensive,
+				final = DescribeSymbiantFeedingState(symbiant)
+			};
+		}
+
+		sealed class SymbiantFeedStep
+		{
+			public string label { get; set; }
+			public int expectedPulse { get; set; }
+			public int beforeTick { get; set; }
+			public int beforeCells { get; set; }
+			public int afterCells { get; set; }
+			public float reserveBefore { get; set; }
+			public float reserveAfter { get; set; }
+			public float reserveDelta { get; set; }
+			public int feedPulsesBefore { get; set; }
+			public int feedPulsesAfter { get; set; }
+			public bool fed { get; set; }
+			public int removedCells { get; set; }
+			public int feedPausedUntilTick { get; set; }
+			public bool cancelNextBreach { get; set; }
+			public bool success { get; set; }
+		}
+
+		static SymbiantFeedStep FeedSymbiantCoagulant(ZombieSymbiant symbiant, string label, int expectedPulse)
+		{
+			var beforeTick = GenTicks.TicksGame;
+			var beforeCells = symbiant?.CellCount ?? 0;
+			var reserveBefore = symbiant?.DecouplingReserve ?? 0f;
+			var feedPulsesBefore = symbiant?.DecouplingFeedPulsesToday ?? 0;
+			var pack = ThingMaker.MakeThing(CustomDefs.SymbiantCoagulantPack);
+			var fed = symbiant?.TryFeed(pack) == true;
+			if (fed == false && pack?.Destroyed == false)
+				pack.Destroy(DestroyMode.Vanish);
+			var reserveAfter = symbiant?.DecouplingReserve ?? reserveBefore;
+			var afterCells = symbiant?.Destroyed == true ? 0 : symbiant?.CellCount ?? 0;
+			var reserveDelta = reserveAfter - reserveBefore;
+			var removedCells = symbiant?.LastRecessionPulseCells ?? 0;
+			var success = fed
+				&& Approximately(reserveDelta, expectedPulse)
+				&& feedPulsesBefore + 1 == (symbiant?.DecouplingFeedPulsesToday ?? feedPulsesBefore)
+				&& removedCells <= expectedPulse;
+			return new SymbiantFeedStep
+			{
+				label = label,
+				expectedPulse = expectedPulse,
+				beforeTick = beforeTick,
+				beforeCells = beforeCells,
+				afterCells = afterCells,
+				reserveBefore = reserveBefore,
+				reserveAfter = reserveAfter,
+				reserveDelta = reserveDelta,
+				feedPulsesBefore = feedPulsesBefore,
+				feedPulsesAfter = symbiant?.DecouplingFeedPulsesToday ?? feedPulsesBefore,
+				fed = fed,
+				removedCells = removedCells,
+				feedPausedUntilTick = symbiant?.FeedPausedUntilTick ?? 0,
+				cancelNextBreach = symbiant?.CancelNextBreach ?? false,
+				success = success
+			};
+		}
+
+		static object DescribeSymbiantFeedingState(ZombieSymbiant symbiant)
+		{
+			if (symbiant == null)
+				return null;
+			return new
+			{
+				cellCount = symbiant.CellCount,
+				decouplingReserve = symbiant.DecouplingReserve,
+				decouplingReserveMax = symbiant.DecouplingReserveMax,
+				reserveMaturityFactor = symbiant.ReserveMaturityFactor,
+				effectiveDecouplingReserve = symbiant.EffectiveDecouplingReserve,
+				safeVisibleMinimum = symbiant.SafeVisibleMinimum,
+				feedPulsesToday = symbiant.DecouplingFeedPulsesToday,
+				feedPulsesPerDay = symbiant.DecouplingFeedPulsesPerDay,
+				feedPulsesRemaining = symbiant.FeedPulsesRemaining,
+				lastRecessionPulseCells = symbiant.LastRecessionPulseCells,
+				feedPausedUntilTick = symbiant.FeedPausedUntilTick,
+				cancelNextBreach = symbiant.CancelNextBreach
+			};
+		}
+
+		static bool ScenarioSucceeded(object scenario)
+		{
+			if (scenario == null)
+				return false;
+			var property = scenario.GetType().GetProperty("success");
+			return property?.GetValue(scenario) is bool success && success;
 		}
 
 		[Tool("zombieland/symbiant_expansion_contract", Description = "Build a reversible two-room fixture and verify symbiant expansion into room cells, under a closed door, and through one constructed wall.")]
