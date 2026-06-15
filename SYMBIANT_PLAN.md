@@ -70,7 +70,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - There is no first-time modal dialog. Onboarding text lives in the symbiant letter, symbiant inspect text, host hediff, and the compact symbiant settings help.
 - Connection and disconnection use dedicated subtle symbiant sounds. The connection sound is attached to the green arrival letter when letters are enabled, and played directly only when the letter is suppressed.
 - Bridge validation uses `zombieland/symbiant_discovery_letter_contract` to spawn a temporary symbiant through `ZombieSymbiant.Spawn`, capture the generated green letter, verify the connection/disconnection defs, count look targets, and clean up the temporary symbiant without host trauma.
-- Bridge validation uses `zombieland/symbiant_natural_spawn_contract` to inspect the natural spawn plan, prove active-symbiant/no-host blockers, and optionally exercise `TrySpawnInBestRoom` with cleanup on a clean map.
+- Bridge validation uses `zombieland/symbiant_natural_spawn_contract` to inspect the natural spawn plan, prove active-symbiant/no-host blockers, and optionally create a reversible bedroom fixture to exercise `TrySpawnInBestRoom` with cleanup on a current-loadout map.
 - Choose a random eligible free colonist after spawn:
   - alive, spawned, humanlike, flesh,
   - player faction colonist,

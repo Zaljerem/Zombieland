@@ -419,7 +419,7 @@ namespace ZombieLand
 				return false;
 
 			var best = room.Cells
-				.Where(candidate => CanOccupyOpenCell(map, candidate))
+				.Where(candidate => CanOccupyInitialSpawnCell(map, candidate))
 				.Select(candidate => new { cell = candidate, score = ScoreTraffic(map, candidate) + ScoreColonyUse(map, candidate) })
 				.OrderByDescending(candidate => candidate.score)
 				.FirstOrDefault();
@@ -429,6 +429,13 @@ namespace ZombieLand
 			cell = best.cell;
 			score = best.score;
 			return true;
+		}
+
+		static bool CanOccupyInitialSpawnCell(Map map, IntVec3 cell)
+		{
+			return CanOccupyOpenCell(map, cell)
+				&& cell.GetEdifice(map) == null
+				&& cell.GetThingList(map).Any(thing => thing is Pawn || thing.def.category == ThingCategory.Building) == false;
 		}
 
 		static IEnumerable<Room> CandidateRooms(Map map)

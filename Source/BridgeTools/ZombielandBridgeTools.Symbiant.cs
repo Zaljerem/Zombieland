@@ -136,7 +136,8 @@ namespace ZombieLand
 		[Tool("zombieland/symbiant_natural_spawn_contract", Description = "Inspect the natural symbiant spawn plan and optionally exercise TrySpawnInBestRoom with cleanup.")]
 		public static object SymbiantNaturalSpawnContract(
 			[ToolParameter(Description = "Run TrySpawnInBestRoom after inspecting the plan. If false, this is read-only.", Required = false, DefaultValue = false)] bool spawn = false,
-			[ToolParameter(Description = "Destroy a symbiant created by this contract without host trauma and remove generated letters.", Required = false, DefaultValue = true)] bool cleanup = true)
+			[ToolParameter(Description = "Create a reversible bedroom fixture first when no active symbiant exists, so the positive natural-spawn path can be tested.", Required = false, DefaultValue = false)] bool setupFixture = false,
+			[ToolParameter(Description = "Destroy a symbiant and fixture created by this contract without host trauma and remove generated letters.", Required = false, DefaultValue = true)] bool cleanup = true)
 		{
 			var map = CurrentMap;
 			if (map == null)
@@ -144,6 +145,12 @@ namespace ZombieLand
 
 			var activeBefore = ZombieSymbiant.ActiveSymbiant(map);
 			var activeBeforeId = ZombieRuntimeActions.StableThingId(activeBefore);
+			var initialPlan = ZombieSymbiant.DebugNaturalSpawnPlan(map);
+			SymbiantNaturalSpawnFixture fixture = null;
+			object fixtureSetup = null;
+			if (setupFixture && activeBefore == null)
+				fixtureSetup = TrySetupSymbiantNaturalSpawnFixture(map, out fixture, out var fixtureError) ? DescribeSymbiantNaturalSpawnFixture(fixture) : fixtureError;
+
 			var planBefore = ZombieSymbiant.DebugNaturalSpawnPlan(map);
 			var expectedCanSpawn = ZombieSymbiant.CanNaturalSpawnNow(map);
 			var beforeLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
@@ -177,29 +184,41 @@ namespace ZombieLand
 			var letters = newLetters.Select(DescribeSymbiantDiscoveryLetter).ToArray();
 			var host = spawned?.LinkedHost;
 			var spawnedRoom = spawned?.Spawned == true ? spawned.Position.GetRoom(map) : null;
+			var spawnedRoomInfo = spawnedRoom == null ? null : new
+			{
+				role = spawnedRoom.Role?.defName,
+				roleLabel = spawnedRoom.Role?.LabelCap.ToString(),
+				cellCount = spawnedRoom.CellCount
+			};
+			var spawnedInFixtureRoom = fixture?.room.interiorRect.Contains(spawned?.Position ?? IntVec3.Invalid) == true;
 			var cleanupResult = activeBefore == null ? CleanupTemporarySymbiant(map, spawned, cleanup) : new { requested = cleanup, cleaned = false, reason = "Existing active symbiant was present before the contract." };
 			var letterCleanup = CleanupTemporaryLetters(newLetters, cleanup);
 			var activeAfterCleanup = ZombieSymbiant.ActiveSymbiant(map);
+			var fixtureCleanup = CleanupSymbiantNaturalSpawnFixture(map, fixture, cleanup);
+			var activeAfterFixtureCleanup = ZombieSymbiant.ActiveSymbiant(map);
 
 			var success = spawn == false
 				? true
 				: expectedCanSpawn
-					? spawnError == null && trySpawnResult && spawned != null && host != null && newLetters.Any(letter => letter?.def == CustomDefs.SymbiantConnection)
-					: spawnError == null && trySpawnResult == false && spawned == null && activeAfterCleanup == activeBefore;
+					? spawnError == null && trySpawnResult && spawned != null && host != null && newLetters.Any(letter => letter?.def == CustomDefs.SymbiantConnection) && (setupFixture == false || spawnedInFixtureRoom)
+					: spawnError == null && trySpawnResult == false && spawned == null && activeAfterFixtureCleanup == activeBefore;
 
 			return new
 			{
 				success,
 				sourcePath = "ZombieSymbiant.TrySpawnInBestRoom -> BestSpawnRoom -> TryFindBestSpawnCell -> ZombieSymbiant.Spawn",
 				spawnRequested = spawn,
+				setupFixture,
 				expectedCanSpawn,
 				trySpawnResult,
 				spawnError,
 				activeSymbiantBefore = activeBeforeId,
-				activeSymbiantAfterCleanup = ZombieRuntimeActions.StableThingId(activeAfterCleanup),
+				activeSymbiantAfterCleanup = ZombieRuntimeActions.StableThingId(activeAfterFixtureCleanup),
 				restoredExistingActive = activeBefore == null
-					? activeAfterCleanup == null || cleanup == false
-					: activeAfterCleanup == activeBefore,
+					? activeAfterFixtureCleanup == null || cleanup == false
+					: activeAfterFixtureCleanup == activeBefore,
+				initialPlan,
+				fixtureSetup,
 				planBefore,
 				spawned = spawned == null ? null : new
 				{
@@ -208,12 +227,7 @@ namespace ZombieLand
 					destroyed = spawned.Destroyed,
 					cellCount = spawned.CellCount,
 					position = spawned.Spawned ? ZombieRuntimeActions.DescribeCell(spawned.Position) : null,
-					room = spawnedRoom == null ? null : new
-					{
-						role = spawnedRoom.Role?.defName,
-						roleLabel = spawnedRoom.Role?.LabelCap.ToString(),
-						cellCount = spawnedRoom.CellCount
-					},
+					room = spawnedRoomInfo,
 					host = host == null ? null : new
 					{
 						id = ZombieRuntimeActions.StableThingId(host),
@@ -222,13 +236,147 @@ namespace ZombieLand
 						hasSymbiosisHediff = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null
 					}
 				},
+				spawnedInFixtureRoom,
 				newLetterCount = newLetters.Length,
 				matchingLetterCount = newLetters.Count(letter => letter?.def == CustomDefs.SymbiantConnection),
 				letters,
 				cleanup = cleanupResult,
 				letterCleanup,
+				fixtureCleanup,
 				planAfter = ZombieSymbiant.DebugNaturalSpawnPlan(map)
 			};
+		}
+
+		sealed class SymbiantNaturalSpawnFixture
+		{
+			public FogRoomFixture room;
+			public CellRect fixtureRect;
+			public Building_Bed bed;
+			public Pawn host;
+			public readonly Dictionary<IntVec3, bool> originalHome = new();
+			public readonly Dictionary<IntVec3, RoofDef> originalRoof = new();
+		}
+
+		static bool TrySetupSymbiantNaturalSpawnFixture(Map map, out SymbiantNaturalSpawnFixture fixture, out object error)
+		{
+			fixture = null;
+			error = null;
+			var root = new IntVec3(map.Size.x / 2, 0, map.Size.z / 2);
+			if (TryBuildFogRoomFixture(map, root, 48f, out var room, out error) == false)
+				return false;
+
+			var fixtureRect = CellRect.FromLimits(room.interiorRect.minX - 1, room.interiorRect.minZ - 1, room.interiorRect.maxX + 1, room.interiorRect.maxZ + 1).ClipInsideMap(map);
+			fixture = new SymbiantNaturalSpawnFixture
+			{
+				room = room,
+				fixtureRect = fixtureRect
+			};
+
+			foreach (var cell in fixtureRect.Cells)
+			{
+				fixture.originalHome[cell] = map.areaManager.Home[cell];
+				fixture.originalRoof[cell] = map.roofGrid.RoofAt(cell);
+				map.areaManager.Home[cell] = true;
+			}
+			foreach (var cell in room.interiorRect.ClipInsideMap(map).Cells)
+				map.roofGrid.SetRoof(cell, RoofDefOf.RoofConstructed);
+
+			var bedCell = room.interiorRect.CenterCell;
+			var bed = ThingMaker.MakeThing(ThingDefOf.Bed, GenStuff.DefaultStuffFor(ThingDefOf.Bed)) as Building_Bed;
+			if (bed == null)
+			{
+				error = new { success = false, error = "Could not create a bed for the symbiant natural-spawn fixture." };
+				return false;
+			}
+			bed.SetFactionDirect(Faction.OfPlayer);
+			GenSpawn.Spawn(bed, bedCell, map, Rot4.North, WipeMode.Vanish, false);
+			fixture.bed = bed;
+
+			var hostCell = room.interiorRect.Cells
+				.Where(cell => cell.InBounds(map)
+					&& cell.Standable(map)
+					&& cell.GetEdifice(map) == null
+					&& cell.GetThingList(map).Any(thing => thing is Pawn || thing.def.category == ThingCategory.Building) == false)
+				.OrderByDescending(cell => cell.DistanceToSquared(bedCell))
+				.FirstOrDefault();
+			if (hostCell.IsValid == false)
+			{
+				error = new { success = false, error = "Could not find a clear host cell in the symbiant natural-spawn fixture." };
+				return false;
+			}
+
+			var host = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
+			GenSpawn.Spawn(host, hostCell, map, Rot4.South);
+			DisablePawnWork(host);
+			host.needs?.AddOrRemoveNeedsAsAppropriate();
+			host.mindState?.mentalStateHandler?.Reset();
+			fixture.host = host;
+			bed.CompAssignableToPawn?.TryAssignPawn(host);
+			bed.NotifyRoomAssignedPawnsChanged();
+
+			map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+			return true;
+		}
+
+		static object DescribeSymbiantNaturalSpawnFixture(SymbiantNaturalSpawnFixture fixture)
+		{
+			if (fixture == null)
+				return null;
+			var room = fixture.bed?.GetRoom(RegionType.Set_All) ?? fixture.room.interiorRect.CenterCell.GetRoom(fixture.bed?.Map);
+			return new
+			{
+				success = true,
+				fixtureRect = ZombieRuntimeActions.DescribeCellRect(fixture.fixtureRect),
+				interiorRect = ZombieRuntimeActions.DescribeCellRect(fixture.room.interiorRect),
+				bed = ZombieRuntimeActions.StableThingId(fixture.bed),
+				bedCell = fixture.bed?.Spawned == true ? ZombieRuntimeActions.DescribeCell(fixture.bed.Position) : null,
+				host = ZombieRuntimeActions.StableThingId(fixture.host),
+				hostLabel = fixture.host?.LabelShortCap,
+				hostCell = fixture.host?.Spawned == true ? ZombieRuntimeActions.DescribeCell(fixture.host.Position) : null,
+				room = room == null ? null : new
+				{
+					role = room.Role?.defName,
+					roleLabel = room.Role?.LabelCap.ToString(),
+					cellCount = room.CellCount,
+					isHuge = room.IsHuge,
+					properRoom = room.ProperRoom,
+					usesOutdoorTemperature = room.UsesOutdoorTemperature
+				}
+			};
+		}
+
+		static object CleanupSymbiantNaturalSpawnFixture(Map map, SymbiantNaturalSpawnFixture fixture, bool cleanup)
+		{
+			if (fixture == null)
+				return new { removed = 0, restoredCells = 0, skipped = cleanup == false };
+			if (cleanup == false)
+				return new { removed = 0, restoredCells = 0, skipped = true };
+
+			var removed = 0;
+			if (fixture.host != null && fixture.host.Destroyed == false)
+			{
+				fixture.host.Destroy(DestroyMode.Vanish);
+				removed++;
+			}
+
+			foreach (var thing in fixture.fixtureRect.Cells
+				.SelectMany(cell => cell.GetThingList(map))
+				.Where(thing => thing is Building)
+				.Distinct()
+				.ToArray())
+			{
+				if (thing.Destroyed)
+					continue;
+				thing.Destroy(DestroyMode.Vanish);
+				removed++;
+			}
+
+			foreach (var pair in fixture.originalHome)
+				map.areaManager.Home[pair.Key] = pair.Value;
+			foreach (var pair in fixture.originalRoof)
+				map.roofGrid.SetRoof(pair.Key, pair.Value);
+			map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+			return new { removed, restoredCells = fixture.originalHome.Count, skipped = false };
 		}
 
 		[Tool("zombieland/symbiant_infestation_state", Description = "Inspect or exercise the zombie symbiant state with spawn, expand, feedCoagulant, removeHostHediff, and stress modes.")]
