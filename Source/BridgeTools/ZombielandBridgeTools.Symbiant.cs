@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Verse;
+using Verse.AI;
 
 namespace ZombieLand
 {
@@ -683,6 +684,268 @@ namespace ZombieLand
 				return false;
 			var property = scenario.GetType().GetProperty("success");
 			return property?.GetValue(scenario) is bool success && success;
+		}
+
+		[Tool("zombieland/symbiant_combat_isolation_contract", Description = "Verify the symbiant Pawn shell is isolated from ordinary combat targeting while feed jobs can still discover it.")]
+		public static object SymbiantCombatIsolationContract(
+			[ToolParameter(Description = "Destroy temporary pawns, feed item, letter, and symbiant after capturing evidence.", Required = false, DefaultValue = true)] bool cleanup = true)
+		{
+			var map = CurrentMap;
+			if (map == null)
+				return new { success = false, error = "No current map is loaded." };
+			var activeBefore = ZombieSymbiant.ActiveSymbiant(map);
+			if (activeBefore != null)
+				return new { success = false, error = "An active symbiant already exists on the current map.", activeSymbiant = ZombieRuntimeActions.StableThingId(activeBefore) };
+			if (CustomDefs.SymbiantCoagulantPack == null)
+				return new { success = false, error = "SymbiantCoagulantPack def is missing." };
+
+			var hostileFaction = Find.FactionManager?.AllFactionsListForReading?
+				.FirstOrDefault(faction => faction != null && faction.HostileTo(Faction.OfPlayer) && faction.def?.humanlikeFaction == true)
+				?? Find.FactionManager?.AllFactionsListForReading?
+					.FirstOrDefault(faction => faction != null && faction.HostileTo(Faction.OfPlayer));
+			if (hostileFaction == null)
+				return new { success = false, error = "Could not find a hostile faction for the combat-isolation fixture." };
+
+			var settingsSnapshot = SnapshotZombieSettings();
+			var beforeLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>()).ToHashSet();
+			var spawnedThings = new List<Thing>();
+			ZombieSymbiant symbiant = null;
+			Thing pack = null;
+			object result;
+
+			try
+			{
+				ApplyZombieSettingsOverride(settings =>
+				{
+					settings.showZombieEventLetters = false;
+					settings.attackMode = AttackMode.Everything;
+					settings.enemiesAttackZombies = true;
+					settings.animalsAttackZombies = true;
+					settings.symbiantDecouplingFeedPulsesPerDay = Math.Max(2, settings.symbiantDecouplingFeedPulsesPerDay);
+				});
+
+				var root = new IntVec3(map.Size.x / 2, 0, map.Size.z / 2);
+				if (TryFindSymbiantCombatFixtureCells(map, root, 6, out var cells, out var cellError) == false)
+					return cellError;
+
+				var player = SpawnArmedAreaWorkflowPawn(map, "ZL_SymbiantCombat_Player", cells[0], Faction.OfPlayer, spawnedThings);
+				var enemy = SpawnArmedAreaWorkflowPawn(map, "ZL_SymbiantCombat_Enemy", cells[1], hostileFaction, spawnedThings);
+				var animal = SpawnAreaWorkflowAnimal(map, "ZL_SymbiantCombat_Animal", cells[2], Faction.OfPlayer, spawnedThings, def => def.combatPower > 0f);
+				var predator = SpawnAreaWorkflowAnimal(map, "ZL_SymbiantCombat_Predator", cells[3], Faction.OfPlayer, spawnedThings, def => def.RaceProps?.predator == true || def.combatPower >= 1f);
+				ZombieSymbiant.Spawn(map, cells[4]);
+				symbiant = ZombieSymbiant.ActiveSymbiant(map);
+				if (symbiant != null)
+					symbiant.Name = new NameSingle("ZL_SymbiantCombat_Goo");
+				pack = ThingMaker.MakeThing(CustomDefs.SymbiantCoagulantPack);
+				GenSpawn.Spawn(pack, cells[5], map, Rot4.South);
+				spawnedThings.Add(pack);
+
+				RefreshZombieTargetCache(map);
+				symbiant?.RequestFeed(true);
+
+				var pawnSystems = DescribeSymbiantCombatPawnSystems(map, symbiant, player, enemy);
+				var targetFinding = new
+				{
+					player = DescribeBestSymbiantTarget(player, symbiant),
+					enemy = DescribeBestSymbiantTarget(enemy, symbiant),
+					animal = DescribeBestSymbiantTarget(animal, symbiant),
+					predator = DescribeBestSymbiantTarget(predator, symbiant)
+				};
+				var forcedJobs = new
+				{
+					playerMelee = VerifySymbiantAttackJobRejected(player, symbiant, JobDefOf.AttackMelee),
+					playerStatic = VerifySymbiantAttackJobRejected(player, symbiant, JobDefOf.AttackStatic),
+					enemyMelee = VerifySymbiantAttackJobRejected(enemy, symbiant, JobDefOf.AttackMelee),
+					symbiantMelee = VerifySymbiantAttackJobRejected(symbiant, player, JobDefOf.AttackMelee)
+				};
+				var animalResponse = new
+				{
+					manhunterChance = animal == null || symbiant == null ? null : (float?)PawnUtility.GetManhunterOnDamageChance(animal, symbiant, animal.Position.DistanceTo(symbiant.Position)),
+					preyScore = predator == null || symbiant == null ? null : (float?)FoodUtility.GetPreyScoreFor(predator, symbiant)
+				};
+				var feed = WorkGiver_FeedZombieSymbiant.FindClosestFeed(player, symbiant);
+				var feedJob = new WorkGiver_FeedZombieSymbiant().JobOnThing(player, symbiant, true);
+				var feedDiscovery = new
+				{
+					feedRequested = symbiant?.FeedRequested ?? false,
+					closestFeed = feed == null ? null : ZombieRuntimeActions.StableThingId(feed),
+					closestFeedDef = feed?.def?.defName,
+					foundSpawnedPack = feed == pack,
+					jobDef = feedJob?.def?.defName,
+					jobTargetA = ZombieRuntimeActions.StableThingId(feedJob?.targetA.Thing),
+					jobTargetB = ZombieRuntimeActions.StableThingId(feedJob?.targetB.Thing),
+					success = feed == pack && feedJob?.def == CustomDefs.FeedZombieSymbiant && feedJob.targetA.Thing == symbiant && feedJob.targetB.Thing == pack
+				};
+				var patchTargets = new
+				{
+					availableShootingTargets = PatchedMethodsForPatchClass("AttackTargetFinder_GetAvailableShootingTargetsByScore_Patch"),
+					bestAttackTarget = PatchedMethodsForPatchClass("AttackTargetFinder_BestAttackTarget_Patch"),
+					hostileThingThing = PatchedMethodsForPatchClass("GenHostility_HostileTo_Thing_Thing_Patch"),
+					hostileThingFaction = PatchedMethodsForPatchClass("GenHostility_HostileTo_Thing_Faction_Patch"),
+					activeThreat = PatchedMethodsForPatchClass("GenHostility_IsActiveThreat_Patch"),
+					registerTarget = PatchedMethodsForPatchClass("AttackTargetsCache_RegisterTarget_Patch"),
+					startJob = PatchedMethodsForPatchClass("Pawn_JobTracker_StartJob_Patch"),
+					danger = PatchedMethodsForPatchClass("DangerWatcher_AffectsStoryDanger_Patch"),
+					flee = PatchedMethodsForPatchClass("FleeUtility_ShouldFleeFrom_Patch"),
+					manhunter = PatchedMethodsForPatchClass("PawnUtility_GetManhunterOnDamageChance_Patch"),
+					prey = PatchedMethodsForPatchClass("FoodUtility_GetPreyScoreFor_Patch")
+				};
+
+				var success = symbiant?.Spawned == true
+					&& ScenarioSucceeded(pawnSystems)
+					&& ScenarioSucceeded(targetFinding.player)
+					&& ScenarioSucceeded(targetFinding.enemy)
+					&& ScenarioSucceeded(targetFinding.animal)
+					&& ScenarioSucceeded(targetFinding.predator)
+					&& ScenarioSucceeded(forcedJobs.playerMelee)
+					&& ScenarioSucceeded(forcedJobs.playerStatic)
+					&& ScenarioSucceeded(forcedJobs.enemyMelee)
+					&& ScenarioSucceeded(forcedJobs.symbiantMelee)
+					&& animalResponse.manhunterChance == 0f
+					&& animalResponse.preyScore <= -9999f
+					&& feedDiscovery.success
+					&& patchTargets.bestAttackTarget.Length > 0
+					&& patchTargets.hostileThingThing.Length > 0
+					&& patchTargets.activeThreat.Length > 0
+					&& patchTargets.startJob.Length > 0;
+
+				result = new
+				{
+					success,
+					sourcePath = "Patches_Hostility + Pawn_JobTracker_StartJob_Patch + WorkGiver_FeedZombieSymbiant",
+					fixtureCells = cells.Select(ZombieRuntimeActions.DescribeCell).ToArray(),
+					pawns = new
+					{
+						player = DescribePawn(player),
+						enemy = DescribePawn(enemy),
+						animal = DescribePawn(animal),
+						predator = DescribePawn(predator),
+						symbiant = DescribePawn(symbiant)
+					},
+					pawnSystems,
+					targetFinding,
+					forcedJobs,
+					animalResponse,
+					feedDiscovery,
+					patchTargets
+				};
+			}
+			catch (Exception ex)
+			{
+				result = new { success = false, error = ex.ToString() };
+			}
+			finally
+			{
+				_ = CleanupTemporarySymbiant(map, symbiant, cleanup);
+				if (cleanup)
+					foreach (var thing in spawnedThings.Where(thing => thing != null && thing.Destroyed == false).Distinct().ToArray())
+						thing.Destroy(DestroyMode.Vanish);
+				var newLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
+					.Where(letter => beforeLetters.Contains(letter) == false)
+					.ToArray();
+				_ = CleanupTemporaryLetters(newLetters, cleanup);
+				RestoreZombieSettings(settingsSnapshot);
+			}
+
+			return result;
+		}
+
+		static bool TryFindSymbiantCombatFixtureCells(Map map, IntVec3 root, int count, out IntVec3[] cells, out object error)
+		{
+			cells = GenRadial.RadialCellsAround(root, 24f, true)
+				.Where(cell => cell.InBounds(map))
+				.Where(cell => cell.Standable(map))
+				.Where(cell => cell.Fogged(map) == false)
+				.Where(cell => cell.GetFirstPawn(map) == null)
+				.Where(cell => cell.GetEdifice(map) == null)
+				.Distinct()
+				.Take(count)
+				.ToArray();
+			error = cells.Length >= count
+				? null
+				: new { success = false, error = "Could not find enough clear cells for the symbiant combat-isolation fixture.", requested = count, found = cells.Length };
+			return error == null;
+		}
+
+		static object DescribeSymbiantCombatPawnSystems(Map map, ZombieSymbiant symbiant, Pawn player, Pawn enemy)
+		{
+			var playerFaction = Find.FactionManager?.AllFactionsListForReading?.FirstOrDefault(faction => faction?.def?.isPlayer == true);
+			var dangerMethod = AccessTools.Method(typeof(DangerWatcher), "AffectsStoryDanger");
+			var danger = dangerMethod != null && symbiant != null && (bool)dangerMethod.Invoke(null, new object[] { symbiant });
+			var flee = player != null && symbiant != null && FleeUtility.ShouldFleeFrom(symbiant, player, true, false);
+			var targetsHostile = map?.attackTargetsCache?.TargetsHostileToColony?.Contains(symbiant) ?? false;
+			var hostileToPlayer = symbiant != null && playerFaction != null && symbiant.HostileTo(playerFaction);
+			var playerHostileToSymbiant = player != null && symbiant != null && player.HostileTo(symbiant);
+			var enemyHostileToSymbiant = enemy != null && symbiant != null && enemy.HostileTo(symbiant);
+			var activeThreatToPlayer = symbiant != null && playerFaction != null && GenHostility.IsActiveThreatTo(symbiant, playerFaction, false, false);
+			var success = symbiant != null
+				&& symbiant.RegisteredInMapPawnLists == false
+				&& targetsHostile == false
+				&& hostileToPlayer == false
+				&& playerHostileToSymbiant == false
+				&& enemyHostileToSymbiant == false
+				&& activeThreatToPlayer == false
+				&& danger == false
+				&& flee == false
+				&& symbiant.kindDef?.isFighter == false
+				&& Mathf.Approximately(symbiant.kindDef?.combatPower ?? 0f, 0f);
+			return new
+			{
+				success,
+				registeredInMapPawnLists = symbiant?.RegisteredInMapPawnLists ?? false,
+				attackTargetsHostileToColony = targetsHostile,
+				hostileToPlayer,
+				playerHostileToSymbiant,
+				enemyHostileToSymbiant,
+				activeThreatToPlayer,
+				affectsStoryDanger = danger,
+				shouldFleeFrom = flee,
+				kindIsFighter = symbiant?.kindDef?.isFighter ?? false,
+				combatPower = symbiant?.kindDef?.combatPower ?? 0f
+			};
+		}
+
+		static object DescribeBestSymbiantTarget(Pawn searcher, ZombieSymbiant symbiant)
+		{
+			var target = searcher == null || symbiant == null
+				? null
+				: AttackTargetFinder.BestAttackTarget(searcher, TargetScanFlags.NeedThreat, thing => thing == symbiant, 0f, 999f);
+			return new
+			{
+				success = target == null,
+				searcher = ZombieRuntimeActions.StableThingId(searcher),
+				searcherDef = searcher?.def?.defName,
+				searcherKind = searcher?.kindDef?.defName,
+				currentVerb = searcher?.CurrentEffectiveVerb?.ToString(),
+				target = DescribeTarget(target)
+			};
+		}
+
+		static object VerifySymbiantAttackJobRejected(Pawn actor, Thing target, JobDef jobDef)
+		{
+			if (actor == null || target == null || jobDef == null)
+				return new { success = false, error = "Missing actor, target, or jobDef.", actor = ZombieRuntimeActions.StableThingId(actor), target = ZombieRuntimeActions.StableThingId(target), jobDef = jobDef?.defName };
+			var beforeJob = actor.CurJob;
+			var beforeJobDef = beforeJob?.def?.defName;
+			var beforeTarget = ZombieRuntimeActions.StableThingId(beforeJob?.targetA.Thing);
+			var job = JobMaker.MakeJob(jobDef, target);
+			actor.jobs.StartJob(job, JobCondition.InterruptForced, null, false, true);
+			var afterJob = actor.CurJob;
+			var accepted = afterJob != null && afterJob.def == jobDef && afterJob.targetA.Thing == target;
+			if (accepted == false)
+				actor.jobs.StopAll(false, true);
+			return new
+			{
+				success = accepted == false,
+				actor = ZombieRuntimeActions.StableThingId(actor),
+				target = ZombieRuntimeActions.StableThingId(target),
+				jobDef = jobDef.defName,
+				beforeJobDef,
+				beforeTarget,
+				afterJobDef = afterJob?.def?.defName,
+				afterTarget = ZombieRuntimeActions.StableThingId(afterJob?.targetA.Thing),
+				accepted
+			};
 		}
 
 		[Tool("zombieland/symbiant_severance_contract", Description = "Verify safe-severance surgery gates, recipe ingredients, deterministic success cleanup, and deterministic failure reserve loss.")]

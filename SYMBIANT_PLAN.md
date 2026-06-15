@@ -59,6 +59,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
   - the symbiant itself may run only the symbiant job plus inert wait/goto fallback jobs and must not start melee/static attack jobs.
 - This is an intentional interim compromise. The cleaner long-term architecture is a custom `ThingWithComps` or `Thing`-based symbiant entity with only the specific systems we need. Do that as a separate migration after v1 behavior and rendering are stable, not mixed into the current combat/rendering stabilization slice.
 - Compatibility expectation: hiding from `map.mapPawns` reduces interaction with vanilla and mod code that scans ordinary map pawns. It does not make the symbiant invisible to every possible mod because it is still a spawned `Thing` and still inherits from `Pawn` until the future category migration.
+- Bridge validation uses `zombieland/symbiant_combat_isolation_contract` to prove the current pawn-shell compromise in one fixture: map-pawn exclusion, hostility/active-threat/story-danger/flee rejection, player/enemy/animal/predator target rejection, explicit attack-job rejection, animal revenge/predation rejection, and feed-job discoverability. Current status: source added and build-clean; live bridge validation is still pending because the last RimWorld restart loop repeatedly inherited stale GABS bridge port state.
 
 ## Spawn And Host Link
 
@@ -341,6 +342,17 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 7. Unsafe damage reflection and host-death messy collapse.
 8. Rendering cap, CPU metaball mask polish, GPU opacity shader polish, dormant renderer cleanup, and balancing passes.
 
+## Release-Oriented Operating Mode
+
+- The symbiant is now player-visible in real games, including stream-visible play, so near-term work should bias toward release stability and obvious player-facing correctness over perfect validation ceremony.
+- Real-play feedback from a streamed symbiant encounter: the discovery clues/onboarding signals worked well enough to stop treating first discovery as the main risk. Keep the green letter, look targets, sounds, inspect text, and settings help lightweight; the release focus is now making the active symbiant playable once it exists.
+- Keep two work lanes:
+  - Player-visible hot path: fix issues that can embarrass an active game quickly, such as combat interaction, broken letters/sounds, bad cleanup/severance behavior, rendering regressions, severe performance drops, and confusing settings text. Evidence can be a clean build plus one focused live/manual smoke check when practical.
+  - Evidence/backfill path: keep full bridge contracts for high-risk invariants such as combat isolation, host death/collapse, safe severance, performance, save/load, and multi-map behavior. If the bridge launch state is flaky, record the contract as build-clean and pending live validation instead of spending the whole slice fighting launcher state.
+- Pack compatible bridge validations into one loaded RimWorld session. Prefer loading one fixture save, running several independent cleanup-safe contracts, then checking warning-or-higher logs once. Restart only when the DLL/assets/settings changed, a test intentionally contaminated global state, or the current map/session can no longer give trustworthy evidence.
+- For release candidates, the minimum symbiant gate is: `scripts/build-quiet.sh`, current-platform asset bundle if shader/material assets changed, one clean loaded-game smoke test that spawns or observes a symbiant, clean warning-or-higher logs for that session, and source-only commit hygiene with tracked DLLs restored unless this is an intentional release/version-bump commit.
+- Do not let optional large stress tests block a small player-facing fix unless the fix touches that performance surface. Keep 4000-cell and 160-colonist/600-animal/raid stress tests as targeted checks for renderer/pathing changes, not for every text, letter, or feed-rule adjustment.
+
 ## Validation Checklist
 
 - Static/decompiler pass for the symbiant Harmony targets: skill level, pain, capacity, need, mental-state, pawn kill, damage pre-apply, stat, room beauty/impressiveness, and path-cost hooks.
@@ -373,7 +385,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Verify disabling symbiant events while a symbiant already exists stops future spawns but does not silently delete the active symbiant.
 - Verify lowering `symbiantMaxCells` below the current cell count prevents further expansion without deleting existing cells.
 - Verify multi-map and save/load behavior: one active symbiant per map, no cross-map host selection, bridge state reports the intended map, and loading a no-symbiant save after a symbiant map does not return stale static-cache symbiant state.
-- Verify combat isolation: bridge state must report `registeredInMapPawnLists = false`, `hostileToPlayer = false`, `activeThreatToPlayer = false`, `kindIsFighter = false`, and `combatPower = 0`; drafted colonists, animals, enemies, predators, and forced attack jobs must not attack the symbiant, while the feed job still finds it.
+- Verify combat isolation with `zombieland/symbiant_combat_isolation_contract`: bridge state must report `registeredInMapPawnLists = false`, `hostileToPlayer = false`, `activeThreatToPlayer = false`, `kindIsFighter = false`, and `combatPower = 0`; drafted colonists, animals, enemies, predators, and forced attack jobs must not attack the symbiant, while the feed job still finds it. The contract is build-clean but still needs a live run after GABS/RimWorld starts with matching bridge state.
 - Runtime render smoke: stress a 15-20 cell symbiant, capture the map, and verify it renders as connected translucent goo with no magenta shader failure and no full-square bounds artifact.
 - Shader activation smoke: bridge state for the active symbiant must report `renderShader = Custom/ZombieSymbiant` and `renderUsesSymbiantShader = true` after rebuilding the current-platform asset bundle and restarting RimWorld.
 - In the `symbiant rendering` save, verify walls are above the symbiant, the old body-shaped artifact near the meal is gone, and items/overlays render consistently above the symbiant.
