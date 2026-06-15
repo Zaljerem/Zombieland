@@ -188,6 +188,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
   - any remaining visible goo collapses into inert residue or a temporary room penalty,
   - nearby pawns are not randomly harmed in v1,
   - the event messaging should make it clear that this was an unsafe severance outcome.
+- Bridge validation uses `zombieland/symbiant_unsafe_damage_contract` to verify reserve absorption, overflow host trauma, uncontrolled destruction without reserve, host-death collapse, and the required damage/kill patch targets.
 
 ## Non-Lethal Room Disruption
 

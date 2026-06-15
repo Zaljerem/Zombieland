@@ -977,6 +977,202 @@ namespace ZombieLand
 			};
 		}
 
+		[Tool("zombieland/symbiant_unsafe_damage_contract", Description = "Verify unsafe symbiant damage reserve absorption, host trauma overflow, uncontrolled destruction, and host-death collapse.")]
+		public static object SymbiantUnsafeDamageContract(
+			[ToolParameter(Description = "Destroy temporary symbiants, colonists, fixture buildings, and letters after capturing evidence.", Required = false, DefaultValue = true)] bool cleanup = true)
+		{
+			var map = CurrentMap;
+			if (map == null)
+				return new { success = false, error = "No current map is loaded." };
+			var activeBefore = ZombieSymbiant.ActiveSymbiant(map);
+			if (activeBefore != null)
+				return new { success = false, error = "An active symbiant already exists on the current map.", activeSymbiant = ZombieRuntimeActions.StableThingId(activeBefore) };
+
+			var settingsSnapshot = SnapshotZombieSettings();
+			var beforeLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>()).ToHashSet();
+			object reserveAbsorption = null;
+			object overflowTrauma = null;
+			object uncontrolledDestroyNoReserve = null;
+			object hostDeathCollapse = null;
+			object error = null;
+
+			try
+			{
+				ApplyZombieSettingsOverride(settings =>
+				{
+					settings.showZombieEventLetters = false;
+					settings.symbiantCoagulantPotency = SymbiantCoagulantPotency.Expensive;
+					settings.symbiantDecouplingFeedPulsesPerDay = 20;
+					settings.symbiantMaxCells = Math.Max(settings.symbiantMaxCells, 400);
+				});
+				reserveAbsorption = RunSymbiantUnsafeDamageScenario(map, "reserveAbsorption", cleanup);
+				overflowTrauma = RunSymbiantUnsafeDamageScenario(map, "overflowTrauma", cleanup);
+				uncontrolledDestroyNoReserve = RunSymbiantUnsafeDamageScenario(map, "uncontrolledDestroyNoReserve", cleanup);
+				hostDeathCollapse = RunSymbiantUnsafeDamageScenario(map, "hostDeathCollapse", cleanup);
+			}
+			catch (Exception ex)
+			{
+				error = ex.ToString();
+			}
+			finally
+			{
+				RestoreZombieSettings(settingsSnapshot);
+			}
+
+			var newLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
+				.Where(letter => beforeLetters.Contains(letter) == false)
+				.ToArray();
+			var letterCleanup = CleanupTemporaryLetters(newLetters, cleanup);
+			var activeAfterCleanup = ZombieSymbiant.ActiveSymbiant(map);
+			var patchTargets = new
+			{
+				preApplyDamage = PatchedMethodsForPatchClass("Pawn_HealthTracker_PreApplyDamage_Patch"),
+				pawnKill = PatchedMethodsForPatchClass("Pawn_Kill_Patch")
+			};
+			var success = error == null
+				&& patchTargets.preApplyDamage.Length > 0
+				&& patchTargets.pawnKill.Length > 0
+				&& ScenarioSucceeded(reserveAbsorption)
+				&& ScenarioSucceeded(overflowTrauma)
+				&& ScenarioSucceeded(uncontrolledDestroyNoReserve)
+				&& ScenarioSucceeded(hostDeathCollapse)
+				&& (activeAfterCleanup == null || cleanup == false);
+
+			return new
+			{
+				success,
+				sourcePath = "Pawn_HealthTracker.PreApplyDamage -> ZombieSymbiant.PreApplyLinkedDamage; Pawn.Kill -> ZombieSymbiant.NotifyHostKilled",
+				error,
+				patchTargets,
+				reserveAbsorption,
+				overflowTrauma,
+				uncontrolledDestroyNoReserve,
+				hostDeathCollapse,
+				cleanup = new
+				{
+					letters = letterCleanup,
+					activeSymbiantAfterCleanup = ZombieRuntimeActions.StableThingId(activeAfterCleanup)
+				}
+			};
+		}
+
+		static object RunSymbiantUnsafeDamageScenario(Map map, string scenario, bool cleanup)
+		{
+			SymbiantNaturalSpawnFixture fixture = null;
+			ZombieSymbiant symbiant = null;
+			object fixtureSetup = null;
+			object prepare = null;
+			object action;
+
+			try
+			{
+				if (TrySetupSymbiantNaturalSpawnFixture(map, out fixture, out var fixtureError) == false)
+					return fixtureError;
+				fixtureSetup = DescribeSymbiantNaturalSpawnFixture(fixture);
+				symbiant = SpawnAssignedSymbiantForSeveranceContract(map, fixture);
+				var host = fixture.host;
+				if (scenario == "reserveAbsorption" || scenario == "overflowTrauma")
+					prepare = PrepareSymbiantForSafeSeverance(map, fixture, symbiant);
+
+				var hostInjuryBefore = TotalInjurySeverity(host);
+				var reserveBefore = symbiant.DecouplingReserve;
+				if (scenario == "reserveAbsorption")
+				{
+					var damage = Mathf.Min(5f, Mathf.Max(1f, symbiant.EffectiveDecouplingReserve));
+					var dinfo = new DamageInfo(DamageDefOf.Cut, damage, 0f, -1f, null);
+					symbiant.PreApplyLinkedDamage(ref dinfo);
+					var hostInjuryAfter = TotalInjurySeverity(host);
+					action = new
+					{
+						damage,
+						remainingDamage = dinfo.Amount,
+						reserveBefore,
+						reserveAfter = symbiant.DecouplingReserve,
+						hostInjuryBefore,
+						hostInjuryAfter,
+						success = Mathf.Approximately(dinfo.Amount, 0f)
+							&& Mathf.Approximately(reserveBefore - symbiant.DecouplingReserve, damage)
+							&& Mathf.Approximately(hostInjuryAfter, hostInjuryBefore)
+							&& symbiant.Destroyed == false
+							&& host.Dead == false
+					};
+				}
+				else if (scenario == "overflowTrauma")
+				{
+					var overflow = 8f;
+					var damage = symbiant.EffectiveDecouplingReserve + overflow;
+					var dinfo = new DamageInfo(DamageDefOf.Cut, damage, 0f, -1f, null);
+					symbiant.PreApplyLinkedDamage(ref dinfo);
+					var hostInjuryAfter = TotalInjurySeverity(host);
+					action = new
+					{
+						damage,
+						overflow,
+						remainingDamage = dinfo.Amount,
+						reserveBefore,
+						reserveAfter = symbiant.DecouplingReserve,
+						hostInjuryBefore,
+						hostInjuryAfter,
+						success = Mathf.Approximately(dinfo.Amount, overflow)
+							&& Mathf.Approximately(symbiant.DecouplingReserve, 0f)
+							&& hostInjuryAfter > hostInjuryBefore
+							&& symbiant.Destroyed == false
+							&& host.Dead == false
+					};
+				}
+				else if (scenario == "uncontrolledDestroyNoReserve")
+				{
+					var hediffBefore = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null;
+					symbiant.Destroy(DestroyMode.Vanish);
+					var linkedAfter = ZombieSymbiant.LinkedSymbiantFor(host);
+					var hediffAfter = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null;
+					action = new
+					{
+						hediffBefore,
+						hediffAfter,
+						hostDead = host.Dead,
+						symbiantDestroyed = symbiant.Destroyed,
+						linkedAfter = ZombieRuntimeActions.StableThingId(linkedAfter),
+						success = hediffBefore && hediffAfter == false && host.Dead && symbiant.Destroyed && linkedAfter == null
+					};
+					symbiant = null;
+				}
+				else if (scenario == "hostDeathCollapse")
+				{
+					var hediffBefore = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null;
+					host.Kill(null);
+					var activeAfter = ZombieSymbiant.ActiveSymbiant(map);
+					var hediffAfter = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null;
+					action = new
+					{
+						hediffBefore,
+						hediffAfter,
+						hostDead = host.Dead,
+						symbiantDestroyed = symbiant.Destroyed,
+						activeAfter = ZombieRuntimeActions.StableThingId(activeAfter),
+						success = hediffBefore && hediffAfter == false && host.Dead && symbiant.Destroyed && activeAfter == null
+					};
+					symbiant = null;
+				}
+				else
+					action = new { success = false, error = $"Unknown unsafe-damage scenario '{scenario}'." };
+
+				return new
+				{
+					success = ScenarioSucceeded(action),
+					scenario,
+					fixtureSetup,
+					prepare,
+					action
+				};
+			}
+			finally
+			{
+				_ = CleanupTemporarySymbiant(map, symbiant, cleanup);
+				_ = CleanupSymbiantNaturalSpawnFixture(map, fixture, cleanup);
+			}
+		}
+
 		[Tool("zombieland/symbiant_expansion_contract", Description = "Build a reversible two-room fixture and verify symbiant expansion into room cells, under a closed door, and through one constructed wall.")]
 		public static object SymbiantExpansionContract(
 			[ToolParameter(Description = "Destroy the temporary symbiant and two-room fixture after capturing evidence.", Required = false, DefaultValue = true)] bool cleanup = true)
