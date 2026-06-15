@@ -27,4 +27,12 @@
 		<arriveSound>LetterArrive_TurnedZombie</arriveSound>
 	</LetterDef>
 
+	<LetterDef Name="SymbiantConnection">
+		<defName>SymbiantConnection</defName>
+		<color>(65, 190, 95)</color>
+		<flashColor>(85, 255, 85)</flashColor>
+		<flashInterval>16</flashInterval>
+		<arriveSound>SymbiantConnected</arriveSound>
+	</LetterDef>
+
 </Defs>

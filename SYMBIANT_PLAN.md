@@ -43,6 +43,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - `symbiantCanBreakConstructedWalls = true`
 - `symbiantCoagulantPotency = Normal`
 - Technical render/buffer ceiling is `ZombieSymbiant.MAX_METABALLS = 4000`; the gameplay default cap remains 400. Larger values are for stress testing or later balancing, not the v1 default.
+- Visible main settings stay intentionally compact: enable symbiant, days between infestations, hours between growth pulses, max cells, and coagulant potency. The other tuning values remain persisted/defaulted internal balancing controls until they are worth exposing again.
 
 ## Runtime Category And Combat Isolation
 
@@ -65,7 +66,9 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - Use a separate cooldown from the zombie spitter.
 - Spawn in an enclosed, non-huge, non-fogged, proper room that is home-area or colony-used.
 - Score spawn rooms by recent movement pheromone timestamps first, then by valuable room objects such as beds, worktables, storage, power, and kitchen-like utility buildings.
-- Initial state is one occupied cell and an alert letter describing the wet seep and the linked colonist.
+- Initial state is one occupied cell and a right-side green symbiant letter describing the wet seep, the room role, and the linked colonist. The letter should use two look targets when possible: one for the seep and one for the host.
+- There is no first-time modal dialog. Onboarding text lives in the symbiant letter, symbiant inspect text, host hediff, and the compact symbiant settings help.
+- Connection and disconnection use dedicated subtle symbiant sounds. The connection sound is attached to the green arrival letter when letters are enabled, and played directly only when the letter is suppressed.
 - Choose a random eligible free colonist after spawn:
   - alive, spawned, humanlike, flesh,
   - player faction colonist,

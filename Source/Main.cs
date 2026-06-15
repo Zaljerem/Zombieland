@@ -53,6 +53,8 @@ namespace ZombieLand
 		public static SoundDef BallImpact;
 		public static SoundDef SpitterMove;
 		public static SoundDef SymbiantSplash;
+		public static SoundDef SymbiantConnected;
+		public static SoundDef SymbiantDisconnected;
 		public static JobDef Stumble;
 		public static JobDef Sabotage;
 		public static JobDef Spitter;
@@ -87,6 +89,7 @@ namespace ZombieLand
 		public static LetterDef ColonistTurnedZombie;
 		public static LetterDef OtherTurnedZombie;
 		public static LetterDef DangerousSituation;
+		public static LetterDef SymbiantConnection;
 		public static EffecterDef ZombieShockerRoom;
 		public static ThingDef BumpLarge;
 		public static ThingDef BumpMedium;

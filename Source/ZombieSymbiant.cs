@@ -282,16 +282,33 @@ namespace ZombieLand
 			_ = symbiant.TryAssignRandomHost();
 			symbiant.UpdateSymbiosisState();
 
-			if (ZombieSettings.Values.showZombieEventLetters)
+			var sentLetter = false;
+			var linkedHost = symbiant.LinkedHost;
+			if (ZombieAwarenessCues.ShouldShowZombieEventLetter())
 			{
-				var headline = "LetterLabelZombieSymbiant".Translate();
-				var linkedHost = symbiant.LinkedHost;
-				var text = linkedHost == null ? "ZombieSymbiantNoHost".Translate() : "ZombieSymbiant".Translate(linkedHost.LabelShortCap);
-				Find.LetterStack.ReceiveLetter(headline, text, LetterDefOf.ThreatSmall, new GlobalTargetInfo(cell, map));
+				var roomLabel = SpawnRoomLabel(map, cell);
+				var headline = linkedHost == null ? "LetterLabelZombieSymbiantNoHost".Translate() : "LetterLabelZombieSymbiant".Translate(linkedHost.LabelShortCap);
+				var text = linkedHost == null ? "ZombieSymbiantNoHost".Translate(roomLabel) : "ZombieSymbiant".Translate(roomLabel, linkedHost.LabelShortCap);
+				Find.LetterStack.ReceiveLetter(headline, text, CustomDefs.SymbiantConnection ?? LetterDefOf.NeutralEvent, SpawnLookTargets(symbiant, linkedHost, map, cell));
+				sentLetter = true;
 			}
 
-			if (Constants.USE_SOUND && ZombieSettings.Values.playSpecialZombieAmbientSounds && Prefs.VolumeAmbient > 0f)
-				CustomDefs.ZombiesRising.PlayOneShotOnCamera(null);
+			if (sentLetter == false && ZombieAwarenessCues.ShouldPlaySpecialZombieAmbientSound())
+				CustomDefs.SymbiantConnected?.PlayOneShotOnCamera(null);
+		}
+
+		static TaggedString SpawnRoomLabel(Map map, IntVec3 cell)
+		{
+			var role = cell.GetRoom(map)?.Role;
+			return role == null || role.label.NullOrEmpty() ? "ZombieSymbiantUnknownRoom".Translate() : role.LabelCap;
+		}
+
+		static LookTargets SpawnLookTargets(ZombieSymbiant symbiant, Pawn linkedHost, Map map, IntVec3 cell)
+		{
+			var targets = new List<GlobalTargetInfo> { new(cell, map) };
+			if (linkedHost != null && linkedHost.Destroyed == false)
+				targets.Add(new GlobalTargetInfo(linkedHost));
+			return new LookTargets(targets);
 		}
 
 		public static bool TrySpawnInBestRoom(Map map)
@@ -1056,6 +1073,7 @@ namespace ZombieLand
 			var pawn = ResolveHost();
 			if (pawn == null || pawn.Destroyed || pawn.Dead)
 				return;
+			PlayDisconnectedSound();
 
 			var requiredReserve = DecouplingReserveMax;
 			var effectiveReserve = EffectiveDecouplingReserve;
@@ -1090,11 +1108,18 @@ namespace ZombieLand
 			}
 			hostCollapseInProgress = true;
 			var pawn = ResolveHost();
+			PlayDisconnectedSound();
 			RemoveHostHediff(pawn);
 			host = null;
 			hostThingId = null;
 			Destroy(DestroyMode.Vanish);
 			hostCollapseInProgress = false;
+		}
+
+		void PlayDisconnectedSound()
+		{
+			if (ZombieAwarenessCues.ShouldPlaySpecialZombieAmbientSound())
+				CustomDefs.SymbiantDisconnected?.PlayOneShotOnCamera(null);
 		}
 
 		void ApplyHostTrauma(float amount, bool killIfOverwhelmed)
@@ -1150,6 +1175,8 @@ namespace ZombieLand
 			}
 
 			safeSeveranceInProgress = true;
+			PlayDisconnectedSound();
+			Messages.Message("SymbiantSeveredMessage".Translate(pawn.LabelShortCap), pawn, MessageTypeDefOf.PositiveEvent, false);
 			RemoveHostHediff(pawn);
 			host = null;
 			hostThingId = null;
