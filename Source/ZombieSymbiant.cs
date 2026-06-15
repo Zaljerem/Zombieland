@@ -324,15 +324,70 @@ namespace ZombieLand
 			if (room == null)
 				return false;
 
-			var cells = room.Cells
-				.Where(cell => CanOccupyOpenCell(map, cell))
-				.OrderByDescending(cell => ScoreTraffic(map, cell) + ScoreColonyUse(map, cell))
-				.ToArray();
-			if (cells.Length == 0)
+			if (TryFindBestSpawnCell(map, room, out var cell, out _) == false)
 				return false;
 
-			Spawn(map, cells.First());
+			Spawn(map, cell);
 			return true;
+		}
+
+		internal static bool CanNaturalSpawnNow(Map map)
+		{
+			return map != null
+				&& ZombieSettings.Values.symbiantEnabled
+				&& ActiveSymbiant(map) == null
+				&& EligibleHosts(map, null).Any()
+				&& BestSpawnRoom(map) != null;
+		}
+
+		internal static object DebugNaturalSpawnPlan(Map map, int limit = 8)
+		{
+			if (map == null)
+				return new { success = false, error = "No current map is loaded." };
+
+			var active = ActiveSymbiant(map);
+			var hosts = EligibleHosts(map, null).ToArray();
+			var scoredRooms = CandidateRooms(map)
+				.Select(room =>
+				{
+					var hasSpawnCell = TryFindBestSpawnCell(map, room, out var bestCell, out var bestCellScore);
+					return new
+					{
+						role = room.Role?.defName,
+						roleLabel = room.Role?.LabelCap.ToString(),
+						cellCount = room.CellCount,
+						extents = DescribeDebugCellRect(room.ExtentsClose),
+						score = ScoreSpawnRoom(map, room),
+						bestCell = hasSpawnCell ? DescribeDebugCell(bestCell) : null,
+						bestCellScore = hasSpawnCell ? bestCellScore : 0f,
+						valuableThingCount = room.ContainedAndAdjacentThings.Count(thing => ScoreRoomThing(thing) > 0f)
+					};
+				})
+				.Where(room => room.score > 0f && room.bestCell != null)
+				.OrderByDescending(room => room.score)
+				.ToArray();
+			var rooms = scoredRooms
+				.Take(Mathf.Max(1, limit))
+				.ToArray();
+
+			return new
+			{
+				success = true,
+				enabled = ZombieSettings.Values.symbiantEnabled,
+				activeSymbiant = active?.ThingID,
+				eligibleHostCount = hosts.Length,
+				eligibleHosts = hosts.Take(16).Select(host => new
+				{
+					id = host.ThingID,
+					label = host.LabelShortCap,
+					cell = host.Spawned ? DescribeDebugCell(host.Position) : null
+				}).ToArray(),
+				candidateRoomCount = scoredRooms.Length,
+				returnedRoomCount = rooms.Length,
+				canSpawnNow = ZombieSettings.Values.symbiantEnabled && active == null && hosts.Length > 0 && scoredRooms.Length > 0,
+				bestRoom = rooms.FirstOrDefault(),
+				rooms
+			};
 		}
 
 		static Room BestSpawnRoom(Map map)
@@ -341,11 +396,39 @@ namespace ZombieLand
 				.Select(room => new
 				{
 					room,
-					score = room.Cells.Take(120).Sum(cell => ScoreTraffic(map, cell)) + room.ContainedAndAdjacentThings.Sum(ScoreRoomThing)
+					score = ScoreSpawnRoom(map, room),
+					hasSpawnCell = TryFindBestSpawnCell(map, room, out _, out _)
 				})
-				.Where(entry => entry.score > 0f)
+				.Where(entry => entry.score > 0f && entry.hasSpawnCell)
 				.OrderByDescending(entry => entry.score)
 				.FirstOrDefault()?.room;
+		}
+
+		static float ScoreSpawnRoom(Map map, Room room)
+		{
+			if (map == null || room == null)
+				return 0f;
+			return room.Cells.Take(120).Sum(cell => ScoreTraffic(map, cell)) + room.ContainedAndAdjacentThings.Sum(ScoreRoomThing);
+		}
+
+		static bool TryFindBestSpawnCell(Map map, Room room, out IntVec3 cell, out float score)
+		{
+			cell = IntVec3.Invalid;
+			score = 0f;
+			if (map == null || room == null)
+				return false;
+
+			var best = room.Cells
+				.Where(candidate => CanOccupyOpenCell(map, candidate))
+				.Select(candidate => new { cell = candidate, score = ScoreTraffic(map, candidate) + ScoreColonyUse(map, candidate) })
+				.OrderByDescending(candidate => candidate.score)
+				.FirstOrDefault();
+			if (best == null)
+				return false;
+
+			cell = best.cell;
+			score = best.score;
+			return true;
 		}
 
 		static IEnumerable<Room> CandidateRooms(Map map)
@@ -354,6 +437,16 @@ namespace ZombieLand
 			return map.regionGrid.allRooms.Where(room =>
 				IsEligibleIndoorRoom(room)
 				&& room.Cells.Any(cell => home.TrueCount == 0 || home[cell]));
+		}
+
+		static object DescribeDebugCell(IntVec3 cell)
+		{
+			return cell.IsValid ? new { x = cell.x, z = cell.z } : null;
+		}
+
+		static object DescribeDebugCellRect(CellRect rect)
+		{
+			return new { rect.minX, rect.maxX, rect.minZ, rect.maxZ };
 		}
 
 		static bool CanEverBeLinkedHostFast(Pawn pawn, bool allowDead = false)

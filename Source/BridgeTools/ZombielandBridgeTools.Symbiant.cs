@@ -133,6 +133,104 @@ namespace ZombieLand
 			return result;
 		}
 
+		[Tool("zombieland/symbiant_natural_spawn_contract", Description = "Inspect the natural symbiant spawn plan and optionally exercise TrySpawnInBestRoom with cleanup.")]
+		public static object SymbiantNaturalSpawnContract(
+			[ToolParameter(Description = "Run TrySpawnInBestRoom after inspecting the plan. If false, this is read-only.", Required = false, DefaultValue = false)] bool spawn = false,
+			[ToolParameter(Description = "Destroy a symbiant created by this contract without host trauma and remove generated letters.", Required = false, DefaultValue = true)] bool cleanup = true)
+		{
+			var map = CurrentMap;
+			if (map == null)
+				return new { success = false, error = "No current map is loaded." };
+
+			var activeBefore = ZombieSymbiant.ActiveSymbiant(map);
+			var activeBeforeId = ZombieRuntimeActions.StableThingId(activeBefore);
+			var planBefore = ZombieSymbiant.DebugNaturalSpawnPlan(map);
+			var expectedCanSpawn = ZombieSymbiant.CanNaturalSpawnNow(map);
+			var beforeLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
+				.ToHashSet();
+			var originalShowLetters = ZombieSettings.Values.showZombieEventLetters;
+			ZombieSymbiant spawned = null;
+			var trySpawnResult = false;
+			object spawnError = null;
+
+			if (spawn)
+			{
+				try
+				{
+					ZombieSettings.Values.showZombieEventLetters = true;
+					trySpawnResult = ZombieSymbiant.TrySpawnInBestRoom(map);
+					spawned = activeBefore == null ? ZombieSymbiant.ActiveSymbiant(map) : null;
+				}
+				catch (Exception ex)
+				{
+					spawnError = ex.ToString();
+				}
+				finally
+				{
+					ZombieSettings.Values.showZombieEventLetters = originalShowLetters;
+				}
+			}
+
+			var newLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
+				.Where(letter => beforeLetters.Contains(letter) == false)
+				.ToArray();
+			var letters = newLetters.Select(DescribeSymbiantDiscoveryLetter).ToArray();
+			var host = spawned?.LinkedHost;
+			var spawnedRoom = spawned?.Spawned == true ? spawned.Position.GetRoom(map) : null;
+			var cleanupResult = activeBefore == null ? CleanupTemporarySymbiant(map, spawned, cleanup) : new { requested = cleanup, cleaned = false, reason = "Existing active symbiant was present before the contract." };
+			var letterCleanup = CleanupTemporaryLetters(newLetters, cleanup);
+			var activeAfterCleanup = ZombieSymbiant.ActiveSymbiant(map);
+
+			var success = spawn == false
+				? true
+				: expectedCanSpawn
+					? spawnError == null && trySpawnResult && spawned != null && host != null && newLetters.Any(letter => letter?.def == CustomDefs.SymbiantConnection)
+					: spawnError == null && trySpawnResult == false && spawned == null && activeAfterCleanup == activeBefore;
+
+			return new
+			{
+				success,
+				sourcePath = "ZombieSymbiant.TrySpawnInBestRoom -> BestSpawnRoom -> TryFindBestSpawnCell -> ZombieSymbiant.Spawn",
+				spawnRequested = spawn,
+				expectedCanSpawn,
+				trySpawnResult,
+				spawnError,
+				activeSymbiantBefore = activeBeforeId,
+				activeSymbiantAfterCleanup = ZombieRuntimeActions.StableThingId(activeAfterCleanup),
+				restoredExistingActive = activeBefore == null
+					? activeAfterCleanup == null || cleanup == false
+					: activeAfterCleanup == activeBefore,
+				planBefore,
+				spawned = spawned == null ? null : new
+				{
+					id = ZombieRuntimeActions.StableThingId(spawned),
+					spawned = spawned.Spawned,
+					destroyed = spawned.Destroyed,
+					cellCount = spawned.CellCount,
+					position = spawned.Spawned ? ZombieRuntimeActions.DescribeCell(spawned.Position) : null,
+					room = spawnedRoom == null ? null : new
+					{
+						role = spawnedRoom.Role?.defName,
+						roleLabel = spawnedRoom.Role?.LabelCap.ToString(),
+						cellCount = spawnedRoom.CellCount
+					},
+					host = host == null ? null : new
+					{
+						id = ZombieRuntimeActions.StableThingId(host),
+						label = host.LabelShortCap,
+						position = host.Spawned ? ZombieRuntimeActions.DescribeCell(host.Position) : null,
+						hasSymbiosisHediff = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null
+					}
+				},
+				newLetterCount = newLetters.Length,
+				matchingLetterCount = newLetters.Count(letter => letter?.def == CustomDefs.SymbiantConnection),
+				letters,
+				cleanup = cleanupResult,
+				letterCleanup,
+				planAfter = ZombieSymbiant.DebugNaturalSpawnPlan(map)
+			};
+		}
+
 		[Tool("zombieland/symbiant_infestation_state", Description = "Inspect or exercise the zombie symbiant state with spawn, expand, feedCoagulant, removeHostHediff, and stress modes.")]
 		public static object SymbiantInfestationState(
 			[ToolParameter(Description = "Mode: read, spawn, expand, feedCoagulant, removeHostHediff, stress.", Required = false, DefaultValue = "read")] string mode = "read",
