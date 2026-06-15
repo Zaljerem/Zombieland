@@ -754,7 +754,7 @@ namespace ZombieLand
 		{
 			if (map == null)
 				return 0;
-			return CandidateRooms(map).Sum(room => room.CellCount);
+			return CandidateRooms(map).ToArray().Sum(room => room.CellCount);
 		}
 
 		static int CalculateFullBenefitCells(Map map)

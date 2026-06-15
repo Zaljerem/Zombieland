@@ -96,6 +96,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
 - If the symbiant is caged by player walls and wants to expand, it may destroy one constructed wall that opens toward a larger or more used room.
 - Feeding can set `cancelNextBreach`, so a fed caged symbiant does not immediately answer the feed with a wall break.
 - At the configured max cells, expansion stops but the symbiant remains active until severed or collapsed. Existing larger symbiants are not deleted if the cap is lowered; they simply cannot expand further until below the cap.
+- Bridge validation uses `zombieland/symbiant_expansion_contract` to build a reversible two-room fixture and prove one real pulse into a normal room cell, one real pulse under a closed door without destroying it, and one real pulse through a player-built divider wall into the adjacent room.
 
 ## Benefit Formula And Integrated Goo
 
