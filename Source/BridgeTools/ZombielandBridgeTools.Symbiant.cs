@@ -1,8 +1,10 @@
-﻿using RimBridgeServer.Annotations;
+﻿using HarmonyLib;
+using RimBridgeServer.Annotations;
 using RimWorld;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using Verse;
 
 namespace ZombieLand
@@ -681,6 +683,298 @@ namespace ZombieLand
 				return false;
 			var property = scenario.GetType().GetProperty("success");
 			return property?.GetValue(scenario) is bool success && success;
+		}
+
+		[Tool("zombieland/symbiant_severance_contract", Description = "Verify safe-severance surgery gates, recipe ingredients, deterministic success cleanup, and deterministic failure reserve loss.")]
+		public static object SymbiantSeveranceContract(
+			[ToolParameter(Description = "Destroy temporary symbiants, colonists, fixture buildings, and letters after capturing evidence.", Required = false, DefaultValue = true)] bool cleanup = true)
+		{
+			var map = CurrentMap;
+			if (map == null)
+				return new { success = false, error = "No current map is loaded." };
+			var activeBefore = ZombieSymbiant.ActiveSymbiant(map);
+			if (activeBefore != null)
+				return new { success = false, error = "An active symbiant already exists on the current map.", activeSymbiant = ZombieRuntimeActions.StableThingId(activeBefore) };
+			if (CustomDefs.SeverSymbiantSymbiosis == null)
+				return new { success = false, error = "SeverSymbiantSymbiosis recipe def is missing." };
+			if (CustomDefs.SymbiantCoagulantPack == null)
+				return new { success = false, error = "SymbiantCoagulantPack def is missing." };
+
+			var settingsSnapshot = SnapshotZombieSettings();
+			var beforeLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>()).ToHashSet();
+			SymbiantNaturalSpawnFixture fixture = null;
+			Pawn doctor = null;
+			ZombieSymbiant successSymbiant = null;
+			ZombieSymbiant failureSymbiant = null;
+			object fixtureSetup = null;
+			object successScenario = null;
+			object failureScenario = null;
+			object cleanupSuccess = null;
+			object cleanupFailure = null;
+			object cleanupDoctor = null;
+			object fixtureCleanup = null;
+			object error = null;
+
+			try
+			{
+				ApplyZombieSettingsOverride(settings =>
+				{
+					settings.showZombieEventLetters = false;
+					settings.symbiantCoagulantPotency = SymbiantCoagulantPotency.Expensive;
+					settings.symbiantDecouplingFeedPulsesPerDay = 20;
+					settings.symbiantMaxCells = Math.Max(settings.symbiantMaxCells, 400);
+				});
+
+				if (TrySetupSymbiantNaturalSpawnFixture(map, out fixture, out var fixtureError) == false)
+					return fixtureError;
+				fixtureSetup = DescribeSymbiantNaturalSpawnFixture(fixture);
+				if (TryFindClearSpawnCell(map, fixture.room.interiorRect.CenterCell + new IntVec3(5, 0, 0), 24f, out var doctorCell, out var doctorCellError) == false)
+					return doctorCellError;
+				doctor = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
+				GenSpawn.Spawn(doctor, doctorCell, map, Rot4.South);
+				DisablePawnWork(doctor);
+				doctor.needs?.AddOrRemoveNeedsAsAppropriate();
+				doctor.mindState?.mentalStateHandler?.Reset();
+
+				successSymbiant = SpawnAssignedSymbiantForSeveranceContract(map, fixture);
+				successScenario = RunSymbiantSeveranceScenario(map, fixture, doctor, successSymbiant, true);
+				successSymbiant = null;
+
+				failureSymbiant = SpawnAssignedSymbiantForSeveranceContract(map, fixture);
+				failureScenario = RunSymbiantSeveranceScenario(map, fixture, doctor, failureSymbiant, false);
+			}
+			catch (Exception ex)
+			{
+				error = ex.ToString();
+			}
+			finally
+			{
+				cleanupSuccess = CleanupTemporarySymbiant(map, successSymbiant, cleanup);
+				cleanupFailure = CleanupTemporarySymbiant(map, failureSymbiant, cleanup);
+				if (cleanup && doctor != null && doctor.Destroyed == false)
+				{
+					var id = ZombieRuntimeActions.StableThingId(doctor);
+					doctor.Destroy(DestroyMode.Vanish);
+					cleanupDoctor = new { cleaned = doctor.Destroyed, doctor = id };
+				}
+				else
+					cleanupDoctor = new { cleaned = false, skipped = cleanup == false, doctor = ZombieRuntimeActions.StableThingId(doctor) };
+				fixtureCleanup = CleanupSymbiantNaturalSpawnFixture(map, fixture, cleanup);
+				RestoreZombieSettings(settingsSnapshot);
+			}
+
+			var newLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
+				.Where(letter => beforeLetters.Contains(letter) == false)
+				.ToArray();
+			var letterCleanup = CleanupTemporaryLetters(newLetters, cleanup);
+			var ingredients = DescribeSymbiantSeveranceRecipeIngredients();
+			var activeAfterCleanup = ZombieSymbiant.ActiveSymbiant(map);
+			var success = error == null
+				&& ScenarioSucceeded(ingredients)
+				&& ScenarioSucceeded(successScenario)
+				&& ScenarioSucceeded(failureScenario)
+				&& (activeAfterCleanup == null || cleanup == false);
+
+			return new
+			{
+				success,
+				sourcePath = "Recipe_SeverSymbiantSymbiosis.GetPartsToApplyOn/ApplyOnPawn -> ZombieSymbiant.TrySeverSymbiosis",
+				error,
+				fixtureSetup,
+				ingredients,
+				successScenario,
+				failureScenario,
+				cleanup = new
+				{
+					successSymbiant = cleanupSuccess,
+					failureSymbiant = cleanupFailure,
+					doctor = cleanupDoctor,
+					fixture = fixtureCleanup,
+					letters = letterCleanup,
+					activeSymbiantAfterCleanup = ZombieRuntimeActions.StableThingId(activeAfterCleanup)
+				}
+			};
+		}
+
+		static ZombieSymbiant SpawnAssignedSymbiantForSeveranceContract(Map map, SymbiantNaturalSpawnFixture fixture)
+		{
+			var spawnCell = fixture.room.interiorRect.Cells
+				.Where(cell => cell.InBounds(map)
+					&& cell.Standable(map)
+					&& cell.GetEdifice(map) == null
+					&& cell.GetThingList(map).Any(thing => thing is Pawn) == false)
+				.OrderBy(cell => cell.DistanceToSquared(fixture.room.interiorRect.CenterCell))
+				.FirstOrDefault();
+			if (spawnCell.IsValid == false)
+				throw new InvalidOperationException("Could not find a clear symbiant severance spawn cell.");
+
+			ZombieSymbiant.Spawn(map, spawnCell);
+			var symbiant = ZombieSymbiant.ActiveSymbiant(map) ?? throw new InvalidOperationException("Symbiant spawn did not create an active symbiant.");
+			var originalHost = symbiant.LinkedHost;
+			if (originalHost != null && originalHost != fixture.host)
+				AccessTools.Method(typeof(ZombieSymbiant), "RemoveHostHediff")?.Invoke(null, new object[] { originalHost });
+			AccessTools.Method(typeof(ZombieSymbiant), "AssignHost")?.Invoke(symbiant, new object[] { fixture.host });
+			return symbiant;
+		}
+
+		static object RunSymbiantSeveranceScenario(Map map, SymbiantNaturalSpawnFixture fixture, Pawn doctor, ZombieSymbiant symbiant, bool forceSuccess)
+		{
+			if (symbiant == null)
+				return new { success = false, error = "No symbiant was spawned for the severance scenario." };
+			var recipe = CustomDefs.SeverSymbiantSymbiosis;
+			var worker = recipe.Worker as Recipe_SeverSymbiantSymbiosis;
+			var host = fixture.host;
+			if (worker == null || host == null || doctor == null)
+				return new { success = false, error = "Recipe worker, host, or doctor is missing." };
+
+			var beforeReadyParts = worker.GetPartsToApplyOn(host, recipe).ToArray();
+			var prepare = PrepareSymbiantForSafeSeverance(map, fixture, symbiant);
+			var readyParts = worker.GetPartsToApplyOn(host, recipe).ToArray();
+			var torso = readyParts.FirstOrDefault(part => part.def == BodyPartDefOf.Torso);
+			if (torso == null)
+				return new
+				{
+					success = false,
+					error = "Prepared symbiant did not expose torso surgery target.",
+					beforeReadyParts = beforeReadyParts.Length,
+					readyParts = readyParts.Select(part => part.def.defName).ToArray(),
+					prepare
+				};
+
+			var doctorMedicine = doctor.skills.GetSkill(SkillDefOf.Medicine);
+			doctorMedicine.Level = forceSuccess ? 20 : 0;
+			var chance = Mathf.Clamp(0.55f + doctorMedicine.Level * 0.03f, 0.55f, 0.95f);
+			var seed = FindSurgeryOutcomeSeed(chance, forceSuccess);
+			var reserveBefore = symbiant.DecouplingReserve;
+			var hediffBefore = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null;
+			Rand.PushState(seed);
+			try
+			{
+				worker.ApplyOnPawn(host, torso, doctor, new List<Thing>(), null);
+			}
+			finally
+			{
+				Rand.PopState();
+			}
+
+			var activeAfter = ZombieSymbiant.ActiveSymbiant(map);
+			var linkedAfter = ZombieSymbiant.LinkedSymbiantFor(host);
+			var hediffAfter = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null;
+			var success = forceSuccess
+				? symbiant.Destroyed
+					&& activeAfter == null
+					&& linkedAfter == null
+					&& hediffBefore
+					&& hediffAfter == false
+					&& host.Dead == false
+				: symbiant.Destroyed == false
+					&& activeAfter == symbiant
+					&& linkedAfter == symbiant
+					&& hediffBefore
+					&& hediffAfter
+					&& symbiant.DecouplingReserve < reserveBefore
+					&& host.Dead == false;
+
+			return new
+			{
+				success,
+				forceSuccess,
+				chance,
+				seed,
+				beforeReadyParts = beforeReadyParts.Select(part => part.def.defName).ToArray(),
+				readyParts = readyParts.Select(part => part.def.defName).ToArray(),
+				prepare,
+				reserveBefore,
+				reserveAfter = symbiant.Destroyed ? 0f : symbiant.DecouplingReserve,
+				symbiantDestroyed = symbiant.Destroyed,
+				activeAfter = ZombieRuntimeActions.StableThingId(activeAfter),
+				linkedAfter = ZombieRuntimeActions.StableThingId(linkedAfter),
+				hediffBefore,
+				hediffAfter,
+				hostDead = host.Dead
+			};
+		}
+
+		static object PrepareSymbiantForSafeSeverance(Map map, SymbiantNaturalSpawnFixture fixture, ZombieSymbiant symbiant)
+		{
+			var roomCells = fixture.room.interiorRect.Cells
+				.Where(cell => cell.InBounds(map) && cell.Standable(map))
+				.ToArray();
+			var addedCells = ZombieSymbiant.AddCells(map, roomCells);
+			var feeds = 0;
+			while ((symbiant.DecouplingReserve < symbiant.DecouplingReserveMax - 0.001f || symbiant.CellCount > 3) && feeds < 20)
+			{
+				var pack = ThingMaker.MakeThing(CustomDefs.SymbiantCoagulantPack);
+				if (symbiant.TryFeed(pack) == false)
+				{
+					if (pack.Destroyed == false)
+						pack.Destroy(DestroyMode.Vanish);
+					break;
+				}
+				feeds++;
+			}
+			return new
+			{
+				addedCells,
+				feeds,
+				cellCount = symbiant.CellCount,
+				hasMaturedForSeverance = symbiant.HasMaturedForSeverance,
+				decouplingReserve = symbiant.DecouplingReserve,
+				decouplingReserveMax = symbiant.DecouplingReserveMax,
+				effectiveDecouplingReserve = symbiant.EffectiveDecouplingReserve,
+				safeVisibleMinimum = symbiant.SafeVisibleMinimum,
+				canSafelySever = symbiant.CanSafelySever
+			};
+		}
+
+		static int FindSurgeryOutcomeSeed(float chance, bool desiredOutcome)
+		{
+			for (var seed = 1; seed < 10000; seed++)
+			{
+				Rand.PushState(seed);
+				bool outcome;
+				try
+				{
+					outcome = Rand.Chance(chance);
+				}
+				finally
+				{
+					Rand.PopState();
+				}
+				if (outcome == desiredOutcome)
+					return seed;
+			}
+			throw new InvalidOperationException($"Could not find deterministic surgery seed for chance {chance:0.000} and desired outcome {desiredOutcome}.");
+		}
+
+		static object DescribeSymbiantSeveranceRecipeIngredients()
+		{
+			var recipe = CustomDefs.SeverSymbiantSymbiosis;
+			var filter = recipe?.fixedIngredientFilter;
+			var allowsCoagulant = filter?.Allows(CustomDefs.SymbiantCoagulantPack) == true;
+			var allowsMedicine = filter?.Allows(ThingDefOf.MedicineIndustrial) == true;
+			var ingredientCount = recipe?.ingredients?.Count ?? 0;
+			var hasCoagulantIngredient = recipe?.ingredients?.Any(ingredient => ingredient.filter.Allows(CustomDefs.SymbiantCoagulantPack) && Mathf.Approximately(ingredient.GetBaseCount(), 1f)) == true;
+			var hasMedicineIngredient = recipe?.ingredients?.Any(ingredient => ingredient.filter.Allows(ThingDefOf.MedicineIndustrial) && Mathf.Approximately(ingredient.GetBaseCount(), 1f)) == true;
+			return new
+			{
+				success = recipe != null
+					&& recipe.workerClass == typeof(Recipe_SeverSymbiantSymbiosis)
+					&& recipe.targetsBodyPart
+					&& ingredientCount == 2
+					&& allowsCoagulant
+					&& allowsMedicine
+					&& hasCoagulantIngredient
+					&& hasMedicineIngredient,
+				recipe = recipe?.defName,
+				workerClass = recipe?.workerClass?.FullName,
+				targetsBodyPart = recipe?.targetsBodyPart ?? false,
+				ingredientCount,
+				allowsCoagulant,
+				allowsMedicine,
+				hasCoagulantIngredient,
+				hasMedicineIngredient
+			};
 		}
 
 		[Tool("zombieland/symbiant_expansion_contract", Description = "Build a reversible two-room fixture and verify symbiant expansion into room cells, under a closed door, and through one constructed wall.")]

@@ -174,6 +174,7 @@ The symbiant is not a second spitter and not a normal combat target. The interes
   - consume part of the reserve,
   - injure the host using the normal surgery-failure path,
   - keep the link active if the symbiant still exists.
+- Bridge validation uses `zombieland/symbiant_severance_contract` to verify surgery recipe ingredients, target gating, deterministic successful severance cleanup, and deterministic failed-severance reserve loss while preserving the link.
 
 ## Unsafe Damage And Collapse
 
