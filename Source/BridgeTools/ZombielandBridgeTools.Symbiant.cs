@@ -1268,11 +1268,16 @@ namespace ZombieLand
 					feedRequested = symbiant?.FeedRequested ?? false,
 					closestFeed = feed == null ? null : ZombieRuntimeActions.StableThingId(feed),
 					closestFeedDef = feed?.def?.defName,
+					closestFeedIsValid = feed != null && ZombieSymbiant.IsValidFeed(feed),
 					foundSpawnedPack = feed == pack,
 					jobDef = feedJob?.def?.defName,
 					jobTargetA = ZombieRuntimeActions.StableThingId(feedJob?.targetA.Thing),
 					jobTargetB = ZombieRuntimeActions.StableThingId(feedJob?.targetB.Thing),
-					success = feed == pack && feedJob?.def == CustomDefs.FeedZombieSymbiant && feedJob.targetA.Thing == symbiant && feedJob.targetB.Thing == pack
+					success = feed != null
+						&& ZombieSymbiant.IsValidFeed(feed)
+						&& feedJob?.def == CustomDefs.FeedZombieSymbiant
+						&& feedJob.targetA.Thing == symbiant
+						&& feedJob.targetB.Thing == feed
 				};
 				var patchTargets = new
 				{
@@ -2353,6 +2358,382 @@ namespace ZombieLand
 				letterCleanup,
 				fixtureCleanup,
 				activeSymbiantAfterCleanup = ZombieRuntimeActions.StableThingId(activeAfterCleanup)
+			};
+		}
+
+		[Tool("zombieland/symbiant_relocation_contract", Description = "Verify uprooted relocation, relocation grace, movable outdoor-cell reuse, and no-room dormancy.")]
+		public static object SymbiantRelocationContract(
+			[ToolParameter(Description = "Destroy temporary symbiants, colonists, fixture buildings, and letters after capturing evidence.", Required = false, DefaultValue = true)] bool cleanup = true)
+		{
+			var map = CurrentMap;
+			if (map == null)
+				return new { success = false, error = "No current map is loaded." };
+			var activeBefore = ZombieSymbiant.ActiveSymbiant(map);
+			if (activeBefore != null)
+				return new { success = false, error = "An active symbiant already exists on the current map.", activeSymbiant = ZombieRuntimeActions.StableThingId(activeBefore) };
+
+			var settingsSnapshot = SnapshotZombieSettings();
+			var beforeLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>()).ToHashSet();
+			object graceAndReseed = null;
+			object movableCellReuse = null;
+			object noRoomDormancy = null;
+			object error = null;
+
+			try
+			{
+				ApplyZombieSettingsOverride(settings =>
+				{
+					settings.showZombieEventLetters = false;
+					settings.symbiantMaxCells = 80;
+					settings.symbiantCanBreakConstructedWalls = true;
+				});
+
+				graceAndReseed = RunSymbiantGraceAndReseedScenario(map, cleanup);
+				movableCellReuse = RunSymbiantMovableCellReuseScenario(map, cleanup);
+				noRoomDormancy = RunSymbiantNoRoomDormancyScenario(map, cleanup);
+			}
+			catch (Exception ex)
+			{
+				error = ex.ToString();
+			}
+			finally
+			{
+				RestoreZombieSettings(settingsSnapshot);
+			}
+
+			var newLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>())
+				.Where(letter => beforeLetters.Contains(letter) == false)
+				.ToArray();
+			var letterCleanup = CleanupTemporaryLetters(newLetters, cleanup);
+			var activeAfterCleanup = ZombieSymbiant.ActiveSymbiant(map);
+			var success = error == null
+				&& ScenarioSucceeded(graceAndReseed)
+				&& ScenarioSucceeded(movableCellReuse)
+				&& ScenarioSucceeded(noRoomDormancy)
+				&& (activeAfterCleanup == null || cleanup == false);
+
+			return new
+			{
+				success,
+				sourcePath = "ZombieSymbiant.TryReseedIfUprooted/TryRelocationPulse/FindExpansionTarget",
+				error,
+				graceAndReseed,
+				movableCellReuse,
+				noRoomDormancy,
+				cleanup = new
+				{
+					letters = letterCleanup,
+					activeSymbiantAfterCleanup = ZombieRuntimeActions.StableThingId(activeAfterCleanup)
+				}
+			};
+		}
+
+		static object RunSymbiantGraceAndReseedScenario(Map map, bool cleanup)
+		{
+			SymbiantExpansionFixture fixture = null;
+			ZombieSymbiant symbiant = null;
+			Pawn host = null;
+			object fixtureSetup = null;
+			try
+			{
+				if (TrySetupSymbiantExpansionFixture(map, out fixture, out var fixtureError) == false)
+					return fixtureError;
+				fixtureSetup = DescribeSymbiantExpansionFixture(fixture);
+				host = SpawnSymbiantRelocationHost(map, fixture.rightInterior.CenterCell);
+				symbiant = SpawnAssignedSymbiantForRelocationContract(map, fixture.spawnCell, host);
+				var initial = DescribeSymbiantRelocationState(symbiant, host);
+				var addedCells = ZombieSymbiant.AddCells(map, fixture.leftInterior.Cells.Where(cell => cell.InBounds(map) && cell.Standable(map)));
+				var beforeOpen = DescribeSymbiantRelocationState(symbiant, host);
+				var openedBuildings = DestroyFixtureBuildings(map, fixture, building => IsAdjacentToRect(building.Position, fixture.leftInterior) && fixture.dividerWalls.Contains(building) == false);
+				var afterOpen = DescribeSymbiantRelocationState(symbiant, host);
+				var positionBeforeGrace = symbiant.Position;
+				var beforeGraceReseed = InvokeSymbiantTryReseedIfUprooted(symbiant);
+				var positionAfterGraceProbe = symbiant.Position;
+				var afterGraceProbe = DescribeSymbiantRelocationState(symbiant, host);
+				ExpireSymbiantUprootedGrace(symbiant);
+				var afterGraceReseed = InvokeSymbiantTryReseedIfUprooted(symbiant);
+				var activeAfterReseed = ZombieSymbiant.ActiveSymbiant(map) ?? symbiant;
+				var afterReseed = DescribeSymbiantRelocationState(activeAfterReseed, host);
+				var reseededIntoRightRoom = activeAfterReseed?.Spawned == true && fixture.rightInterior.Contains(activeAfterReseed.Position);
+				var success = addedCells > 0
+					&& openedBuildings > 0
+					&& beforeGraceReseed == false
+					&& positionAfterGraceProbe == positionBeforeGrace
+					&& afterGraceReseed
+					&& reseededIntoRightRoom
+					&& activeAfterReseed.CellCount == 1
+					&& activeAfterReseed.RelocationCellDebt > 0
+					&& activeAfterReseed.LinkedHost == host;
+				symbiant = activeAfterReseed;
+				return new
+				{
+					success,
+					fixtureSetup,
+					host = DescribeRelocationHost(host),
+					initial,
+					addedCells,
+					beforeOpen,
+					openedBuildings,
+					afterOpen,
+					beforeGraceReseed,
+					graceKeptOriginalPosition = positionAfterGraceProbe == positionBeforeGrace,
+					afterGraceProbe,
+					afterGraceReseed,
+					afterReseed,
+					reseededIntoRightRoom
+				};
+			}
+			catch (Exception ex)
+			{
+				return new { success = false, error = ex.ToString(), fixtureSetup };
+			}
+			finally
+			{
+				_ = CleanupTemporarySymbiant(map, symbiant, cleanup);
+				_ = CleanupTemporaryPawn(host, cleanup);
+				_ = CleanupSymbiantExpansionFixture(map, fixture, cleanup);
+			}
+		}
+
+		static object RunSymbiantMovableCellReuseScenario(Map map, bool cleanup)
+		{
+			SymbiantExpansionFixture fixture = null;
+			ZombieSymbiant symbiant = null;
+			Pawn host = null;
+			object fixtureSetup = null;
+			try
+			{
+				if (TrySetupSymbiantExpansionFixture(map, out fixture, out var fixtureError) == false)
+					return fixtureError;
+				fixtureSetup = DescribeSymbiantExpansionFixture(fixture);
+				host = SpawnSymbiantRelocationHost(map, fixture.rightInterior.CenterCell);
+				symbiant = SpawnAssignedSymbiantForRelocationContract(map, fixture.rightInterior.CenterCell, host);
+				var openedBuildings = DestroyFixtureBuildings(map, fixture, building => IsAdjacentToRect(building.Position, fixture.leftInterior) && fixture.dividerWalls.Contains(building) == false);
+				var outdoorCell = fixture.leftInterior.CenterCell;
+				var rightCellsBefore = CountSymbiantCellsInRect(symbiant, fixture.rightInterior);
+				var addedOutdoorCells = ZombieSymbiant.AddCells(map, new[] { outdoorCell });
+				var beforePulse = DescribeSymbiantRelocationState(symbiant, host);
+				var containedOutdoorBefore = symbiant.ContainsCell(outdoorCell);
+				var cellCountBefore = symbiant.CellCount;
+				ForceSymbiantRelocationPulseReady(symbiant);
+				var pulse = InvokeSymbiantTryRelocationPulse(symbiant);
+				var afterPulse = DescribeSymbiantRelocationState(symbiant, host);
+				var containedOutdoorAfter = symbiant.ContainsCell(outdoorCell);
+				var rightCellsAfter = CountSymbiantCellsInRect(symbiant, fixture.rightInterior);
+				var success = openedBuildings > 0
+					&& addedOutdoorCells == 1
+					&& containedOutdoorBefore
+					&& pulse
+					&& containedOutdoorAfter == false
+					&& symbiant.CellCount == cellCountBefore
+					&& rightCellsAfter > rightCellsBefore;
+				return new
+				{
+					success,
+					fixtureSetup,
+					host = DescribeRelocationHost(host),
+					openedBuildings,
+					outdoorCell = ZombieRuntimeActions.DescribeCell(outdoorCell),
+					addedOutdoorCells,
+					rightCellsBefore,
+					beforePulse,
+					containedOutdoorBefore,
+					pulse,
+					afterPulse,
+					containedOutdoorAfter,
+					rightCellsAfter
+				};
+			}
+			catch (Exception ex)
+			{
+				return new { success = false, error = ex.ToString(), fixtureSetup };
+			}
+			finally
+			{
+				_ = CleanupTemporarySymbiant(map, symbiant, cleanup);
+				_ = CleanupTemporaryPawn(host, cleanup);
+				_ = CleanupSymbiantExpansionFixture(map, fixture, cleanup);
+			}
+		}
+
+		static object RunSymbiantNoRoomDormancyScenario(Map map, bool cleanup)
+		{
+			SymbiantExpansionFixture fixture = null;
+			ZombieSymbiant symbiant = null;
+			Pawn host = null;
+			object fixtureSetup = null;
+			try
+			{
+				if (TrySetupSymbiantExpansionFixture(map, out fixture, out var fixtureError) == false)
+					return fixtureError;
+				fixtureSetup = DescribeSymbiantExpansionFixture(fixture);
+				host = SpawnSymbiantRelocationHost(map, fixture.rightInterior.CenterCell);
+				symbiant = SpawnAssignedSymbiantForRelocationContract(map, fixture.spawnCell, host);
+				var addedCells = ZombieSymbiant.AddCells(map, fixture.leftInterior.Cells.Where(cell => cell.InBounds(map) && cell.Standable(map)));
+				var beforeOpen = DescribeSymbiantRelocationState(symbiant, host);
+				var cellCountBeforeOpen = symbiant.CellCount;
+				var removedBuildings = DestroyFixtureBuildings(map, fixture, _ => true);
+				var afterOpen = DescribeSymbiantRelocationState(symbiant, host);
+				_ = InvokeSymbiantTryReseedIfUprooted(symbiant);
+				ExpireSymbiantUprootedGrace(symbiant);
+				var reseedAfterGrace = InvokeSymbiantTryReseedIfUprooted(symbiant);
+				var expansionPulse = symbiant.TryExpansionPulse();
+				var afterPulses = DescribeSymbiantRelocationState(symbiant, host);
+				var success = addedCells > 0
+					&& removedBuildings > 0
+					&& reseedAfterGrace == false
+					&& expansionPulse == false
+					&& symbiant.CellCount == cellCountBeforeOpen
+					&& symbiant.GrowthState == "dormantNoRoom";
+				return new
+				{
+					success,
+					fixtureSetup,
+					host = DescribeRelocationHost(host),
+					addedCells,
+					beforeOpen,
+					removedBuildings,
+					afterOpen,
+					reseedAfterGrace,
+					expansionPulse,
+					afterPulses
+				};
+			}
+			catch (Exception ex)
+			{
+				return new { success = false, error = ex.ToString(), fixtureSetup };
+			}
+			finally
+			{
+				_ = CleanupTemporarySymbiant(map, symbiant, cleanup);
+				_ = CleanupTemporaryPawn(host, cleanup);
+				_ = CleanupSymbiantExpansionFixture(map, fixture, cleanup);
+			}
+		}
+
+		static Pawn SpawnSymbiantRelocationHost(Map map, IntVec3 cell)
+		{
+			var host = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
+			GenSpawn.Spawn(host, cell, map, Rot4.South);
+			DisablePawnWork(host);
+			host.needs?.AddOrRemoveNeedsAsAppropriate();
+			host.mindState?.mentalStateHandler?.Reset();
+			return host;
+		}
+
+		static ZombieSymbiant SpawnAssignedSymbiantForRelocationContract(Map map, IntVec3 spawnCell, Pawn host)
+		{
+			ZombieSymbiant.Spawn(map, spawnCell);
+			var symbiant = ZombieSymbiant.ActiveSymbiant(map) ?? throw new InvalidOperationException("Symbiant spawn did not create an active symbiant.");
+			var originalHost = symbiant.LinkedHost;
+			if (originalHost != null && originalHost != host)
+				AccessTools.Method(typeof(ZombieSymbiant), "RemoveHostHediff")?.Invoke(null, new object[] { originalHost });
+			AccessTools.Method(typeof(ZombieSymbiant), "AssignHost")?.Invoke(symbiant, new object[] { host });
+			RepairHostLink(symbiant);
+			return symbiant;
+		}
+
+		static bool InvokeSymbiantTryReseedIfUprooted(ZombieSymbiant symbiant)
+		{
+			if (symbiant == null)
+				return false;
+			var result = AccessTools.Method(typeof(ZombieSymbiant), "TryReseedIfUprooted")?.Invoke(symbiant, Array.Empty<object>());
+			return result is bool value && value;
+		}
+
+		static bool InvokeSymbiantTryRelocationPulse(ZombieSymbiant symbiant)
+		{
+			if (symbiant == null)
+				return false;
+			var result = AccessTools.Method(typeof(ZombieSymbiant), "TryRelocationPulse")?.Invoke(symbiant, Array.Empty<object>());
+			return result is bool value && value;
+		}
+
+		static void ExpireSymbiantUprootedGrace(ZombieSymbiant symbiant)
+		{
+			AccessTools.Field(typeof(ZombieSymbiant), "uprootedSinceTick")?.SetValue(symbiant, GenTicks.TicksGame - GenDate.TicksPerHour * 4 - 1);
+		}
+
+		static void ForceSymbiantRelocationPulseReady(ZombieSymbiant symbiant)
+		{
+			AccessTools.Field(typeof(ZombieSymbiant), "nextRelocationPulseTick")?.SetValue(symbiant, GenTicks.TicksGame);
+		}
+
+		static int DestroyFixtureBuildings(Map map, SymbiantExpansionFixture fixture, Func<Building, bool> predicate)
+		{
+			if (map == null || fixture == null)
+				return 0;
+			var removed = 0;
+			foreach (var building in fixture.buildings.Where(building => building != null && building.Destroyed == false && predicate(building)).ToArray())
+			{
+				building.Destroy(DestroyMode.Vanish);
+				removed++;
+			}
+			map.regionAndRoomUpdater.RebuildAllRegionsAndRooms();
+			return removed;
+		}
+
+		static bool IsAdjacentToRect(IntVec3 cell, CellRect rect)
+		{
+			return rect.Cells.Any(interior => GenAdj.CardinalDirections.Any(direction => interior + direction == cell));
+		}
+
+		static int CountSymbiantCellsInRect(ZombieSymbiant symbiant, CellRect rect)
+		{
+			if (symbiant == null)
+				return 0;
+			return rect.Cells.Count(symbiant.ContainsCell);
+		}
+
+		static object CleanupTemporaryPawn(Pawn pawn, bool cleanup)
+		{
+			if (pawn == null)
+				return new { removed = false, skipped = cleanup == false };
+			if (cleanup == false)
+				return new { removed = false, skipped = true, pawn = ZombieRuntimeActions.StableThingId(pawn) };
+			if (pawn.Destroyed)
+				return new { removed = false, skipped = false, pawn = ZombieRuntimeActions.StableThingId(pawn) };
+			var id = ZombieRuntimeActions.StableThingId(pawn);
+			pawn.Destroy(DestroyMode.Vanish);
+			return new { removed = pawn.Destroyed, skipped = false, pawn = id };
+		}
+
+		static object DescribeSymbiantRelocationState(ZombieSymbiant symbiant, Pawn expectedHost)
+		{
+			if (symbiant == null)
+				return null;
+			var map = symbiant.Spawned ? symbiant.Map : null;
+			var host = symbiant.LinkedHost;
+			var position = symbiant.Spawned ? symbiant.Position : IntVec3.Invalid;
+			return new
+			{
+				symbiant = ZombieRuntimeActions.StableThingId(symbiant),
+				spawned = symbiant.Spawned,
+				destroyed = symbiant.Destroyed,
+				position = position.IsValid ? ZombieRuntimeActions.DescribeCell(position) : null,
+				room = map == null || position.IsValid == false ? null : DescribeRoom(position.GetRoom(map)),
+				cellCount = symbiant.CellCount,
+				growthState = symbiant.GrowthState,
+				relocationCellDebt = symbiant.RelocationCellDebt,
+				nextRelocationPulseTick = symbiant.NextRelocationPulseTick,
+				linkedHost = ZombieRuntimeActions.StableThingId(host),
+				expectedHost = ZombieRuntimeActions.StableThingId(expectedHost),
+				linkPreserved = host == expectedHost,
+				hostRoom = host?.Spawned == true ? DescribeRoom(host.Position.GetRoom(host.Map)) : null
+			};
+		}
+
+		static object DescribeRelocationHost(Pawn host)
+		{
+			if (host == null)
+				return null;
+			return new
+			{
+				host = ZombieRuntimeActions.StableThingId(host),
+				label = host.LabelShortCap,
+				spawned = host.Spawned,
+				position = host.Spawned ? ZombieRuntimeActions.DescribeCell(host.Position) : null,
+				room = host.Spawned ? DescribeRoom(host.Position.GetRoom(host.Map)) : null
 			};
 		}
 
