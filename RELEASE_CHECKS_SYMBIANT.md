@@ -1,13 +1,13 @@
 # Symbiant Release Checks
 
-Scope: player-facing Symbiant behavior added or materially changed after `v5.0.4.1`.
+Scope: player-facing Symbiant behavior added or materially changed for the `5.1.0.0` release slice.
 
 Baseline:
-- Release baseline: `v5.0.4.1` / `e876a82`.
-- Current source checkpoint: `729b234 Add symbiant damage guard` plus working-tree bridge coverage fixes for Symbiant feed discovery and relocation testing.
+- Release baseline: `v5.0.4.2` / `40d9d37`.
+- Current source checkpoint: `26e0657 Add Symbiant translations`.
 - Runtime target: local RimWorld app-bundle mod path reported by RimWorld as `.../RimWorldMac.app/Mods/ZombieLand`.
 - Working save fixture: `SYMBIANT-TEST` for the current minimal-mod loadout; it is an empty visibility-friendly map with sterile tiles.
-- Current stance: broad empirical checks first; avoid chasing minor edge details unless they undermine release confidence.
+- Current stance: broad empirical checks are release gates; narrow matrix gaps are follow-up work unless they expose a broad player-facing regression.
 
 ## Claims
 

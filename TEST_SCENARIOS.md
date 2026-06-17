@@ -880,7 +880,7 @@ Completion:
 ## S-Symbiant-Symbiosis
 
 Status:
-- Core playable runtime contracts, focused single-map save/load smoke, same-process cache/no-symbiant save switching, and temporary host off-map/cryptosleep containment behavior have runtime evidence. Release-gate evidence still needs true multi-map behavior, host deletion/real-caravan/gravship edges, stress/performance, full host-eligibility matrix, relocation/no-room behavior, and natural mixed-base endurance checks.
+- Core playable runtime contracts, focused single-map save/load smoke, same-process cache/no-symbiant save switching, temporary host off-map/cryptosleep containment behavior, relocation/no-room behavior, selection UI, and default 400-cell stress have runtime evidence. The `5.1.0.0` release gate is the broad player-facing pass in `RELEASE_CHECKS_SYMBIANT.md`; deeper multi-map, host-edge, feeding-variant, and endurance matrices remain follow-up coverage unless they expose a broad regression.
 
 Fixture:
 - Start from `EMPTY.rws` or a small colony room fixture with one enclosed bedroom/kitchen-style room, one closed door, one temporarily opened wall repair area, one constructed wall cage variant, one natural-rock blocker, one no-room/outdoor-only variant, at least one eligible free adult colonist, one ineligible host set, one remote unused containment room, one humanlike corpse quality/body-size set, medicine, and one crafted or spawned `SymbiantCoagulantPack`.
@@ -893,7 +893,7 @@ Bridge contract:
 - Map-cache and no-symbiant save-switch evidence, 2026-06-15: decompiler evidence confirmed RimWorld loaded things run `SpawnSetup` through `Map.FinalizeLoading` and `GenSpawn.Spawn`, while Zombieland clears transient symbiant caches on load/shutdown/finalization. `zombieland/symbiant_map_cache_contract` (`op_f97d0452dbae4710b0e67ad373523ca8`) proved empty-map negative-cache marking, spawn invalidation, map-pawn exclusion, cleanup invalidation, and explicit cache reset. A same-process save switch loaded a symbiant save and read the active hidden symbiant (`op_8d439e40bdce4196896c8ad7334445a9`), then loaded a no-symbiant save without restarting and read `symbiant=null` (`op_8a9028b166e94d37998ee55bbfdb0734`). Temporary saves were deleted and warning-or-higher logs contained no Zombieland or symbiant entries.
 - Temporary host unavailable-state evidence, 2026-06-15: `zombieland/symbiant_host_availability_contract` (`op_fd84034099df4c45ae11b7348cedcf7f`) created a linked bedroom fixture, despawned the linked host, verified the link and display hediff persisted while benefits, severance, and zombie targeting protection were unavailable, respawned the same host and verified the link resumed, then repeated the dormant/resume check through a real `Building_CryptosleepCasket` containment/ejection round trip. Same-session final-DLL regressions for active same-map effects also passed through `zombieland/symbiant_benefit_contract` (`op_73e0e8294d8c41e3b8a8890edbe883cc`) and `zombieland/symbiant_severance_contract` (`op_7120631c084348c59ac23a83cb5f27e1`). Cleanup removed the temporary fixture and warning-or-higher logs contained no Zombieland or symbiant entries.
 
-Required checks:
+Release candidate checks:
 - `scripts/build-quiet.sh`.
 - Cold-load warning-or-higher logs clean.
 - Natural or bridge spawn creates one symbiant, one initial cell, a player letter, and a linked eligible host when one exists.
@@ -929,9 +929,9 @@ Required checks:
 - Default 400-cell stress reaches the configured cap without growth beyond it.
 - Bridge-only 4000-cell stress reaches the source/render ceiling without changing saved gameplay settings and without shader buffer or save/load errors.
 
-Remaining targeted gaps:
+Follow-up coverage:
 - Broader save/load and true multi-map: active symbiant state, host links, feed counters, maturity, reserve, feed request, and renderer resources across real map switches.
 - Host edge matrix: children, prisoners, slaves, guests, temporary joiners, quest lodgers, real caravan/gravship/unavailable pawns, host deletion, optional-mod holograms, non-flesh pawns, existing hosts, and late/active zombie infection.
-- Room/relocation disruption: live room-stat, work-stat, tend-speed, path-cost, item-reach behavior, temporary deconstruction, no-room dormancy, and multi-room relocation in a more natural base layout.
+- Natural-base disruption: room-stat, work-stat, tend-speed, path-cost, item-reach behavior, and multi-room relocation in a more organic colony layout.
 - Feeding variants: humanlike corpse freshness/body-size pulse strengths in addition to already-covered coagulant tiers.
-- Endurance/performance: default 400-cell cap, bridge-only 4000-cell render ceiling, many-pawn pathing stress, and normal-play log cleanliness over longer runtime.
+- Endurance/performance: bridge-only 4000-cell render ceiling, many-pawn pathing stress, and normal-play log cleanliness over longer runtime.
