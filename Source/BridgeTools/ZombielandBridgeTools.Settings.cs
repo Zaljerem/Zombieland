@@ -225,7 +225,8 @@ namespace ZombieLand
 				colonist = DescribePawn(pawn),
 				colonistConfig = DescribeColonistConfig(config),
 				colonistSettingsCount = ColonistSettings.colonists?.Count ?? 0,
-				dialogState
+				dialogState,
+				dialogLayout = DescribeSettingsDialogLayout()
 			};
 		}
 
@@ -1619,6 +1620,23 @@ namespace ZombieLand
 				hasMod = true,
 				opened = Find.WindowStack.IsOpen(typeof(Dialog_ModSettings)),
 				settingsCategory = mod.SettingsCategory()
+			};
+		}
+
+		static object DescribeSettingsDialogLayout()
+		{
+			var measuredContentHeight = SettingsDialog.measuredContentHeight;
+			var lastDrawnContentHeight = SettingsDialog.lastDrawnContentHeight;
+			var lastScrollViewHeight = SettingsDialog.lastScrollViewHeight;
+			return new
+			{
+				fallbackHeight = SettingsDialog.totalEstimatedHeight,
+				measuredContentHeight,
+				lastDrawnContentHeight,
+				lastScrollViewHeight,
+				scrollableHeight = Mathf.Max(0f, measuredContentHeight - lastScrollViewHeight),
+				hasMeasuredDraw = lastDrawnContentHeight > 0f,
+				measuredCoversDrawnContent = measuredContentHeight + 0.01f >= lastDrawnContentHeight
 			};
 		}
 

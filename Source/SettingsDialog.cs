@@ -9,6 +9,10 @@ namespace ZombieLand
 	static class SettingsDialog
 	{
 		public static readonly float totalEstimatedHeight = 4120f;
+		const float scrollContentBottomPadding = 24f;
+		public static float measuredContentHeight = totalEstimatedHeight;
+		public static float lastDrawnContentHeight = 0f;
+		public static float lastScrollViewHeight = 0f;
 		public static Vector2 scrollPosition = Vector2.zero;
 
 		public static void DoWindowContentsInternal(ref SettingsGroup settings, ref List<SettingsKeyFrame> settingsOverTime, Rect inRect)
@@ -20,9 +24,10 @@ namespace ZombieLand
 			var secondColumnWidth = inRect.width - Listing.ColumnSpacing - firstColumnWidth;
 
 			var outerRect = new Rect(inRect.x, inRect.y, firstColumnWidth, inRect.height);
-			var innerRect = new Rect(0f, 0f, firstColumnWidth - 24f, totalEstimatedHeight);
 
 			outerRect = DialogTimeHeader.Draw(ref settingsOverTime, outerRect);
+			lastScrollViewHeight = outerRect.height;
+			var innerRect = new Rect(0f, 0f, firstColumnWidth - 24f, Mathf.Max(lastScrollViewHeight, measuredContentHeight));
 
 			Widgets.BeginScrollView(outerRect, ref scrollPosition, innerRect, true);
 
@@ -31,6 +36,7 @@ namespace ZombieLand
 
 			var list = new Listing_Standard();
 			list.Begin(innerRect);
+			list.maxOneColumn = true;
 
 			{
 				// About
@@ -386,7 +392,9 @@ namespace ZombieLand
 				}
 			}
 
+			var drawnContentHeight = list.MaxColumnHeightSeen;
 			list.End();
+			UpdateMeasuredContentHeight(drawnContentHeight);
 			Widgets.EndScrollView();
 
 			var boxHeight = 136f;
@@ -457,6 +465,12 @@ namespace ZombieLand
 				var ticks = GenTicks.TicksGame;
 				ZombieSettings.Values = ZombieSettings.CalculateInterpolation(ZombieSettings.ValuesOverTime, ticks);
 			}
+		}
+
+		static void UpdateMeasuredContentHeight(float drawnContentHeight)
+		{
+			lastDrawnContentHeight = Mathf.Ceil(drawnContentHeight + scrollContentBottomPadding);
+			measuredContentHeight = Mathf.Max(lastScrollViewHeight, lastDrawnContentHeight);
 		}
 
 		enum AnomalyAutomaticDetail
