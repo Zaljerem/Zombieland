@@ -46,7 +46,7 @@
 
 		<WorkGiverDef>
 			<defName>FeedZombieSymbiant</defName>
-			<label>feed zombie symbiant</label>
+			<label>feed Symbiant</label>
 			<giverClass>ZombieLand.WorkGiver_FeedZombieSymbiant</giverClass>
 			<workType>Hauling</workType>
 			<verb>feed</verb>

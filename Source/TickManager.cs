@@ -379,6 +379,7 @@ namespace ZombieLand
 		public int lastZombieSpitter = 0;
 		public bool zombieSpitterInited = false;
 		public int lastZombieSymbiant = 0;
+		public int nextZombieSymbiant = 0;
 		public bool zombieSymbiantInited = false;
 
 		public TickManager(Map map) : base(map)
@@ -416,6 +417,8 @@ namespace ZombieLand
 				lastZombieSpitter = ticks;
 				zombieSpitterInited = true;
 			}
+			if (zombieSymbiantInited == false)
+				InitializeZombieSymbiantSchedule(ticks);
 			base.MapGenerated();
 		}
 
@@ -497,6 +500,7 @@ namespace ZombieLand
 			Scribe_Values.Look(ref lastZombieSpitter, "lastZombieSpitter");
 			Scribe_Values.Look(ref zombieSpitterInited, "zombieSpitterInited");
 			Scribe_Values.Look(ref lastZombieSymbiant, "lastZombieSymbiant");
+			Scribe_Values.Look(ref nextZombieSymbiant, "nextZombieSymbiant");
 			Scribe_Values.Look(ref zombieSymbiantInited, "zombieSymbiantInited");
 
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
@@ -519,10 +523,9 @@ namespace ZombieLand
 					zombieSpitterInited = true;
 				}
 				if (zombieSymbiantInited == false)
-				{
-					lastZombieSymbiant = GenTicks.TicksGame;
-					zombieSymbiantInited = true;
-				}
+					InitializeZombieSymbiantSchedule(GenTicks.TicksGame);
+				else if (nextZombieSymbiant <= 0)
+					nextZombieSymbiant = Mathf.Max(GenTicks.TicksGame + GenDate.TicksPerHour, lastZombieSymbiant + ZombieSymbiantDelayTicks(true));
 			}
 
 		}
@@ -907,19 +910,7 @@ namespace ZombieLand
 
 		void HandleIncidents()
 		{
-			if (ZombieSettings.Values.symbiantEnabled && zombieSymbiantInited)
-			{
-				var ticks = GenTicks.TicksGame;
-				var cooldownTicks = Mathf.Max(1f, ZombieSettings.Values.symbiantSpawnCooldownDays) * GenDate.TicksPerDay;
-				if (NewMapZombieDelay(ticks) == false
-					&& ticks - lastZombieSymbiant > cooldownTicks
-					&& ZombieSymbiant.ActiveSymbiant(map) == null
-					&& ZombieWeather.GetThreatLevel(map) > 0f)
-				{
-					if (ZombieSymbiant.TrySpawnInBestRoom(map))
-						lastZombieSymbiant = ticks;
-				}
-			}
+			HandleSymbiantIncident();
 
 			if (ZombieSettings.Values.spitterThreat > 0f && zombieSpitterInited)
 			{
@@ -1119,6 +1110,73 @@ namespace ZombieLand
 					}
 				}
 			}
+		}
+
+		void InitializeZombieSymbiantSchedule(int ticks)
+		{
+			lastZombieSymbiant = ticks;
+			zombieSymbiantInited = true;
+			nextZombieSymbiant = ticks + ZombieSymbiantDelayTicks(true);
+		}
+
+		void ScheduleNextZombieSymbiant(int ticks, bool afterSuccess)
+		{
+			nextZombieSymbiant = ticks + ZombieSymbiantDelayTicks(afterSuccess);
+		}
+
+		int ZombieSymbiantDelayTicks(bool afterSuccess)
+		{
+			var difficulty = Mathf.Clamp(Tools.Difficulty(), 0f, 5f);
+			if (afterSuccess == false)
+			{
+				var retryDays = Rand.Range(0.75f, 2.5f) * GenMath.LerpDoubleClamped(0f, 5f, 1.35f, 0.75f, difficulty);
+				return Mathf.Max(GenDate.TicksPerHour, Mathf.RoundToInt(retryDays * GenDate.TicksPerDay));
+			}
+
+			var pressure = Mathf.Max(0.35f, ZombieSymbiant.NaturalSpawnPressure(map, true));
+			var threat = Mathf.Max(0.1f, ZombieWeather.GetThreatLevel(map));
+			var minDays = GenMath.LerpDoubleClamped(0f, 5f, 22f, 5f, difficulty);
+			var maxDays = GenMath.LerpDoubleClamped(0f, 5f, 38f, 11f, difficulty);
+			var pressureFactor = GenMath.LerpDoubleClamped(0.35f, 1.6f, 1.25f, 0.70f, pressure);
+			var threatFactor = GenMath.LerpDoubleClamped(0f, 1f, 1.20f, 0.85f, threat);
+			var colonyFactor = GenMath.LerpDoubleClamped(0f, 40000f, 1.15f, 0.75f, currentColonyPoints);
+			var days = Rand.Range(minDays, maxDays) * pressureFactor * threatFactor * colonyFactor;
+			return Mathf.RoundToInt(Mathf.Clamp(days, 3f, 60f) * GenDate.TicksPerDay);
+		}
+
+		void HandleSymbiantIncident()
+		{
+			var ticks = GenTicks.TicksGame;
+			if (zombieSymbiantInited == false)
+				InitializeZombieSymbiantSchedule(ticks);
+			if (ZombieSettings.Values.symbiantEnabled == false)
+				return;
+			if (nextZombieSymbiant <= 0)
+				ScheduleNextZombieSymbiant(ticks, false);
+			if (ticks < nextZombieSymbiant)
+				return;
+			if (ZombieSymbiant.ActiveSymbiant(map) != null)
+			{
+				ScheduleNextZombieSymbiant(ticks, false);
+				return;
+			}
+			if (map.IsBlacklisted() || GenDate.DaysPassedFloat < ZombieSettings.Values.daysBeforeZombiesCome || NewMapZombieDelay(ticks) || ZombieWeather.GetThreatLevel(map) <= 0f)
+			{
+				ScheduleNextZombieSymbiant(ticks, false);
+				return;
+			}
+			if (ZombieSymbiant.NaturalSpawnPressure(map) <= 0f)
+			{
+				ScheduleNextZombieSymbiant(ticks, false);
+				return;
+			}
+			if (ZombieSymbiant.TrySpawnInBestRoom(map))
+			{
+				lastZombieSymbiant = ticks;
+				ScheduleNextZombieSymbiant(ticks, true);
+				return;
+			}
+			ScheduleNextZombieSymbiant(ticks, false);
 		}
 
 		public void TickHeads()

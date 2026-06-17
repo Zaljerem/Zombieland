@@ -2636,6 +2636,7 @@ namespace ZombieLand
 					technicalMaxCells = ZombieSymbiant.MAX_METABALLS,
 					debugMaxCellsOverride = ZombieSymbiant.DebugMaxCellsOverride,
 					capped = symbiant.CellCount >= ZombieSymbiant.MaxCells,
+					growthState = symbiant.GrowthState,
 					host = host == null ? null : new
 					{
 						id = ZombieRuntimeActions.StableThingId(host),
@@ -2664,12 +2665,15 @@ namespace ZombieLand
 					effectiveDecouplingReserve = symbiant.EffectiveDecouplingReserve,
 					safeVisibleMinimum = symbiant.SafeVisibleMinimum,
 					canSafelySever = symbiant.CanSafelySever,
-					feedPulsesToday = symbiant.DecouplingFeedPulsesToday,
-					feedPulsesPerDay = symbiant.DecouplingFeedPulsesPerDay,
-					feedPulsesRemaining = symbiant.FeedPulsesRemaining,
-					feedRequested = symbiant.FeedRequested,
-					nextExpansionTick = symbiant.NextExpansionTick,
-					feedPausedUntilTick = symbiant.FeedPausedUntilTick,
+						feedPulsesToday = symbiant.DecouplingFeedPulsesToday,
+						feedPulsesPerDay = symbiant.DecouplingFeedPulsesPerDay,
+						feedPulsesRemaining = symbiant.FeedPulsesRemaining,
+						feedRequested = symbiant.FeedRequested,
+						nextExpansionTick = symbiant.NextExpansionTick,
+						relocationCellDebt = symbiant.RelocationCellDebt,
+						nextRelocationPulseTick = symbiant.NextRelocationPulseTick,
+						uprootedSinceTick = symbiant.UprootedSinceTick,
+						feedPausedUntilTick = symbiant.FeedPausedUntilTick,
 					lastRecessionPulseCells = symbiant.LastRecessionPulseCells,
 					cancelNextBreach = symbiant.CancelNextBreach,
 					roomDisruption,
@@ -2678,7 +2682,6 @@ namespace ZombieLand
 				settings = new
 				{
 					ZombieSettings.Values.symbiantEnabled,
-					ZombieSettings.Values.symbiantExpansionIntervalHours,
 					ZombieSettings.Values.symbiantPostFeedPauseHours,
 					ZombieSettings.Values.symbiantMaxCells,
 					ZombieSettings.Values.symbiantFullBenefitRoomCoverage,

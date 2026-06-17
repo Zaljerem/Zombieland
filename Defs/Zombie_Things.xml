@@ -204,7 +204,7 @@
 	<ThingDef ParentName="ResourceBase">
 		<defName>SymbiantCoagulantPack</defName>
 		<label>symbiant coagulant pack</label>
-		<description>A sealed packet of zombie extract and volatile fuel that makes zombie symbiant tissue coagulate. Feeding one pack to a zombie symbiant triggers a strong recession pulse.</description>
+		<description>A concentrated pack for feeding a Symbiant. It builds surgery reserve, usually shrinks the visible mass, pauses growth, and helps prepare severance surgery on the linked host.</description>
 		<graphicData>
 			<graphicClass>Graphic_Single</graphicClass>
 			<texPath>ZombieExtract</texPath>

@@ -1,4 +1,5 @@
-﻿using Verse;
+﻿using UnityEngine;
+using Verse;
 
 namespace ZombieLand
 {
@@ -7,6 +8,30 @@ namespace ZombieLand
 		const int SyncInterval = 250;
 
 		public string symbiantThingId;
+
+		public override string Description
+		{
+			get
+			{
+				var description = base.Description;
+				if (pawn == null)
+					return description;
+				var symbiant = ZombieSymbiant.LinkedSymbiantFor(pawn);
+				if (symbiant == null)
+					return description + "\n\n" + "SymbiantHostBondMissing".Translate();
+				var readiness = symbiant.CanSafelySever
+					? "SymbiantHostBondReady".Translate()
+					: "SymbiantHostBondNotReady".Translate(symbiant.SafeVisibleMinimum);
+				return description + "\n\n" + "SymbiantHostBondDescription".Translate(
+					symbiant.CellCount,
+					ZombieSymbiant.MaxCells,
+					Mathf.FloorToInt(ZombieSymbiant.SymbiantBenefitFactor(pawn) * 100f),
+					Mathf.FloorToInt(symbiant.DecouplingReserve),
+					symbiant.DecouplingReserveMax,
+					readiness
+				);
+			}
+		}
 
 		public override bool ShouldRemove
 		{

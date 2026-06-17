@@ -201,15 +201,13 @@ namespace ZombieLand
 					list.Gap(24f);
 				}
 
-				if (DialogExtensions.Section<SymbiantCoagulantPotency>(":ZombieSymbiantTitle", ":SymbiantEnabled", ":SymbiantSpawnCooldownDays", ":SymbiantExpansionIntervalHours", ":SymbiantMaxCells", ":SymbiantCoagulantPotency"))
+				if (DialogExtensions.Section<SymbiantCoagulantPotency>(":ZombieSymbiantTitle", ":SymbiantEnabled", ":SymbiantMaxCells", ":SymbiantCoagulantPotency"))
 				{
 					list.Dialog_Label("ZombieSymbiantTitle", headerColor);
 					list.Dialog_Checkbox("SymbiantEnabled", ref settings.symbiantEnabled);
 					if (settings.symbiantEnabled)
 					{
 						list.Gap(8f);
-						list.Dialog_FloatSlider("SymbiantSpawnCooldownDays", _ => "{0:0.0} days", false, ref settings.symbiantSpawnCooldownDays, 1f, 60f);
-						list.Dialog_TimeSlider("SymbiantExpansionIntervalHours", ref settings.symbiantExpansionIntervalHours, 1, 72);
 						list.Dialog_IntSlider("SymbiantMaxCells", value => value.ToString(), ref settings.symbiantMaxCells, 10, ZombieSymbiant.MAX_METABALLS);
 						list.Dialog_EnumSlider("SymbiantCoagulantPotency", ref settings.symbiantCoagulantPotency);
 					}

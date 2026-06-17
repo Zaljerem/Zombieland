@@ -52,10 +52,10 @@
 
 	<RecipeDef ParentName="SurgeryFlesh">
 		<defName>SeverSymbiantSymbiosis</defName>
-		<label>sever symbiant symbiosis</label>
-		<description>Safely separates a prepared colonist from their linked zombie symbiant. Requires a full decoupling reserve and a symbiant reduced to three visible cells or fewer.</description>
+		<label>sever Symbiant bond</label>
+		<description>Separates a colonist from a prepared Zombie Symbiant. The Symbiant must be mature, have full surgery reserve, and be reduced to three visible cells or fewer. Failed surgery consumes reserve and injures the host.</description>
 		<workerClass>ZombieLand.Recipe_SeverSymbiantSymbiosis</workerClass>
-		<jobString>Severing symbiant symbiosis.</jobString>
+		<jobString>Severing Symbiant bond.</jobString>
 		<targetsBodyPart>true</targetsBodyPart>
 		<anesthetize>true</anesthetize>
 		<workAmount>2600</workAmount>
@@ -152,9 +152,9 @@
 
 	<RecipeDef>
 		<defName>MakeSymbiantCoagulantPack</defName>
-		<label>make symbiant coagulant pack</label>
-		<description>Craft one symbiant coagulant pack from zombie extract and chemfuel. Feed it to a zombie symbiant to build decoupling reserve and trigger a strong recession pulse.</description>
-		<jobString>Making symbiant coagulant pack.</jobString>
+		<label>make Symbiant coagulant pack</label>
+		<description>Craft one Symbiant coagulant pack from zombie extract and chemfuel. Feed it to a Symbiant to build surgery reserve, shrink the visible mass, and prepare the linked host for severance surgery.</description>
+		<jobString>Making Symbiant coagulant pack.</jobString>
 		<workAmount>900</workAmount>
 		<ingredients>
 			<li>

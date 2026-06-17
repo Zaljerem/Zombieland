@@ -205,6 +205,14 @@ namespace ZombieLand
 			{ CameraZoomRange.Far, MaterialPool.MatFrom("RageAura", ShaderDatabase.Mote, new Color(1f, 1f, 1f, 0.25f)) },
 			{ CameraZoomRange.Furthest, MaterialPool.MatFrom("RageAura", ShaderDatabase.Mote, new Color(1f, 1f, 1f, 0.3f)) }
 		};
+		public static readonly Dictionary<CameraZoomRange, Material> SYMBIANT_HOST_AURAS = new()
+		{
+			{ CameraZoomRange.Closest, MaterialPool.MatFrom("RageAura", ShaderDatabase.Mote, new Color(0.55f, 1f, 0.55f, 0.08f)) },
+			{ CameraZoomRange.Close, MaterialPool.MatFrom("RageAura", ShaderDatabase.Mote, new Color(0.55f, 1f, 0.55f, 0.10f)) },
+			{ CameraZoomRange.Middle, MaterialPool.MatFrom("RageAura", ShaderDatabase.Mote, new Color(0.55f, 1f, 0.55f, 0.12f)) },
+			{ CameraZoomRange.Far, MaterialPool.MatFrom("RageAura", ShaderDatabase.Mote, new Color(0.55f, 1f, 0.55f, 0.14f)) },
+			{ CameraZoomRange.Furthest, MaterialPool.MatFrom("RageAura", ShaderDatabase.Mote, new Color(0.55f, 1f, 0.55f, 0.16f)) }
+		};
 		public static readonly Material[] TOXIC_AURAS = new Material[] {
 			MaterialPool.MatFrom("ToxicAura", ShaderDatabase.Mote, new Color(1f, 1f, 1f, 0.3f)),
 			MaterialPool.MatFrom("ToxicAura", ShaderDatabase.Mote, new Color(1f, 1f, 1f, 0.5f)),

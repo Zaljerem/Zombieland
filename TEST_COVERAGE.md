@@ -575,9 +575,11 @@ Each scenario definition should include:
 Code surface: `Source/ZombieSymbiant.cs`, `Source/Hediff_SymbiantSymbiosis.cs`, `Source/Recipe_SeverSymbiantSymbiosis.cs`, `Source/JobDriver_Symbiant.cs`, `Source/JobDriver_FeedZombieSymbiant.cs`, `Source/WorkGivers.cs`, `Source/TickManager.cs`, `Source/Patches.cs`, symbiant/coagulant/hediff/surgery defs, and `zombieland/symbiant_infestation_state`.
 
 Implementation state:
-- Source implementation added 2026-06-11 and redesigned as symbiant symbiosis 2026-06-12, with review-driven plan updates after that. The symbiant has ordered persisted cells, a configurable max-cells gameplay cap that defaults to 400 with a 4000-cell source/render stress ceiling, a dedicated expansion clock, feed pause timing, feed request state, source-side metaball count support, an authoritative linked-host reference/id, decoupling reserve, peak/maturity state, and daily feed-pulse counters.
-- Natural spawning is one active symbiant per map with its own cooldown and a used indoor room selector. Host selection is independent from the spawn room and requires an eligible free adult colonist; no eligible host means natural spawning is skipped. Debug hostless slime remains allowed as a lesser cleanup/test case. The `SymbiantSymbiosis` hediff is display/sync state only and is recreated while the authoritative symbiant link remains active.
-- Expansion adds one cell per pulse, spreads through room/door cells, and can destroy one constructed player wall when boxed in. Natural rock is not breached.
+- The symbiant has ordered persisted cells, a configurable max-cells gameplay cap that defaults to 400 with a 4000-cell source/render stress ceiling, an automatic expansion clock, feed pause timing, feed request state, source-side metaball count support, an authoritative linked-host reference/id, decoupling reserve, peak/maturity state, and daily feed-pulse counters.
+- Natural spawning is one active symbiant per map with a used indoor room selector and automatic spawn pressure. Host selection is independent from the spawn room and requires an eligible free adult colonist. Spawn is skipped when no eligible host exists or when used indoor capacity is too small to reach the maturity floor. Debug hostless slime remains allowed as a lesser cleanup/test case. The `SymbiantSymbiosis` hediff is display/sync state only and is recreated while the authoritative symbiant link remains active.
+- Candidate rooms are indoor proper rooms that are in the home area or show colony use through traffic or useful contained things. Empty remote containment can hold slime, but contributes reduced integrated weight.
+- Expansion adds one cell per pulse, spreads through room/door cells, can destroy one constructed player wall when boxed in, and does not breach natural rock. Relocation reuses non-integrated cells at twice the normal growth cadence, so temporary outdoor/unroomed cells migrate inward instead of growing the total footprint.
+- Uprooted symbiants have a grace period for wall repair and room redesign. During that period they do not grow or relocate. If no used indoor rooms exist, the symbiant stays dormant and resumes when a valid room exists.
 - Colonists can be ordered to feed a selected symbiant. The workgiver consumes one humanlike non-Zombieland corpse or one `SymbiantCoagulantPack`, adds bounded severance reserve, may shrink cells only above the safe visible minimum, plays feedback, pauses growth, respects the per-day feed-pulse cap, and suppresses the next wall breach opportunity. Reserve is not fully effective until the symbiosis has matured from historical peak integrated goo.
 - Safe removal is surgery-only: `SeverSymbiantSymbiosis` is available on the linked host only when symbiosis maturity is reached, severance reserve is full, and the symbiant is reduced to three visible cells or fewer. Ordinary direct damage is rejected without reserve loss, cell loss, or host trauma; non-gameplay destruction detaches the link cleanly; host death collapses the symbiant messily without reward drops.
 - Linked-host benefits scale from integrated visible symbiant size only: active colony-room goo counts fully, remote abandoned containment goo counts reduced, and reserve never fakes presence. Skill bonus, pain/capacity/need/mental-state support, and zombie targeting protection are weak or absent for small symbiants; hard zombie ignore is only allowed at medium benefit or better.
@@ -587,18 +589,20 @@ Implementation state:
 
 Required runtime evidence:
 - Build and cold-load def resolution.
-- Spawn in a real used bedroom/kitchen-style room with letter and linked host when an eligible colonist exists; natural spawn skips cleanly when no eligible host exists.
+- Spawn in a real used bedroom/kitchen-style room with letter and linked host when an eligible colonist exists; natural spawn skips cleanly when no eligible host exists, when the map has too little used indoor capacity, and when no used indoor rooms exist.
 - Host eligibility rejects children, prisoners, slaves, guests, temporary joiners, quest lodgers, caravaning/unavailable pawns, holograms, non-flesh optional-mod pawns, existing symbiant hosts, and late/active zombie infection cases.
 - Heddiff removal resilience: removing `SymbiantSymbiosis` while the symbiant link remains active causes the symbiant to recreate it.
+- Candidate-room steering uses home-area rooms and non-home rooms with colony-use signals, while remote unused containment gives reduced benefit.
 - Expansion through room cells and under a closed door.
-- Wall-cage breakout through one constructed wall and natural-rock non-breach.
+- Relocation from outdoor/unroomed cells into a used room, including temporary open-room repair cases and the no-room dormant case.
+- Wall-cage breakout through one constructed wall, relocation preference when an indoor target exists, and natural-rock non-breach.
 - Path-cost slowdown without health/hediff side effects.
 - Room beauty/impressiveness disruption and standing-on-goo work/tend speed penalties.
-- Feed with ordinary/fresh/large humanlike corpses and with `SymbiantCoagulantPack`; verify reserve gain, safe-visible-minimum shrink behavior, daily feed-pulse cap, maturity-limited effective reserve, and wall-breach suppression.
+- Feed with ordinary/fresh/large humanlike corpses and with `SymbiantCoagulantPack`; verify route selection, reserve gain, safe-visible-minimum shrink behavior, daily feed-pulse cap, maturity-limited effective reserve, and wall-breach suppression.
 - Prepared-player exploit evidence: keeping a brand-new one-cell symbiant fed twice per day does not enable safe severance before maturity.
 - Linked-host benefit evidence: integrated visible symbiant size changes benefit factor, skill bonus, pain/capacity/need/mental-state support, and zombie targeting protection; hard zombie ignore is absent at one cell and present only at medium benefit or better.
 - Safe severance evidence: maturity plus full bounded severance reserve plus three-or-fewer visible cells enables surgery, successful surgery removes the symbiant/link/hediff, and failure consumes reserve and injures through surgery failure behavior.
 - Damage/collapse evidence: ordinary direct symbiant damage is rejected, non-gameplay destruction detaches without host trauma, and host death collapses the symbiant without recursion, reward drops, or random splash damage.
-- Save/load preservation for ordered cells, host link, hediff recreation, reserve, daily feed counter, timers, and feed request.
+- Save/load preservation for ordered cells, host link, hediff recreation, reserve, daily feed counter, timers, relocation state, uprooted state, and feed request.
 - Stress default 400-cell cap, then use the bridge-only override to stress the 4000-cell source/render ceiling without changing saved gameplay settings.
 - Warning-or-higher logs clean after runtime actions.

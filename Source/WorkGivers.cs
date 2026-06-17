@@ -287,7 +287,7 @@ namespace ZombieLand
 			var candidates = map.listerThings.ThingsInGroup(ThingRequestGroup.Corpse)
 				.Concat(map.listerThings.ThingsOfDef(CustomDefs.SymbiantCoagulantPack))
 				.Where(Valid)
-				.OrderBy(thing => thing.Position.DistanceToSquared(symbiant.Position));
+				.OrderBy(thing => thing.Position.DistanceToSquared(pawn.Position) + thing.Position.DistanceToSquared(symbiant.Position));
 			return candidates.FirstOrDefault();
 		}
 	}

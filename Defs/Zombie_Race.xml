@@ -136,7 +136,7 @@
 		<defName>ZombieSymbiant</defName>
 		<label>zombie symbiant</label>
 		<thingClass>ZombieLand.ZombieSymbiant</thingClass>
-		<description>A zombie symbiant.</description>
+		<description>An indoor Zombie Symbiant infestation. It spreads through used rooms as visible slime, slows pawns crossing it, lowers room quality, and links to a colonist. It is disruptive rather than an immediate killer, and the linked host grows stronger as the Symbiant expands. Leaving the room open around a linked root makes it move into another used room. The bond must be prepared with feeding and severed by surgery; brute force will not remove it or make surgery safer.</description>
 		<drawHighlight>false</drawHighlight>
 		<tools>
 		</tools>

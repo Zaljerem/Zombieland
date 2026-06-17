@@ -30,30 +30,46 @@
 		<LetterLabelZombiesSpitter>Zombie spitter attack</LetterLabelZombiesSpitter>
 		<ZombiesSpitter>A zombie spitter has entered the map and will lay siege to you</ZombiesSpitter>
 
-		<LetterLabelZombieSymbiant>{0} is linked to a symbiant</LetterLabelZombieSymbiant>
-		<LetterLabelZombieSymbiantNoHost>Symbiant seep surfaced</LetterLabelZombieSymbiantNoHost>
-		<ZombieSymbiant>A wet green seep has pushed up through cracks in {0}. It has linked itself to {1}; the more visible slime remains, the stronger the bond becomes. It is not a normal enemy: ordinary violence will not sever the bond.</ZombieSymbiant>
-		<ZombieSymbiantNoHost>A wet green seep has pushed up through cracks in {0}. It has not linked to a colonist yet, but it should not be treated like an ordinary zombie.</ZombieSymbiantNoHost>
+		<LetterLabelZombieSymbiant>Zombie Symbiant linked to {0}</LetterLabelZombieSymbiant>
+		<LetterLabelZombieSymbiantNoHost>Zombie Symbiant surfaced</LetterLabelZombieSymbiantNoHost>
+			<ZombieSymbiant>A Zombie Symbiant has surfaced in {0} and linked itself to {1}. It is disruptive, not an immediate killer: it spreads through used rooms, slows pawns that cross its slime, lowers room quality, and strengthens the host as it grows. Weapons will not remove it, and leaving its room open only makes a linked root move into another used room. Feed it with a humanlike corpse or coagulant pack to build surgery reserve and shrink it; when the inspect pane says surgery is ready, operate on {1}. Failed surgery can injure the host; killing the host ends the bond at the cost of the colonist.</ZombieSymbiant>
+		<ZombieSymbiantNoHost>A Zombie Symbiant has surfaced in {0}. It is disruptive, not an immediate killer: it spreads through used rooms, slows pawns that cross its slime, and lowers room quality. It has no linked host yet, but weapons will not remove it. Feed it with a humanlike corpse or coagulant pack to build surgery reserve and shrink it.</ZombieSymbiantNoHost>
 		<ZombieSymbiantUnknownRoom>one of your rooms</ZombieSymbiantUnknownRoom>
-		<ZombieSymbiantInspect>Zombie symbiant cells: {0}/{1}\nLinked host: {2}\nSymbiosis strength: {3}%\nMaturity: {4}\nDecoupling reserve: {5}/{6}\nSafe visible minimum: {7}\nFeed pulses left today: {8}\nSeverance: {9}</ZombieSymbiantInspect>
-		<SymbiantMaturityReady>matured</SymbiantMaturityReady>
-		<SymbiantMaturityProgress>{0}/{1} integrated cells</SymbiantMaturityProgress>
+		<ZombieSymbiantInspect>Symbiant size: {0}/{1} cells\nLinked host: {2}\nHost benefit: {3}%\nGrowth: {4}\nBond maturity: {5}\nSurgery reserve: {6}/{7}\nSafe surgery size: {8} cells\nFeeds left today: {9}\nSurgery: {10}\nWeapons: {11}</ZombieSymbiantInspect>
+		<SymbiantGrowthInactive>inactive</SymbiantGrowthInactive>
+		<SymbiantGrowthCapped>at size cap</SymbiantGrowthCapped>
+		<SymbiantGrowthPaused>paused after feeding</SymbiantGrowthPaused>
+		<SymbiantGrowthWaiting>waiting</SymbiantGrowthWaiting>
+		<SymbiantGrowthGrowing>spreading through used rooms</SymbiantGrowthGrowing>
+		<SymbiantGrowthUprooted>uprooted; waiting for a stable room</SymbiantGrowthUprooted>
+		<SymbiantGrowthRelocating>moving old slime into used rooms</SymbiantGrowthRelocating>
+		<SymbiantGrowthDormantNoRoom>dormant; waiting for a used indoor room</SymbiantGrowthDormantNoRoom>
+		<SymbiantGrowthContained>contained; no used indoor room reachable</SymbiantGrowthContained>
+		<SymbiantMaturityReady>mature</SymbiantMaturityReady>
+		<SymbiantMaturityProgress>{0}/{1} room cells</SymbiantMaturityProgress>
 		<SymbiantSeveranceNoHost>no linked host</SymbiantSeveranceNoHost>
-		<SymbiantSeveranceNeedsMaturity>let the symbiosis mature before surgery</SymbiantSeveranceNeedsMaturity>
-		<SymbiantSeveranceNeedsReserve>feed it to fill the decoupling reserve</SymbiantSeveranceNeedsReserve>
-		<SymbiantSeveranceNeedsShrink>feed it down to 3 visible cells or fewer</SymbiantSeveranceNeedsShrink>
-		<SymbiantSeveranceReady>ready for surgery on the host</SymbiantSeveranceReady>
-		<SymbiantWeaponRejectedMessage>Ordinary violence cannot sever a symbiant. Feed it to build reserve, then use severance surgery on the linked host.</SymbiantWeaponRejectedMessage>
-		<SymbiantWeaponRejectedMote>weapons do nothing</SymbiantWeaponRejectedMote>
-		<FeedZombieSymbiant>Feed symbiant</FeedZombieSymbiant>
-		<CancelFeedZombieSymbiant>Cancel symbiant feeding</CancelFeedZombieSymbiant>
-		<FeedZombieSymbiantDesc>Colonists will feed the symbiant with a humanlike corpse or a symbiant coagulant pack. Each feeding builds decoupling reserve, may shrink excess slime, pauses growth, and cannot remove the final cells. When the inspect pane says severance is ready, operate on the linked host.</FeedZombieSymbiantDesc>
-		<FeedingZombieSymbiant>feeding zombie symbiant</FeedingZombieSymbiant>
-		<NoSymbiantFeed>No humanlike corpse or symbiant coagulant pack available</NoSymbiantFeed>
-		<SymbiantFeedLimitReached>Symbiant feed pulse limit reached today</SymbiantFeedLimitReached>
-		<SymbiantFedMote>squelch +{0} reserve, -{1} cells</SymbiantFedMote>
-		<SeverSymbiantSymbiosis>sever symbiant symbiosis</SeverSymbiantSymbiosis>
-		<SymbiantSeveredMessage>{0}'s symbiant connection has been severed.</SymbiantSeveredMessage>
+		<SymbiantSeveranceNeedsMaturity>needs more time in used rooms</SymbiantSeveranceNeedsMaturity>
+		<SymbiantSeveranceNeedsReserve>feed it to fill surgery reserve</SymbiantSeveranceNeedsReserve>
+		<SymbiantSeveranceNeedsShrink>feed it down to 3 cells or fewer</SymbiantSeveranceNeedsShrink>
+		<SymbiantSeveranceReady>ready; operate on the host</SymbiantSeveranceReady>
+		<SymbiantWeaponInspect>ineffective; feed for surgery</SymbiantWeaponInspect>
+		<SymbiantWeaponRejectedMessage>Attacks do not remove a Symbiant or make surgery safer. Feed it to build surgery reserve and shrink it, then operate on the linked host.</SymbiantWeaponRejectedMessage>
+		<SymbiantWeaponRejectedMote>weapons fail</SymbiantWeaponRejectedMote>
+		<FeedZombieSymbiant>Feed Symbiant</FeedZombieSymbiant>
+		<CancelFeedZombieSymbiant>Cancel Symbiant feeding</CancelFeedZombieSymbiant>
+		<FeedZombieSymbiantDesc>Marks the Symbiant for feeding. Colonists will bring a humanlike corpse or a Symbiant coagulant pack. Feeding builds surgery reserve, can shrink the visible mass, pauses growth, and cannot remove the final cells. When surgery is ready, operate on the linked host.</FeedZombieSymbiantDesc>
+		<FeedingZombieSymbiant>feeding a Symbiant</FeedingZombieSymbiant>
+		<NoSymbiantFeed>No humanlike corpse or Symbiant coagulant pack available</NoSymbiantFeed>
+		<SymbiantFeedLimitReached>Symbiant feeding limit reached today</SymbiantFeedLimitReached>
+		<SymbiantFedMote>reserve +{0}, cells -{1}</SymbiantFedMote>
+		<SeverSymbiantSymbiosis>sever Symbiant bond</SeverSymbiantSymbiosis>
+		<SymbiantSeveredMessage>{0}'s Symbiant bond has been severed.</SymbiantSeveredMessage>
+		<SymbiantHostBondDescription>Bond: {0}/{1} cells, {2}% host benefit, surgery reserve {3}/{4}. {5}</SymbiantHostBondDescription>
+		<SymbiantHostBondReady>Surgery is ready.</SymbiantHostBondReady>
+		<SymbiantHostBondNotReady>Unsafe surgery: feed the Symbiant until reserve is full and visible size is {0} cells or fewer.</SymbiantHostBondNotReady>
+		<SymbiantHostBondMissing>No active Symbiant is linked to this host.</SymbiantHostBondMissing>
+		<SymbiantHostRelocatedMessage>{0}'s Symbiant bond went dormant after leaving the map. The remaining hostless slime can be fed away.</SymbiantHostRelocatedMessage>
+		<SymbiantReseededMessage>{0}'s Symbiant root moved into another used room after its chamber stayed open. Old slime is moving back into the new root; feeding and surgery remain the reliable way to end the bond.</SymbiantReseededMessage>
 
 	<LetterLabelXDaysUntilZombies>{0} until zombies come</LetterLabelXDaysUntilZombies>
 	<XDaysUntilZombies>Zombies will appear where there is soft soil, dirt, sand, or gravel. Building floors prevents zombies from emerging from those cells.</XDaysUntilZombies>
@@ -205,25 +221,23 @@
 	<ChildZombieChance>Zombie children</ChildZombieChance>
 		<SpitterThreat>Zombie spitter difficulty</SpitterThreat>
 		<WallPushing>Number of zombies that will push other zombies over walls</WallPushing>
-		<ZombieSymbiantTitle>Zombie symbiant</ZombieSymbiantTitle>
-		<SymbiantEnabled>Enable zombie symbiant infestation</SymbiantEnabled>
-		<SymbiantSpawnCooldownDays>Days between symbiant infestations</SymbiantSpawnCooldownDays>
-		<SymbiantExpansionIntervalHours>Hours between symbiant growth</SymbiantExpansionIntervalHours>
-		<SymbiantPostFeedPauseHours>Hours after feeding before growth resumes</SymbiantPostFeedPauseHours>
-		<SymbiantMaxCells>Symbiant max cells</SymbiantMaxCells>
-		<SymbiantFullBenefitRoomCoverage>Room coverage for full symbiosis</SymbiantFullBenefitRoomCoverage>
-		<SymbiantSeveranceMaturityCoverage>Severance maturity coverage</SymbiantSeveranceMaturityCoverage>
-		<SymbiantSeveranceMaturityMinCells>Severance maturity min cells</SymbiantSeveranceMaturityMinCells>
-		<SymbiantSeveranceMaturityMaxCells>Severance maturity max cells</SymbiantSeveranceMaturityMaxCells>
-		<SymbiantSeveranceReserveCoverage>Severance reserve coverage</SymbiantSeveranceReserveCoverage>
-		<SymbiantSeveranceReserveMin>Severance reserve min pulses</SymbiantSeveranceReserveMin>
-		<SymbiantSeveranceReserveMax>Severance reserve max pulses</SymbiantSeveranceReserveMax>
-		<SymbiantZombieIgnoreMinBenefit>Zombie ignore benefit threshold</SymbiantZombieIgnoreMinBenefit>
-		<SymbiantDecouplingFeedPulsesPerDay>Decoupling feed pulses per day</SymbiantDecouplingFeedPulsesPerDay>
-		<SymbiantMaxSkillBonus>Max symbiant skill bonus</SymbiantMaxSkillBonus>
-		<SymbiantPathCost>Symbiant movement cost</SymbiantPathCost>
+		<ZombieSymbiantTitle>Zombie Symbiant</ZombieSymbiantTitle>
+		<SymbiantEnabled>Enable Zombie Symbiants</SymbiantEnabled>
+		<SymbiantPostFeedPauseHours>Growth pause after feeding</SymbiantPostFeedPauseHours>
+		<SymbiantMaxCells>Max Symbiant size</SymbiantMaxCells>
+		<SymbiantFullBenefitRoomCoverage>Room coverage for full Symbiant bond</SymbiantFullBenefitRoomCoverage>
+		<SymbiantSeveranceMaturityCoverage>Surgery maturity coverage</SymbiantSeveranceMaturityCoverage>
+		<SymbiantSeveranceMaturityMinCells>Surgery maturity min cells</SymbiantSeveranceMaturityMinCells>
+		<SymbiantSeveranceMaturityMaxCells>Surgery maturity max cells</SymbiantSeveranceMaturityMaxCells>
+		<SymbiantSeveranceReserveCoverage>Surgery reserve coverage</SymbiantSeveranceReserveCoverage>
+		<SymbiantSeveranceReserveMin>Surgery reserve min pulses</SymbiantSeveranceReserveMin>
+		<SymbiantSeveranceReserveMax>Surgery reserve max pulses</SymbiantSeveranceReserveMax>
+		<SymbiantZombieIgnoreMinBenefit>Host zombie-protection threshold</SymbiantZombieIgnoreMinBenefit>
+		<SymbiantDecouplingFeedPulsesPerDay>Symbiant feeds per day</SymbiantDecouplingFeedPulsesPerDay>
+		<SymbiantMaxSkillBonus>Max Symbiant skill bonus</SymbiantMaxSkillBonus>
+		<SymbiantPathCost>Symbiant slime movement cost</SymbiantPathCost>
 		<SymbiantCanBreakConstructedWalls>Symbiant can break constructed walls</SymbiantCanBreakConstructedWalls>
-		<SymbiantCoagulantPotency>Symbiant coagulant potency</SymbiantCoagulantPotency>
+		<SymbiantCoagulantPotency>Coagulant pack strength</SymbiantCoagulantPotency>
 		<SymbiantCoagulantPotency_Cheap>Cheap</SymbiantCoagulantPotency_Cheap>
 		<SymbiantCoagulantPotency_Normal>Normal</SymbiantCoagulantPotency_Normal>
 		<SymbiantCoagulantPotency_Expensive>Expensive</SymbiantCoagulantPotency_Expensive>

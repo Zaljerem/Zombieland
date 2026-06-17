@@ -3443,7 +3443,9 @@ namespace ZombieLand
 			// we don't use a postfix so that someone that patches and skips RenderPawnAt will also skip RenderExtras
 			static void RenderExtras(PawnRenderer renderer, Vector3 drawLoc)
 			{
-				if (ZombieRenderCompat.Pawn(renderer) is not Zombie zombie)
+				var pawn = ZombieRenderCompat.Pawn(renderer);
+				DrawSymbiantHostAura(pawn, renderer, drawLoc);
+				if (pawn is not Zombie zombie)
 					return;
 				if (zombie.state == ZombieState.Emerging || zombie.GetPosture() != PawnPosture.Standing)
 					return;
@@ -3763,6 +3765,25 @@ namespace ZombieLand
 
 				if (zombie.isAlbino == false)
 					GraphicToolbox.DrawScaledMesh(MeshPool.plane20, Constants.RAGE_AURAS[Find.CameraDriver.CurrentZoom], quickHeadCenter, Quaternion.identity, 1f, 1f);
+			}
+
+			static void DrawSymbiantHostAura(Pawn pawn, PawnRenderer renderer, Vector3 drawLoc)
+			{
+				if (pawn == null || renderer == null || pawn.GetPosture() != PawnPosture.Standing)
+					return;
+				if (ZombieSymbiant.TryGetHostAuraFactor(pawn, out var factor) == false)
+					return;
+
+				var angle = renderer.BodyAngle(PawnRenderFlags.None);
+				if (pawn.Rotation == Rot4.West)
+					angle -= leanAngle;
+				if (pawn.Rotation == Rot4.East)
+					angle += leanAngle;
+
+				var loc = drawLoc + toxicAuraOffset;
+				loc.y += PawnRenderUtility.AltitudeForLayer(-8f);
+				var scale = Mathf.Lerp(0.85f, 1.15f, Mathf.Clamp01(factor));
+				GraphicToolbox.DrawScaledMesh(MeshPool.plane20, Constants.SYMBIANT_HOST_AURAS[Find.CameraDriver.CurrentZoom], loc, Quaternion.AngleAxis(angle, Vector3.up), scale, scale);
 			}
 
 			static void DrawToxicAura(Zombie zombie, Vector3 drawLoc, bool behindBody)

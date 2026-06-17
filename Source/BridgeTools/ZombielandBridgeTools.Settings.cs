@@ -1659,8 +1659,6 @@ namespace ZombieLand
 				group.childChance,
 				group.spitterThreat,
 				group.symbiantEnabled,
-				group.symbiantSpawnCooldownDays,
-				group.symbiantExpansionIntervalHours,
 				group.symbiantPostFeedPauseHours,
 				group.symbiantMaxCells,
 				group.symbiantFullBenefitRoomCoverage,

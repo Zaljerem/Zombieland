@@ -268,8 +268,6 @@ namespace ZombieLand
 		public float childChance = 0.02f;
 		public float spitterThreat = 1f;
 		public bool symbiantEnabled = true;
-		public float symbiantSpawnCooldownDays = 12f;
-		public int symbiantExpansionIntervalHours = 16;
 		public int symbiantPostFeedPauseHours = 16;
 		public int symbiantMaxCells = 400;
 		public float symbiantFullBenefitRoomCoverage = 0.20f;
