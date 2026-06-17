@@ -60,5 +60,7 @@
   <ZombieSpitter.label>僵尸喷吐者</ZombieSpitter.label>
   <ZombieSpitter.description>从空中喷出僵尸攻击你的基地的怪物。</ZombieSpitter.description>
   <ZombieBall.label>僵尸球</ZombieBall.label>
+  <SymbiantCoagulantPack.label>共生体凝结剂包</SymbiantCoagulantPack.label>
+  <SymbiantCoagulantPack.description>一种用于喂养共生体的浓缩包。它会恢复伤害护盾，积累手术储备，通常缩小可见体量，暂停生长，并帮助为连接宿主的切断手术做准备。</SymbiantCoagulantPack.description>
 
 </LanguageData>

@@ -8,5 +8,8 @@
 	<DoubleTap.label>双重杀死尸体以防止其成为僵尸</DoubleTap.label>
 	<DoubleTap.verb>双杀</DoubleTap.verb>
 	<DoubleTap.gerund>双重杀害</DoubleTap.gerund>
+	<FeedZombieSymbiant.label>喂养共生体</FeedZombieSymbiant.label>
+	<FeedZombieSymbiant.verb>喂养</FeedZombieSymbiant.verb>
+	<FeedZombieSymbiant.gerund>喂养</FeedZombieSymbiant.gerund>
 
 </LanguageData>

@@ -11,5 +11,7 @@
 	<ElectricalField.tools.0.label>şok</ElectricalField.tools.0.label>
 	<ZombieSpitter.label>zombi tükürücü</ZombieSpitter.label>
 	<ZombieSpitter.description>Üssünüze havadan saldırmak için zombi tüküren bir canavar.</ZombieSpitter.description>
+	<ZombieSymbiant.label>zombi simbiyantı</ZombieSymbiant.label>
+	<ZombieSymbiant.description>Bir iç mekan Zombi Simbiyantı istilası. Kullanılan odalara görünür balçık olarak yayılır, üzerinden geçen piyonları yavaşlatır, oda kalitesini düşürür ve bir kolonistle bağ kurar. Hemen öldürmekten çok bozar ve bağlı konak Simbiyant genişledikçe güçlenir. Bağlı kökün etrafındaki odayı açık bırakmak onu başka bir kullanılan odaya taşır. Saldırılar hasar korumasını tüketir ve bağı şiddetle çökertebilir; onu bitirmenin kontrollü yolu besleme ve ameliyattır.</ZombieSymbiant.description>
 
 </LanguageData>

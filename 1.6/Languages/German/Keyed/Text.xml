@@ -29,6 +29,48 @@
 
 	<LetterLabelZombiesSpitter>Zombiespucker Attacke</LetterLabelZombiesSpitter>
 	<ZombiesSpitter>Ein Zombiespucker hat die Karte betreten und wird dich belagern</ZombiesSpitter>
+	<LetterLabelZombieSymbiant>Zombie-Symbiant mit {0} verbunden</LetterLabelZombieSymbiant>
+	<LetterLabelZombieSymbiantNoHost>Zombie-Symbiant aufgetaucht</LetterLabelZombieSymbiantNoHost>
+	<ZombieSymbiant>Ein Zombie-Symbiant ist in {0} aufgetaucht und hat sich mit {1} verbunden. Er stört die Kolonie, stellt aber keine unmittelbare Todesgefahr dar: Er breitet sich durch genutzte Räume aus, verlangsamt Figuren, die seinen Schleim überqueren, senkt die Raumqualität und stärkt den Wirt, während er wächst. Angriffe zehren zuerst seinen Schadensschutz auf; ein gewaltsamer Schutzbruch tötet den Wirt. Einen Raum offen zu lassen, verlegt eine verbundene Wurzel nur in einen anderen genutzten Raum. Füttern Sie ihn mit einer menschenähnlichen Leiche oder einem Koagulans-Pack, um den Schutz wiederherzustellen, Operationsreserve aufzubauen und ihn zu verkleinern; wenn das Inspektionsfenster die Operation als bereit anzeigt, operieren Sie {1}. Eine fehlgeschlagene Operation kann den Wirt verletzen; den Wirt zu töten beendet die Verbindung auf Kosten des Kolonisten.</ZombieSymbiant>
+	<ZombieSymbiantNoHost>Ein Zombie-Symbiant ist in {0} aufgetaucht. Er stört die Kolonie, stellt aber keine unmittelbare Todesgefahr dar: Er breitet sich durch genutzte Räume aus, verlangsamt Figuren, die seinen Schleim überqueren, und senkt die Raumqualität. Angriffe zehren zuerst seinen Schadensschutz auf. Füttern Sie ihn mit einer menschenähnlichen Leiche oder einem Koagulans-Pack, um den Schutz wiederherzustellen, Operationsreserve aufzubauen und ihn zu verkleinern.</ZombieSymbiantNoHost>
+	<ZombieSymbiantUnknownRoom>einer Ihrer Räume</ZombieSymbiantUnknownRoom>
+	<ZombieSymbiantInspect>Symbiant-Größe: {0}/{1} Zellen\nVerbundener Wirt: {2}\nWirtbonus: {3}%\nSchadensschutz: {12}/{13}\nAngriff: {11}\nWachstum: {4}\nVerbindungsreife: {5}\nOperationsreserve: {6}/{7}\nSichere Operationsgröße: {8} Zellen\nHeute verbleibende Fütterungen: {9}\nOperation: {10}</ZombieSymbiantInspect>
+	<SymbiantGrowthInactive>inaktiv</SymbiantGrowthInactive>
+	<SymbiantGrowthCapped>an der Größengrenze</SymbiantGrowthCapped>
+	<SymbiantGrowthPaused>nach Fütterung pausiert</SymbiantGrowthPaused>
+	<SymbiantGrowthWaiting>wartet</SymbiantGrowthWaiting>
+	<SymbiantGrowthGrowing>breitet sich durch genutzte Räume aus</SymbiantGrowthGrowing>
+	<SymbiantGrowthUprooted>entwurzelt; wartet auf stabilen Raum</SymbiantGrowthUprooted>
+	<SymbiantGrowthRelocating>verlegt alten Schleim in genutzte Räume</SymbiantGrowthRelocating>
+	<SymbiantGrowthDormantNoRoom>ruhend; wartet auf genutzten Innenraum</SymbiantGrowthDormantNoRoom>
+	<SymbiantGrowthContained>eingeschlossen; kein genutzter Innenraum erreichbar</SymbiantGrowthContained>
+	<SymbiantMaturityReady>reif</SymbiantMaturityReady>
+	<SymbiantMaturityProgress>{0}/{1} Raumzellen</SymbiantMaturityProgress>
+	<SymbiantSeveranceNoHost>kein verbundener Wirt</SymbiantSeveranceNoHost>
+	<SymbiantSeveranceNeedsMaturity>braucht mehr Zeit in genutzten Räumen</SymbiantSeveranceNeedsMaturity>
+	<SymbiantSeveranceNeedsReserve>füttern, um Operationsreserve zu füllen</SymbiantSeveranceNeedsReserve>
+	<SymbiantSeveranceNeedsShrink>auf 3 Zellen oder weniger herunterfüttern</SymbiantSeveranceNeedsShrink>
+	<SymbiantSeveranceReady>bereit; Wirt operieren</SymbiantSeveranceReady>
+	<SymbiantWeaponInspect>zehrt Schutz auf; für Operation füttern</SymbiantWeaponInspect>
+	<SymbiantWeaponRejectedMessage>Der Schadensschutz des Symbiants hat den Treffer absorbiert. Schutz: {0}/{1}. Füttern stellt den Schutz wieder her, baut Operationsreserve auf und verkleinert die sichtbare Masse.</SymbiantWeaponRejectedMessage>
+	<SymbiantWeaponRejectedMote>Schutz absorbiert</SymbiantWeaponRejectedMote>
+	<SymbiantDamageGuardBrokenMessage>Der Schadensschutz des Symbiants ist gebrochen. {0}s Verbindung ist gewaltsam kollabiert.</SymbiantDamageGuardBrokenMessage>
+	<SymbiantHostUnknown>der Wirt</SymbiantHostUnknown>
+	<FeedZombieSymbiant>Symbiant füttern</FeedZombieSymbiant>
+	<CancelFeedZombieSymbiant>Symbiant-Fütterung abbrechen</CancelFeedZombieSymbiant>
+	<FeedZombieSymbiantDesc>Markiert den Symbiant zur Fütterung. Kolonisten bringen eine menschenähnliche Leiche oder ein Symbiant-Koagulans-Pack. Füttern stellt den Schadensschutz wieder her, baut Operationsreserve auf, kann die sichtbare Masse verkleinern, pausiert Wachstum und kann die letzten Zellen nicht entfernen. Wenn die Operation bereit ist, operieren Sie den verbundenen Wirt.</FeedZombieSymbiantDesc>
+	<FeedingZombieSymbiant>füttert einen Symbiant</FeedingZombieSymbiant>
+	<NoSymbiantFeed>Keine menschenähnliche Leiche oder kein Symbiant-Koagulans-Pack verfügbar</NoSymbiantFeed>
+	<SymbiantFeedLimitReached>Symbiant-Fütterungsgrenze für heute erreicht</SymbiantFeedLimitReached>
+	<SymbiantFedMote>Reserve +{0}, Zellen -{1}</SymbiantFedMote>
+	<SeverSymbiantSymbiosis>Symbiant-Verbindung trennen</SeverSymbiantSymbiosis>
+	<SymbiantSeveredMessage>{0}s Symbiant-Verbindung wurde getrennt.</SymbiantSeveredMessage>
+	<SymbiantHostBondDescription>Verbindung: {0}/{1} Zellen, {2}% Wirtbonus, Operationsreserve {3}/{4}. {5}</SymbiantHostBondDescription>
+	<SymbiantHostBondReady>Operation ist bereit.</SymbiantHostBondReady>
+	<SymbiantHostBondNotReady>Unsichere Operation: Füttern Sie den Symbiant, bis die Reserve voll und die sichtbare Größe {0} Zellen oder weniger beträgt.</SymbiantHostBondNotReady>
+	<SymbiantHostBondMissing>Kein aktiver Symbiant ist mit diesem Wirt verbunden.</SymbiantHostBondMissing>
+	<SymbiantHostRelocatedMessage>{0}s Symbiant-Verbindung ruht nach dem Verlassen der Karte. Der übrige wirtslose Schleim kann weggefüttert werden.</SymbiantHostRelocatedMessage>
+	<SymbiantReseededMessage>{0}s Symbiant-Wurzel ist in einen anderen genutzten Raum gewandert, nachdem ihre Kammer offen blieb. Alter Schleim bewegt sich zurück in die neue Wurzel; Füttern und Operation bleiben der verlässliche Weg, die Verbindung zu beenden.</SymbiantReseededMessage>
 
 	<LetterLabelXDaysUntilZombies>{0} bis Zombies kommen</LetterLabelXDaysUntilZombies>
 	<XDaysUntilZombies>Zombies erscheinen dort, wo es weichen Erde, Dreck, Sand oder Kies gibt. Der Bau von Fußböden verhindert, dass Zombies an diesen Stellen rauskommen.</XDaysUntilZombies>
@@ -180,6 +222,27 @@
 	<ChildZombieChance>Zombiekinder</ChildZombieChance>
 	<SpitterThreat>Zombiespucker Schwierigkeit</SpitterThreat>
 	<WallPushing>Anzahl der Zombies, die andere Zombies über Mauern schubst</WallPushing>
+	<ZombieSymbiantTitle>Zombie-Symbiant</ZombieSymbiantTitle>
+	<SymbiantEnabled>Zombie-Symbianten aktivieren</SymbiantEnabled>
+	<SymbiantPostFeedPauseHours>Wachstumspause nach Fütterung</SymbiantPostFeedPauseHours>
+	<SymbiantMaxCells>Maximale Symbiant-Größe</SymbiantMaxCells>
+	<SymbiantFullBenefitRoomCoverage>Raumabdeckung für volle Symbiant-Verbindung</SymbiantFullBenefitRoomCoverage>
+	<SymbiantSeveranceMaturityCoverage>Reifeabdeckung für Operation</SymbiantSeveranceMaturityCoverage>
+	<SymbiantSeveranceMaturityMinCells>Minimale Reifezellen für Operation</SymbiantSeveranceMaturityMinCells>
+	<SymbiantSeveranceMaturityMaxCells>Maximale Reifezellen für Operation</SymbiantSeveranceMaturityMaxCells>
+	<SymbiantSeveranceReserveCoverage>Abdeckung der Operationsreserve</SymbiantSeveranceReserveCoverage>
+	<SymbiantSeveranceReserveMin>Minimale Operationsreserve-Impulse</SymbiantSeveranceReserveMin>
+	<SymbiantSeveranceReserveMax>Maximale Operationsreserve-Impulse</SymbiantSeveranceReserveMax>
+	<SymbiantZombieIgnoreMinBenefit>Schwelle für Zombie-Schutz des Wirts</SymbiantZombieIgnoreMinBenefit>
+	<SymbiantDecouplingFeedPulsesPerDay>Symbiant-Fütterungen pro Tag</SymbiantDecouplingFeedPulsesPerDay>
+	<SymbiantMaxSkillBonus>Maximaler Symbiant-Fertigkeitsbonus</SymbiantMaxSkillBonus>
+	<SymbiantPathCost>Bewegungskosten von Symbiant-Schleim</SymbiantPathCost>
+	<SymbiantCanBreakConstructedWalls>Symbiant kann gebaute Mauern brechen</SymbiantCanBreakConstructedWalls>
+	<SymbiantCoagulantPotency>Stärke des Koagulans-Packs</SymbiantCoagulantPotency>
+	<SymbiantDamageAbsorptionFeedback>Symbiant-Schutzmeldungen anzeigen</SymbiantDamageAbsorptionFeedback>
+	<SymbiantCoagulantPotency_Cheap>Niedrig</SymbiantCoagulantPotency_Cheap>
+	<SymbiantCoagulantPotency_Normal>Normal</SymbiantCoagulantPotency_Normal>
+	<SymbiantCoagulantPotency_Expensive>Hoch</SymbiantCoagulantPotency_Expensive>
 
 	<ZombieMiscTitle>Verschiedenes</ZombieMiscTitle>
 	<UseCustomTextures>Benutze Spezialtexturen</UseCustomTextures>

@@ -7,5 +7,11 @@
 
 	<MakeZombieSerum.label>Serum aus Zombieextrakt herstellen</MakeZombieSerum.label>
 	<MakeZombieSerum.description>Stelle ein Zombie-Serum aus Zombie-Extrakt her, das Zombie-Infektionen während Operationen heilt.</MakeZombieSerum.description>
+	<SeverSymbiantSymbiosis.label>Symbiant-Verbindung trennen</SeverSymbiantSymbiosis.label>
+	<SeverSymbiantSymbiosis.description>Trennt einen Kolonisten von einem vorbereiteten Zombie-Symbiant. Der Symbiant muss reif sein, volle Operationsreserve haben und auf drei sichtbare Zellen oder weniger reduziert sein. Eine fehlgeschlagene Operation verbraucht Reserve und verletzt den Wirt.</SeverSymbiantSymbiosis.description>
+	<SeverSymbiantSymbiosis.jobString>Trennt Symbiant-Verbindung.</SeverSymbiantSymbiosis.jobString>
+	<MakeSymbiantCoagulantPack.label>Symbiant-Koagulans-Pack herstellen</MakeSymbiantCoagulantPack.label>
+	<MakeSymbiantCoagulantPack.description>Stellt ein Symbiant-Koagulans-Pack aus Zombieextrakt und Chemfuel her. Füttern Sie es einem Symbiant, um Schadensschutz wiederherzustellen, Operationsreserve aufzubauen, die sichtbare Masse zu verkleinern und den verbundenen Wirt auf die Trennungsoperation vorzubereiten.</MakeSymbiantCoagulantPack.description>
+	<MakeSymbiantCoagulantPack.jobString>Stellt Symbiant-Koagulans-Pack her.</MakeSymbiantCoagulantPack.jobString>
 
 </LanguageData>

@@ -41,5 +41,7 @@
 	<ZombieSpitter.label>зомби-плевун</ZombieSpitter.label>
 	<ZombieSpitter.description>Монстр, который плюётся зомби, атакуя вашу базу с воздуха.</ZombieSpitter.description>
 	<ZombieBall.label>зомби-шар</ZombieBall.label>
+	<SymbiantCoagulantPack.label>коагулянтный пакет симбионта</SymbiantCoagulantPack.label>
+	<SymbiantCoagulantPack.description>Концентрированный пакет для кормления симбионта. Он восстанавливает защиту от урона, накапливает хирургический резерв, обычно уменьшает видимую массу, приостанавливает рост и помогает подготовить операцию разрыва связи с носителем.</SymbiantCoagulantPack.description>
 
 </LanguageData>

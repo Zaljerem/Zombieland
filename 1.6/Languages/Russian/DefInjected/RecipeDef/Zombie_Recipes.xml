@@ -6,5 +6,11 @@
 	<CureZombieInfection.jobString>Лечит зомби-инфекцию.</CureZombieInfection.jobString>
 	<MakeZombieSerum.label>создать сыворотку из экстракта зомби</MakeZombieSerum.label>
 	<MakeZombieSerum.description>Создаёт зомби-сыворотку из экстракта зомби. Зомби-сыворотка лечит зомби-инфекции во время операций.</MakeZombieSerum.description>
+	<SeverSymbiantSymbiosis.label>разорвать связь симбионта</SeverSymbiantSymbiosis.label>
+	<SeverSymbiantSymbiosis.description>Отделяет колониста от подготовленного зомби-симбионта. Симбионт должен быть зрелым, иметь полный хирургический резерв и быть уменьшен до трёх видимых клеток или меньше. Неудачная операция расходует резерв и ранит носителя.</SeverSymbiantSymbiosis.description>
+	<SeverSymbiantSymbiosis.jobString>Разрывает связь симбионта.</SeverSymbiantSymbiosis.jobString>
+	<MakeSymbiantCoagulantPack.label>сделать коагулянтный пакет симбионта</MakeSymbiantCoagulantPack.label>
+	<MakeSymbiantCoagulantPack.description>Создаёт один коагулянтный пакет симбионта из экстракта зомби и химтоплива. Скормите его симбионту, чтобы восстановить защиту от урона, накопить хирургический резерв, уменьшить видимую массу и подготовить связанного носителя к операции разрыва.</MakeSymbiantCoagulantPack.description>
+	<MakeSymbiantCoagulantPack.jobString>Делает коагулянтный пакет симбионта.</MakeSymbiantCoagulantPack.jobString>
 
 </LanguageData>

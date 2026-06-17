@@ -4,5 +4,7 @@
   <ZombieBite.label>丧尸咬伤</ZombieBite.label>
   <ZombieBite.injuryProps.destroyedLabel>被丧尸咬掉</ZombieBite.injuryProps.destroyedLabel>
   <ZombieBite.injuryProps.destroyedOutLabel>被丧尸咬掉</ZombieBite.injuryProps.destroyedOutLabel>
+  <SymbiantSymbiosis.label>共生体连接</SymbiantSymbiosis.label>
+  <SymbiantSymbiosis.description>此殖民者连接到了一个僵尸共生体。随着共生体在使用中的房间里蔓延，宿主会获得保护和技能。这个连接是一种可管理的风险：攻击会消耗共生体伤害护盾，护盾猛烈破裂会杀死宿主。只有在喂养共生体以恢复护盾、积累手术储备并缩小它之后，才切断连接。手术失败可能伤害宿主；杀死宿主会以殖民者的生命为代价结束连接。</SymbiantSymbiosis.description>
 
 </LanguageData>

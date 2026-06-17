@@ -7,5 +7,11 @@
 
 	<MakeZombieSerum.label>fabriquer du sérum avec de l'extrait de zombie</MakeZombieSerum.label>
 	<MakeZombieSerum.description>Fabrique un sérum zombie à partir d'extrait de zombie. Le sérum zombie soigne les infections zombies pendant les opérations.</MakeZombieSerum.description>
+	<SeverSymbiantSymbiosis.label>rompre le lien du Symbiant</SeverSymbiantSymbiosis.label>
+	<SeverSymbiantSymbiosis.description>Sépare un colon d'un Symbiant zombie préparé. Le Symbiant doit être mature, avoir une réserve chirurgicale pleine et être réduit à trois cases visibles ou moins. Une opération ratée consomme la réserve et blesse l'hôte.</SeverSymbiantSymbiosis.description>
+	<SeverSymbiantSymbiosis.jobString>Rupture du lien du Symbiant.</SeverSymbiantSymbiosis.jobString>
+	<MakeSymbiantCoagulantPack.label>fabriquer un pack coagulant de Symbiant</MakeSymbiantCoagulantPack.label>
+	<MakeSymbiantCoagulantPack.description>Fabrique un pack coagulant de Symbiant à partir d'extrait de zombie et de chemfuel. Donnez-le à un Symbiant pour restaurer sa protection, remplir la réserve chirurgicale, réduire la masse visible et préparer l'opération de rupture du lien de l'hôte.</MakeSymbiantCoagulantPack.description>
+	<MakeSymbiantCoagulantPack.jobString>Fabrication d'un pack coagulant de Symbiant.</MakeSymbiantCoagulantPack.jobString>
 
 </LanguageData>

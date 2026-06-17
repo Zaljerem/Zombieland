@@ -7,5 +7,11 @@
 
 	<MakeZombieSerum.label>用僵尸提取物制作血清</MakeZombieSerum.label>
 	<MakeZombieSerum.description>用僵尸提取物制作一种僵尸血清，在行动中治疗僵尸感染。</MakeZombieSerum.description>
+	<SeverSymbiantSymbiosis.label>切断共生体连接</SeverSymbiantSymbiosis.label>
+	<SeverSymbiantSymbiosis.description>将殖民者与准备好的僵尸共生体分离。共生体必须成熟，手术储备必须充满，并且缩小到 3 个可见格或更少。手术失败会消耗储备并伤害宿主。</SeverSymbiantSymbiosis.description>
+	<SeverSymbiantSymbiosis.jobString>正在切断共生体连接。</SeverSymbiantSymbiosis.jobString>
+	<MakeSymbiantCoagulantPack.label>制作共生体凝结剂包</MakeSymbiantCoagulantPack.label>
+	<MakeSymbiantCoagulantPack.description>用僵尸提取物和化合燃料制作一个共生体凝结剂包。将其喂给共生体可恢复伤害护盾、积累手术储备、缩小可见体量，并为连接宿主的切断手术做准备。</MakeSymbiantCoagulantPack.description>
+	<MakeSymbiantCoagulantPack.jobString>正在制作共生体凝结剂包。</MakeSymbiantCoagulantPack.jobString>
 
 </LanguageData>

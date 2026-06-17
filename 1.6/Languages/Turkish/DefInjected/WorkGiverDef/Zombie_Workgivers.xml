@@ -7,5 +7,8 @@
 	<DoubleTap.label>zombi olmalarını önlemek için cesetleri güvenli öldür</DoubleTap.label>
 	<DoubleTap.verb>güvenli öldür</DoubleTap.verb>
 	<DoubleTap.gerund>güvenli öldürüyor</DoubleTap.gerund>
+	<FeedZombieSymbiant.label>Simbiyant besle</FeedZombieSymbiant.label>
+	<FeedZombieSymbiant.verb>besle</FeedZombieSymbiant.verb>
+	<FeedZombieSymbiant.gerund>besliyor</FeedZombieSymbiant.gerund>
 
 </LanguageData>

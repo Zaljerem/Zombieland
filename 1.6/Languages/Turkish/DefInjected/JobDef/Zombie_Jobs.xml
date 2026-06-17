@@ -5,6 +5,8 @@
 	<Sabotage.reportString>sabote ediyor.</Sabotage.reportString>
 	<ExtractZombieSerum.reportString>TargetA üzerinden zombi özü topluyor.</ExtractZombieSerum.reportString>
 	<DoubleTap.reportString>TargetA için güvenli öldürme yapıyor.</DoubleTap.reportString>
+	<Symbiant.reportString>yayılıyor.</Symbiant.reportString>
+	<FeedZombieSymbiant.reportString>TargetB, TargetA için besleniyor.</FeedZombieSymbiant.reportString>
 	<RopeZombie.reportString>TargetA bağlanıyor.</RopeZombie.reportString>
 	<ZapZombies.reportString>zombi şoklayıcıyı başlatıyor.</ZapZombies.reportString>
 

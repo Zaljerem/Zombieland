@@ -29,6 +29,48 @@
 
 	<LetterLabelZombiesSpitter>Атака зомби-спиттера</LetterLabelZombiesSpitter>
 	<ZombiesSpitter>На карту проникли зомби-плевательницы и будут осаждать вас</ZombiesSpitter>
+	<LetterLabelZombieSymbiant>Зомби-симбионт связан с {0}</LetterLabelZombieSymbiant>
+	<LetterLabelZombieSymbiantNoHost>Появился зомби-симбионт</LetterLabelZombieSymbiantNoHost>
+	<ZombieSymbiant>Зомби-симбионт появился в {0} и связался с {1}. Он мешает колонии, но не является немедленной смертельной угрозой: он расползается по используемым комнатам, замедляет пешек, проходящих через его слизь, снижает качество комнаты и усиливает носителя по мере роста. Атаки сначала истощают его защиту от урона; жестокий прорыв защиты убивает носителя. Открытая комната лишь заставляет связанную корневую массу перейти в другую используемую комнату. Кормите его трупом гуманоида или коагулянтным пакетом, чтобы восстановить защиту, накопить хирургический резерв и уменьшить его; когда панель осмотра покажет, что операция готова, оперируйте {1}. Неудачная операция может ранить носителя; убийство носителя завершает связь ценой жизни колониста.</ZombieSymbiant>
+	<ZombieSymbiantNoHost>Зомби-симбионт появился в {0}. Он мешает колонии, но не является немедленной смертельной угрозой: он расползается по используемым комнатам, замедляет пешек, проходящих через его слизь, и снижает качество комнаты. Атаки сначала истощают его защиту от урона. Кормите его трупом гуманоида или коагулянтным пакетом, чтобы восстановить защиту, накопить хирургический резерв и уменьшить его.</ZombieSymbiantNoHost>
+	<ZombieSymbiantUnknownRoom>одна из ваших комнат</ZombieSymbiantUnknownRoom>
+	<ZombieSymbiantInspect>Размер симбионта: {0}/{1} клеток\nСвязанный носитель: {2}\nБонус носителя: {3}%\nЗащита от урона: {12}/{13}\nАтака: {11}\nРост: {4}\nЗрелость связи: {5}\nХирургический резерв: {6}/{7}\nБезопасный размер для операции: {8} клеток\nКормлений сегодня осталось: {9}\nОперация: {10}</ZombieSymbiantInspect>
+	<SymbiantGrowthInactive>неактивен</SymbiantGrowthInactive>
+	<SymbiantGrowthCapped>на пределе размера</SymbiantGrowthCapped>
+	<SymbiantGrowthPaused>приостановлен после кормления</SymbiantGrowthPaused>
+	<SymbiantGrowthWaiting>ожидает</SymbiantGrowthWaiting>
+	<SymbiantGrowthGrowing>расползается по используемым комнатам</SymbiantGrowthGrowing>
+	<SymbiantGrowthUprooted>оторван от корня; ждёт стабильную комнату</SymbiantGrowthUprooted>
+	<SymbiantGrowthRelocating>переносит старую слизь в используемые комнаты</SymbiantGrowthRelocating>
+	<SymbiantGrowthDormantNoRoom>дремлет; ждёт используемую внутреннюю комнату</SymbiantGrowthDormantNoRoom>
+	<SymbiantGrowthContained>сдержан; нет доступной используемой внутренней комнаты</SymbiantGrowthContained>
+	<SymbiantMaturityReady>зрелый</SymbiantMaturityReady>
+	<SymbiantMaturityProgress>{0}/{1} клеток комнаты</SymbiantMaturityProgress>
+	<SymbiantSeveranceNoHost>нет связанного носителя</SymbiantSeveranceNoHost>
+	<SymbiantSeveranceNeedsMaturity>нужно больше времени в используемых комнатах</SymbiantSeveranceNeedsMaturity>
+	<SymbiantSeveranceNeedsReserve>кормите его, чтобы заполнить хирургический резерв</SymbiantSeveranceNeedsReserve>
+	<SymbiantSeveranceNeedsShrink>кормите его до 3 клеток или меньше</SymbiantSeveranceNeedsShrink>
+	<SymbiantSeveranceReady>готово; оперируйте носителя</SymbiantSeveranceReady>
+	<SymbiantWeaponInspect>истощает защиту; кормите для операции</SymbiantWeaponInspect>
+	<SymbiantWeaponRejectedMessage>Защита симбионта поглотила удар. Защита: {0}/{1}. Кормление восстанавливает защиту, накапливает хирургический резерв и уменьшает видимую массу.</SymbiantWeaponRejectedMessage>
+	<SymbiantWeaponRejectedMote>защита поглощает</SymbiantWeaponRejectedMote>
+	<SymbiantDamageGuardBrokenMessage>Защита симбионта прорвалась. Связь {0} жестоко разрушилась.</SymbiantDamageGuardBrokenMessage>
+	<SymbiantHostUnknown>носитель</SymbiantHostUnknown>
+	<FeedZombieSymbiant>Кормить симбионта</FeedZombieSymbiant>
+	<CancelFeedZombieSymbiant>Отменить кормление симбионта</CancelFeedZombieSymbiant>
+	<FeedZombieSymbiantDesc>Помечает симбионта для кормления. Колонисты принесут труп гуманоида или коагулянтный пакет симбионта. Кормление восстанавливает защиту от урона, накапливает хирургический резерв, может уменьшить видимую массу, приостанавливает рост и не может удалить последние клетки. Когда операция готова, оперируйте связанного носителя.</FeedZombieSymbiantDesc>
+	<FeedingZombieSymbiant>кормит симбионта</FeedingZombieSymbiant>
+	<NoSymbiantFeed>Нет доступного трупа гуманоида или коагулянтного пакета симбионта</NoSymbiantFeed>
+	<SymbiantFeedLimitReached>Дневной предел кормления симбионта достигнут</SymbiantFeedLimitReached>
+	<SymbiantFedMote>резерв +{0}, клетки -{1}</SymbiantFedMote>
+	<SeverSymbiantSymbiosis>разорвать связь симбионта</SeverSymbiantSymbiosis>
+	<SymbiantSeveredMessage>Связь симбионта у {0} разорвана.</SymbiantSeveredMessage>
+	<SymbiantHostBondDescription>Связь: {0}/{1} клеток, {2}% бонус носителя, хирургический резерв {3}/{4}. {5}</SymbiantHostBondDescription>
+	<SymbiantHostBondReady>Операция готова.</SymbiantHostBondReady>
+	<SymbiantHostBondNotReady>Опасная операция: кормите симбионта, пока резерв не заполнится, а видимый размер не станет {0} клеток или меньше.</SymbiantHostBondNotReady>
+	<SymbiantHostBondMissing>К этому носителю не привязан активный симбионт.</SymbiantHostBondMissing>
+	<SymbiantHostRelocatedMessage>Связь симбионта у {0} задремала после ухода с карты. Оставшуюся слизь без носителя можно скормить.</SymbiantHostRelocatedMessage>
+	<SymbiantReseededMessage>Корень симбионта у {0} перешёл в другую используемую комнату после того, как его камера оставалась открытой. Старая слизь возвращается к новому корню; кормление и операция остаются надёжным способом разорвать связь.</SymbiantReseededMessage>
 
 	<LetterLabelXDaysUntilZombies>{0} Дней до прихода зомби-орды</LetterLabelXDaysUntilZombies>
 	<XDaysUntilZombies>Зомби появятся там, где есть мягкая почва, грязь, песок и гравий. Застройте всё напольными покрытиями, чтобы зомби не могли подкопаться.</XDaysUntilZombies>
@@ -180,6 +222,27 @@
 	<ChildZombieChance>Зомбированные дети</ChildZombieChance>
 	<SpitterThreat>Трудности с зомби-изрыгателем</SpitterThreat>
 	<WallPushing>Количество зомби, которые будут толкать зомби через стены</WallPushing>
+	<ZombieSymbiantTitle>Зомби-симбионт</ZombieSymbiantTitle>
+	<SymbiantEnabled>Включить зомби-симбионтов</SymbiantEnabled>
+	<SymbiantPostFeedPauseHours>Пауза роста после кормления</SymbiantPostFeedPauseHours>
+	<SymbiantMaxCells>Максимальный размер симбионта</SymbiantMaxCells>
+	<SymbiantFullBenefitRoomCoverage>Покрытие комнат для полной связи симбионта</SymbiantFullBenefitRoomCoverage>
+	<SymbiantSeveranceMaturityCoverage>Покрытие зрелости для операции</SymbiantSeveranceMaturityCoverage>
+	<SymbiantSeveranceMaturityMinCells>Мин. клетки зрелости для операции</SymbiantSeveranceMaturityMinCells>
+	<SymbiantSeveranceMaturityMaxCells>Макс. клетки зрелости для операции</SymbiantSeveranceMaturityMaxCells>
+	<SymbiantSeveranceReserveCoverage>Покрытие хирургического резерва</SymbiantSeveranceReserveCoverage>
+	<SymbiantSeveranceReserveMin>Мин. импульсы хирургического резерва</SymbiantSeveranceReserveMin>
+	<SymbiantSeveranceReserveMax>Макс. импульсы хирургического резерва</SymbiantSeveranceReserveMax>
+	<SymbiantZombieIgnoreMinBenefit>Порог защиты носителя от зомби</SymbiantZombieIgnoreMinBenefit>
+	<SymbiantDecouplingFeedPulsesPerDay>Кормлений симбионта в день</SymbiantDecouplingFeedPulsesPerDay>
+	<SymbiantMaxSkillBonus>Макс. бонус навыков от симбионта</SymbiantMaxSkillBonus>
+	<SymbiantPathCost>Стоимость движения по слизи симбионта</SymbiantPathCost>
+	<SymbiantCanBreakConstructedWalls>Симбионт может ломать построенные стены</SymbiantCanBreakConstructedWalls>
+	<SymbiantCoagulantPotency>Сила коагулянтного пакета</SymbiantCoagulantPotency>
+	<SymbiantDamageAbsorptionFeedback>Показывать сообщения защиты симбионта</SymbiantDamageAbsorptionFeedback>
+	<SymbiantCoagulantPotency_Cheap>Низкая</SymbiantCoagulantPotency_Cheap>
+	<SymbiantCoagulantPotency_Normal>Обычная</SymbiantCoagulantPotency_Normal>
+	<SymbiantCoagulantPotency_Expensive>Высокая</SymbiantCoagulantPotency_Expensive>
 
 	<ZombieMiscTitle>Разное</ZombieMiscTitle>
 	<UseCustomTextures>Использовать текстуры дополнения для зомби</UseCustomTextures>

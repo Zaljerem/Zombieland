@@ -8,5 +8,8 @@
 	<DoubleTap.label>sicheres Töten von Leichen</DoubleTap.label>
 	<DoubleTap.verb>tötet sicher</DoubleTap.verb>
 	<DoubleTap.gerund>Das sichere Töten von</DoubleTap.gerund>
+	<FeedZombieSymbiant.label>Symbiant füttern</FeedZombieSymbiant.label>
+	<FeedZombieSymbiant.verb>füttert</FeedZombieSymbiant.verb>
+	<FeedZombieSymbiant.gerund>Das Füttern von</FeedZombieSymbiant.gerund>
 
 </LanguageData>

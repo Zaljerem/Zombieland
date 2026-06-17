@@ -8,5 +8,8 @@
 	<DoubleTap.label>achever les cadavres pour les empêcher de devenir zombies</DoubleTap.label>
 	<DoubleTap.verb>achever</DoubleTap.verb>
 	<DoubleTap.gerund>achève</DoubleTap.gerund>
+	<FeedZombieSymbiant.label>nourrir le Symbiant</FeedZombieSymbiant.label>
+	<FeedZombieSymbiant.verb>nourrir</FeedZombieSymbiant.verb>
+	<FeedZombieSymbiant.gerund>nourrit</FeedZombieSymbiant.gerund>
 
 </LanguageData>
