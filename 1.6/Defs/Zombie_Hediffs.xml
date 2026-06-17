@@ -45,7 +45,7 @@
 	<HediffDef>
 		<defName>SymbiantSymbiosis</defName>
 		<label>symbiant bond</label>
-		<description>This colonist is linked to a Zombie Symbiant. The host gains protection and skill as the Symbiant spreads through used rooms. The bond is a managed risk: sever it only after feeding the Symbiant to build surgery reserve and shrink it. Failed surgery can injure the host; killing the host ends the bond at the cost of the colonist.</description>
+		<description>This colonist is linked to a Zombie Symbiant. The host gains protection and skill as the Symbiant spreads through used rooms. The bond is a managed risk: attacks drain the Symbiant damage guard and violent guard failure kills the host. Sever it only after feeding the Symbiant to restore the guard, build surgery reserve, and shrink it. Failed surgery can injure the host; killing the host ends the bond at the cost of the colonist.</description>
 		<hediffClass>ZombieLand.Hediff_SymbiantSymbiosis</hediffClass>
 		<isBad>false</isBad>
 		<scenarioCanAdd>false</scenarioCanAdd>

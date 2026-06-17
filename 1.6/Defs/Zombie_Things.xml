@@ -204,7 +204,7 @@
 	<ThingDef ParentName="ResourceBase">
 		<defName>SymbiantCoagulantPack</defName>
 		<label>symbiant coagulant pack</label>
-		<description>A concentrated pack for feeding a Symbiant. It builds surgery reserve, usually shrinks the visible mass, pauses growth, and helps prepare severance surgery on the linked host.</description>
+		<description>A concentrated pack for feeding a Symbiant. It restores the damage guard, builds surgery reserve, usually shrinks the visible mass, pauses growth, and helps prepare severance surgery on the linked host.</description>
 		<graphicData>
 			<graphicClass>Graphic_Single</graphicClass>
 			<texPath>ZombieExtract</texPath>

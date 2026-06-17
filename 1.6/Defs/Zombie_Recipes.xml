@@ -153,7 +153,7 @@
 	<RecipeDef>
 		<defName>MakeSymbiantCoagulantPack</defName>
 		<label>make Symbiant coagulant pack</label>
-		<description>Craft one Symbiant coagulant pack from zombie extract and chemfuel. Feed it to a Symbiant to build surgery reserve, shrink the visible mass, and prepare the linked host for severance surgery.</description>
+		<description>Craft one Symbiant coagulant pack from zombie extract and chemfuel. Feed it to a Symbiant to restore its damage guard, build surgery reserve, shrink the visible mass, and prepare the linked host for severance surgery.</description>
 		<jobString>Making Symbiant coagulant pack.</jobString>
 		<workAmount>900</workAmount>
 		<ingredients>

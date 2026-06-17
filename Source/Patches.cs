@@ -3126,6 +3126,11 @@ namespace ZombieLand
 		{
 			static void Postfix(ref IEnumerable<InspectTabBase> __result)
 			{
+				if (Find.Selector?.SelectedObjects?.Any(selected => selected is ZombieSymbiant) == true)
+				{
+					__result = Enumerable.Empty<InspectTabBase>();
+					return;
+				}
 				__result ??= new List<InspectTabBase>();
 			}
 		}

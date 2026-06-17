@@ -1674,6 +1674,7 @@ namespace ZombieLand
 				group.symbiantPathCost,
 				group.symbiantCanBreakConstructedWalls,
 				symbiantCoagulantPotency = group.symbiantCoagulantPotency.ToString(),
+				group.symbiantDamageAbsorptionFeedback,
 				group.minimumZombiesForWallPushing,
 				anomalyShamblerTargeting = group.anomalyShamblerTargeting.ToString(),
 				anomalyEntityTargeting = group.anomalyEntityTargeting.ToString(),

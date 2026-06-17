@@ -283,6 +283,7 @@ namespace ZombieLand
 		public int symbiantPathCost = 220;
 		public bool symbiantCanBreakConstructedWalls = true;
 		public SymbiantCoagulantPotency symbiantCoagulantPotency = SymbiantCoagulantPotency.Normal;
+		public bool symbiantDamageAbsorptionFeedback = true;
 		public int minimumZombiesForWallPushing = 18;
 		public List<string> blacklistedApparel = new();
 		public float contaminationBaseFactor = 1f;

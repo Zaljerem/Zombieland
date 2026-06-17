@@ -32,10 +32,10 @@
 
 	<LetterLabelZombieSymbiant>Zombie Symbiant linked to {0}</LetterLabelZombieSymbiant>
 	<LetterLabelZombieSymbiantNoHost>Zombie Symbiant surfaced</LetterLabelZombieSymbiantNoHost>
-	<ZombieSymbiant>A Zombie Symbiant has surfaced in {0} and linked itself to {1}. It is disruptive, not an immediate killer: it spreads through used rooms, slows pawns that cross its slime, lowers room quality, and strengthens the host as it grows. Weapons will not remove it, and leaving its room open only makes a linked root move into another used room. Feed it with a humanlike corpse or coagulant pack to build surgery reserve and shrink it; when the inspect pane says surgery is ready, operate on {1}. Failed surgery can injure the host; killing the host ends the bond at the cost of the colonist.</ZombieSymbiant>
-	<ZombieSymbiantNoHost>A Zombie Symbiant has surfaced in {0}. It is disruptive, not an immediate killer: it spreads through used rooms, slows pawns that cross its slime, and lowers room quality. It has no linked host yet, but weapons will not remove it. Feed it with a humanlike corpse or coagulant pack to build surgery reserve and shrink it.</ZombieSymbiantNoHost>
+			<ZombieSymbiant>A Zombie Symbiant has surfaced in {0} and linked itself to {1}. It is disruptive, not an immediate killer: it spreads through used rooms, slows pawns that cross its slime, lowers room quality, and strengthens the host as it grows. Attacks first drain its damage guard; violent guard failure kills the host. Leaving its room open only makes a linked root move into another used room. Feed it with a humanlike corpse or coagulant pack to restore the guard, build surgery reserve, and shrink it; when the inspect pane says surgery is ready, operate on {1}. Failed surgery can injure the host; killing the host ends the bond at the cost of the colonist.</ZombieSymbiant>
+		<ZombieSymbiantNoHost>A Zombie Symbiant has surfaced in {0}. It is disruptive, not an immediate killer: it spreads through used rooms, slows pawns that cross its slime, and lowers room quality. Attacks first drain its damage guard. Feed it with a humanlike corpse or coagulant pack to restore the guard, build surgery reserve, and shrink it.</ZombieSymbiantNoHost>
 	<ZombieSymbiantUnknownRoom>one of your rooms</ZombieSymbiantUnknownRoom>
-	<ZombieSymbiantInspect>Symbiant size: {0}/{1} cells\nLinked host: {2}\nHost benefit: {3}%\nGrowth: {4}\nBond maturity: {5}\nSurgery reserve: {6}/{7}\nSafe surgery size: {8} cells\nFeeds left today: {9}\nSurgery: {10}\nWeapons: {11}</ZombieSymbiantInspect>
+		<ZombieSymbiantInspect>Symbiant size: {0}/{1} cells\nLinked host: {2}\nHost benefit: {3}%\nGrowth: {4}\nBond maturity: {5}\nSurgery reserve: {6}/{7}\nSafe surgery size: {8} cells\nFeeds left today: {9}\nSurgery: {10}\nWeapons: {11}\nDamage guard: {12}/{13}</ZombieSymbiantInspect>
 	<SymbiantGrowthInactive>inactive</SymbiantGrowthInactive>
 	<SymbiantGrowthCapped>at size cap</SymbiantGrowthCapped>
 	<SymbiantGrowthPaused>paused after feeding</SymbiantGrowthPaused>
@@ -52,12 +52,14 @@
 	<SymbiantSeveranceNeedsReserve>feed it to fill surgery reserve</SymbiantSeveranceNeedsReserve>
 	<SymbiantSeveranceNeedsShrink>feed it down to 3 cells or fewer</SymbiantSeveranceNeedsShrink>
 	<SymbiantSeveranceReady>ready; operate on the host</SymbiantSeveranceReady>
-	<SymbiantWeaponInspect>ineffective; feed for surgery</SymbiantWeaponInspect>
-	<SymbiantWeaponRejectedMessage>Attacks do not remove a Symbiant or make surgery safer. Feed it to build surgery reserve and shrink it, then operate on the linked host.</SymbiantWeaponRejectedMessage>
-	<SymbiantWeaponRejectedMote>weapons fail</SymbiantWeaponRejectedMote>
+		<SymbiantWeaponInspect>drains guard; feed for surgery</SymbiantWeaponInspect>
+		<SymbiantWeaponRejectedMessage>The Symbiant damage guard absorbed the hit. Guard: {0}/{1}. Feeding restores the guard, builds surgery reserve, and shrinks the visible mass.</SymbiantWeaponRejectedMessage>
+		<SymbiantWeaponRejectedMote>guard absorbs</SymbiantWeaponRejectedMote>
+		<SymbiantDamageGuardBrokenMessage>The Symbiant damage guard ruptured. {0}'s bond collapsed violently.</SymbiantDamageGuardBrokenMessage>
+		<SymbiantHostUnknown>the host</SymbiantHostUnknown>
 	<FeedZombieSymbiant>Feed Symbiant</FeedZombieSymbiant>
 	<CancelFeedZombieSymbiant>Cancel Symbiant feeding</CancelFeedZombieSymbiant>
-	<FeedZombieSymbiantDesc>Marks the Symbiant for feeding. Colonists will bring a humanlike corpse or a Symbiant coagulant pack. Feeding builds surgery reserve, can shrink the visible mass, pauses growth, and cannot remove the final cells. When surgery is ready, operate on the linked host.</FeedZombieSymbiantDesc>
+		<FeedZombieSymbiantDesc>Marks the Symbiant for feeding. Colonists will bring a humanlike corpse or a Symbiant coagulant pack. Feeding restores the damage guard, builds surgery reserve, can shrink the visible mass, pauses growth, and cannot remove the final cells. When surgery is ready, operate on the linked host.</FeedZombieSymbiantDesc>
 	<FeedingZombieSymbiant>feeding a Symbiant</FeedingZombieSymbiant>
 	<NoSymbiantFeed>No humanlike corpse or Symbiant coagulant pack available</NoSymbiantFeed>
 	<SymbiantFeedLimitReached>Symbiant feeding limit reached today</SymbiantFeedLimitReached>
@@ -236,9 +238,10 @@
 	<SymbiantDecouplingFeedPulsesPerDay>Symbiant feeds per day</SymbiantDecouplingFeedPulsesPerDay>
 	<SymbiantMaxSkillBonus>Max Symbiant skill bonus</SymbiantMaxSkillBonus>
 	<SymbiantPathCost>Symbiant slime movement cost</SymbiantPathCost>
-	<SymbiantCanBreakConstructedWalls>Symbiant can break constructed walls</SymbiantCanBreakConstructedWalls>
-	<SymbiantCoagulantPotency>Coagulant pack strength</SymbiantCoagulantPotency>
-	<SymbiantCoagulantPotency_Cheap>Cheap</SymbiantCoagulantPotency_Cheap>
+		<SymbiantCanBreakConstructedWalls>Symbiant can break constructed walls</SymbiantCanBreakConstructedWalls>
+		<SymbiantCoagulantPotency>Coagulant pack strength</SymbiantCoagulantPotency>
+		<SymbiantDamageAbsorptionFeedback>Show Symbiant guard messages</SymbiantDamageAbsorptionFeedback>
+		<SymbiantCoagulantPotency_Cheap>Cheap</SymbiantCoagulantPotency_Cheap>
 	<SymbiantCoagulantPotency_Normal>Normal</SymbiantCoagulantPotency_Normal>
 	<SymbiantCoagulantPotency_Expensive>Expensive</SymbiantCoagulantPotency_Expensive>
 

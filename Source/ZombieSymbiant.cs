@@ -52,6 +52,9 @@ namespace ZombieLand
 		const int SymbiosisMetricRefreshInterval = 250;
 		static int UprootedRelocationGraceTicks => GenDate.TicksPerHour * 4;
 		const float UprootedIntegratedCellThreshold = 0.01f;
+		const float DamageAbsorptionBufferUninitialized = -1f;
+		const float DamageAbsorptionBufferBase = 300f;
+		const float DamageAbsorptionBufferMaxLimit = 12000f;
 		static readonly int SymbiantOpacityMinId = Shader.PropertyToID("_SymbiantOpacityMin");
 		static readonly int SymbiantOpacityMaxId = Shader.PropertyToID("_SymbiantOpacityMax");
 		static readonly int SymbiantNoiseScaleId = Shader.PropertyToID("_SymbiantNoiseScale");
@@ -91,9 +94,12 @@ namespace ZombieLand
 		bool maturedForSeverance;
 		bool safeSeveranceInProgress;
 		bool hostCollapseInProgress;
+		bool violentDamageCollapseInProgress;
 		bool uncontrolledDestroyHandled;
 		int lastSymbiosisMetricTick = int.MinValue;
 		int lastRejectedDamageMessageTick = int.MinValue;
+		float damageAbsorptionBuffer = DamageAbsorptionBufferUninitialized;
+		int lastDamageAbsorptionRegenTick = -1;
 		int cachedEligibleColonyRoomCells;
 		int cachedFullBenefitCells = 20;
 		float cachedIntegratedVisibleCells;
@@ -132,6 +138,16 @@ namespace ZombieLand
 		Map SymbiantMap => Spawned ? Map : host?.MapHeld ?? MapHeld;
 		public Pawn LinkedHost => ResolveHost();
 		public string HostThingId => hostThingId;
+		public int DamageAbsorptionBuffer => Mathf.CeilToInt(CurrentDamageAbsorptionBuffer);
+		public int DamageAbsorptionBufferMax => Mathf.CeilToInt(CalculateDamageAbsorptionBufferMax());
+		float CurrentDamageAbsorptionBuffer
+		{
+			get
+			{
+				EnsureDamageAbsorptionBuffer();
+				return damageAbsorptionBuffer;
+			}
+		}
 		public int EligibleColonyRoomCells { get { RefreshSymbiosisMetrics(); return cachedEligibleColonyRoomCells; } }
 		public int FullBenefitCells { get { RefreshSymbiosisMetrics(); return cachedFullBenefitCells; } }
 		public float IntegratedVisibleCells { get { RefreshSymbiosisMetrics(); return cachedIntegratedVisibleCells; } }
@@ -195,6 +211,60 @@ namespace ZombieLand
 		public bool CanSafelySever => LinkedHost != null && HasMaturedForSeverance && decouplingReserve >= DecouplingReserveMax - 0.01f && CellCount <= 3;
 		public static float ZombieIgnoreMinBenefit => Mathf.Clamp(ZombieSettings.Values?.symbiantZombieIgnoreMinBenefit ?? 0.5f, 0f, 1f);
 		public static float HostHediffSeverity(float benefitFactor) => Mathf.Max(0.001f, Mathf.Clamp01(benefitFactor));
+
+		float CalculateDamageAbsorptionBufferMax()
+		{
+			RefreshSymbiosisMetrics();
+			var size = Mathf.Max(1, CellCount);
+			var integratedCells = Mathf.Max(0f, cachedIntegratedVisibleCells);
+			var benefit = Mathf.Clamp01(cachedBenefitFactor);
+			var max = DamageAbsorptionBufferBase
+				+ Mathf.Sqrt(size) * 55f
+				+ integratedCells * 12f
+				+ benefit * 900f;
+			return Mathf.Clamp(max, DamageAbsorptionBufferBase, DamageAbsorptionBufferMaxLimit);
+		}
+
+		void EnsureDamageAbsorptionBuffer(bool fillIfMissing = false)
+		{
+			var max = CalculateDamageAbsorptionBufferMax();
+			if (fillIfMissing || damageAbsorptionBuffer < 0f || float.IsNaN(damageAbsorptionBuffer) || float.IsInfinity(damageAbsorptionBuffer))
+				damageAbsorptionBuffer = max;
+			else
+				damageAbsorptionBuffer = Mathf.Clamp(damageAbsorptionBuffer, 0f, max);
+		}
+
+		void RestoreDamageAbsorptionBuffer(float amount)
+		{
+			if (amount <= 0f)
+				return;
+			var max = CalculateDamageAbsorptionBufferMax();
+			EnsureDamageAbsorptionBuffer();
+			damageAbsorptionBuffer = Mathf.Min(max, damageAbsorptionBuffer + amount);
+		}
+
+		void RegenerateDamageAbsorptionBuffer(int ticks)
+		{
+			if (lastDamageAbsorptionRegenTick < 0)
+			{
+				lastDamageAbsorptionRegenTick = ticks;
+				EnsureDamageAbsorptionBuffer(true);
+				return;
+			}
+			var elapsed = ticks - lastDamageAbsorptionRegenTick;
+			if (elapsed <= 0)
+				return;
+			lastDamageAbsorptionRegenTick = ticks;
+			EnsureDamageAbsorptionBuffer();
+			var max = CalculateDamageAbsorptionBufferMax();
+			if (damageAbsorptionBuffer >= max)
+				return;
+			var benefit = Mathf.Clamp01(cachedBenefitFactor);
+			var reserve = Mathf.Clamp01(EffectiveDecouplingReserve / Mathf.Max(1f, DecouplingReserveMax));
+			var stableFactor = cachedIntegratedVisibleCells > UprootedIntegratedCellThreshold ? 1f : 0.25f;
+			var dailyRegen = max * Mathf.Lerp(0.08f, 0.26f, benefit) * Mathf.Lerp(0.85f, 1.25f, reserve) * stableFactor;
+			RestoreDamageAbsorptionBuffer(dailyRegen * elapsed / GenDate.TicksPerDay);
+		}
 
 		internal static float NaturalSpawnPressure(Map map, bool ignoreActive = false)
 		{
@@ -342,6 +412,7 @@ namespace ZombieLand
 			symbiant.jobs.StartJob(JobMaker.MakeJob(CustomDefs.Symbiant));
 			_ = symbiant.TryAssignRandomHost();
 			symbiant.UpdateSymbiosisState();
+			symbiant.EnsureDamageAbsorptionBuffer(true);
 
 			var sentLetter = false;
 			var linkedHost = symbiant.LinkedHost;
@@ -1524,27 +1595,74 @@ namespace ZombieLand
 				CustomDefs.SymbiantDisconnected?.PlayOneShotOnCamera(null);
 		}
 
-		void NotifyOrdinaryDamageRejected()
+		void NotifyDamageAbsorbed()
 		{
+			if (ZombieSettings.Values?.symbiantDamageAbsorptionFeedback != true)
+				return;
 			if (Spawned == false || Map == null)
 				return;
 			var ticks = GenTicks.TicksGame;
 			if (ticks - lastRejectedDamageMessageTick < 600)
 				return;
 			lastRejectedDamageMessageTick = ticks;
-			Messages.Message("SymbiantWeaponRejectedMessage".Translate(), this, MessageTypeDefOf.RejectInput, false);
+			Messages.Message("SymbiantWeaponRejectedMessage".Translate(DamageAbsorptionBuffer, DamageAbsorptionBufferMax), this, MessageTypeDefOf.RejectInput, false);
 			MoteMaker.ThrowText(DrawPos, Map, "SymbiantWeaponRejectedMote".Translate(), 3.65f);
+		}
+
+		void CollapseFromGuardFailure()
+		{
+			if (Destroyed || violentDamageCollapseInProgress || safeSeveranceInProgress || hostCollapseInProgress)
+				return;
+			violentDamageCollapseInProgress = true;
+			var pawn = ResolveHost();
+			if (Spawned && Map != null)
+			{
+				var targets = pawn == null ? new LookTargets(this) : new LookTargets(this, pawn);
+				var hostLabel = pawn == null ? "SymbiantHostUnknown".Translate().ToString() : pawn.LabelShortCap.ToString();
+				Messages.Message("SymbiantDamageGuardBrokenMessage".Translate(hostLabel), targets, MessageTypeDefOf.NegativeEvent, false);
+			}
+			PlayDisconnectedSound();
+			RemoveHostHediff(pawn);
+			host = null;
+			hostThingId = null;
+			if (pawn != null && pawn.Destroyed == false && pawn.Dead == false)
+				pawn.Kill(null);
+			damageAbsorptionBuffer = 0f;
+			Destroy(DestroyMode.Vanish);
+			violentDamageCollapseInProgress = false;
 		}
 
 		public void PreApplyLinkedDamage(ref DamageInfo dinfo, ref bool absorbed)
 		{
-			if (safeSeveranceInProgress || hostCollapseInProgress || ResolveHost() == null)
+			if (safeSeveranceInProgress || hostCollapseInProgress || violentDamageCollapseInProgress)
 				return;
 			if (dinfo.Amount <= 0f)
 				return;
+			if (dinfo.Def == CustomDefs.SeismicWave)
+			{
+				dinfo.SetAmount(0f);
+				absorbed = true;
+				return;
+			}
+
+			EnsureDamageAbsorptionBuffer();
+			var incoming = dinfo.Amount;
+			if (damageAbsorptionBuffer <= 0f)
+			{
+				CollapseFromGuardFailure();
+				dinfo.SetAmount(0f);
+				absorbed = true;
+				return;
+			}
+
+			var absorbedAmount = Mathf.Min(incoming, damageAbsorptionBuffer);
+			damageAbsorptionBuffer = Mathf.Max(0f, damageAbsorptionBuffer - absorbedAmount);
+			if (incoming > absorbedAmount + 0.01f)
+				CollapseFromGuardFailure();
+			else
+				NotifyDamageAbsorbed();
 			dinfo.SetAmount(0f);
 			absorbed = true;
-			NotifyOrdinaryDamageRejected();
 		}
 
 		public bool TrySeverSymbiosis(Pawn pawn, Pawn doctor)
@@ -1586,6 +1704,7 @@ namespace ZombieLand
 				if (uprootedSinceTick < 0)
 				{
 					UpdateSymbiosisState(false);
+					RegenerateDamageAbsorptionBuffer(ticks);
 					if (relocationCellDebt <= 0 && nextRelocationPulseTick <= 0 && HasMovableUnintegratedCells())
 						nextRelocationPulseTick = ticks;
 				}
@@ -1870,6 +1989,7 @@ namespace ZombieLand
 			consumed.Destroy(DestroyMode.Vanish);
 			decouplingFeedPulsesToday++;
 			decouplingReserve = Mathf.Min(DecouplingReserveMax, decouplingReserve + pulseSize);
+			RestoreDamageAbsorptionBuffer(CalculateDamageAbsorptionBufferMax() * 0.18f + pulseSize * 55f);
 			var minRemainingCells = LinkedHost == null && hostThingId.NullOrEmpty() ? 0 : SafeVisibleMinimum;
 			lastRecessionPulseCells = ShrinkCells(pulseSize, minRemainingCells);
 			UpdateSymbiosisState();
@@ -2301,7 +2421,14 @@ namespace ZombieLand
 				SafeVisibleMinimum,
 				FeedPulsesRemaining,
 				SeveranceInspectLabel(),
-				"SymbiantWeaponInspect".Translate());
+				"SymbiantWeaponInspect".Translate(),
+				DamageAbsorptionBuffer,
+				DamageAbsorptionBufferMax);
+		}
+
+		public override IEnumerable<InspectTabBase> GetInspectTabs()
+		{
+			return Enumerable.Empty<InspectTabBase>();
 		}
 
 		public override IEnumerable<Gizmo> GetGizmos()
@@ -2342,12 +2469,15 @@ namespace ZombieLand
 			Scribe_Values.Look(ref peakIntegratedVisibleCells, "peakIntegratedVisibleCells");
 			Scribe_Values.Look(ref peakBenefitFactor, "peakBenefitFactor");
 			Scribe_Values.Look(ref maturedForSeverance, "maturedForSeverance");
+			Scribe_Values.Look(ref damageAbsorptionBuffer, "damageAbsorptionBuffer", DamageAbsorptionBufferUninitialized);
+			Scribe_Values.Look(ref lastDamageAbsorptionRegenTick, "lastDamageAbsorptionRegenTick", -1);
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
 			{
 				EnsureSymbiantDefaults();
 				if (host != null)
 					hostThingId = host.ThingID;
 				UpdateSymbiosisState();
+				EnsureDamageAbsorptionBuffer();
 				EnsureHostHediff();
 			}
 		}

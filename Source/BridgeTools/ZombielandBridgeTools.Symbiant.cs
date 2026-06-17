@@ -1944,7 +1944,7 @@ namespace ZombieLand
 			};
 		}
 
-		[Tool("zombieland/symbiant_unsafe_damage_contract", Description = "Verify ordinary symbiant damage rejection, clean non-gameplay destruction detachment, and host-death collapse.")]
+		[Tool("zombieland/symbiant_unsafe_damage_contract", Description = "Verify symbiant damage-guard drain, rupture, thumper no-effect behavior, inspect-tab isolation, clean non-gameplay destruction detachment, and host-death collapse.")]
 		public static object SymbiantUnsafeDamageContract(
 			[ToolParameter(Description = "Destroy temporary symbiants, colonists, fixture buildings, and letters after capturing evidence.", Required = false, DefaultValue = true)] bool cleanup = true)
 		{
@@ -1957,7 +1957,10 @@ namespace ZombieLand
 
 			var settingsSnapshot = SnapshotZombieSettings();
 			var beforeLetters = (Find.LetterStack?.LettersListForReading ?? new List<Letter>()).ToHashSet();
-			object ordinaryDamageRejected = null;
+			object ordinaryDamageDrainsGuard = null;
+			object guardRuptureCollapse = null;
+			object thumperDamageNoEffect = null;
+			object inspectTabsHidden = null;
 			object uncontrolledDestroyDetaches = null;
 			object hostDeathCollapse = null;
 			object error = null;
@@ -1971,7 +1974,10 @@ namespace ZombieLand
 					settings.symbiantDecouplingFeedPulsesPerDay = 20;
 					settings.symbiantMaxCells = Math.Max(settings.symbiantMaxCells, 400);
 				});
-				ordinaryDamageRejected = RunSymbiantUnsafeDamageScenario(map, "ordinaryDamageRejected", cleanup);
+				ordinaryDamageDrainsGuard = RunSymbiantUnsafeDamageScenario(map, "ordinaryDamageDrainsGuard", cleanup);
+				guardRuptureCollapse = RunSymbiantUnsafeDamageScenario(map, "guardRuptureCollapse", cleanup);
+				thumperDamageNoEffect = RunSymbiantUnsafeDamageScenario(map, "thumperDamageNoEffect", cleanup);
+				inspectTabsHidden = RunSymbiantUnsafeDamageScenario(map, "inspectTabsHidden", cleanup);
 				uncontrolledDestroyDetaches = RunSymbiantUnsafeDamageScenario(map, "uncontrolledDestroyDetaches", cleanup);
 				hostDeathCollapse = RunSymbiantUnsafeDamageScenario(map, "hostDeathCollapse", cleanup);
 			}
@@ -1997,7 +2003,10 @@ namespace ZombieLand
 			var success = error == null
 				&& patchTargets.pawnPreApplyDamage.Length > 0
 				&& patchTargets.pawnKill.Length > 0
-				&& ScenarioSucceeded(ordinaryDamageRejected)
+				&& ScenarioSucceeded(ordinaryDamageDrainsGuard)
+				&& ScenarioSucceeded(guardRuptureCollapse)
+				&& ScenarioSucceeded(thumperDamageNoEffect)
+				&& ScenarioSucceeded(inspectTabsHidden)
 				&& ScenarioSucceeded(uncontrolledDestroyDetaches)
 				&& ScenarioSucceeded(hostDeathCollapse)
 				&& (activeAfterCleanup == null || cleanup == false);
@@ -2008,7 +2017,10 @@ namespace ZombieLand
 				sourcePath = "Pawn.TakeDamage -> Pawn.PreApplyDamage -> ZombieSymbiant.PreApplyLinkedDamage; ZombieSymbiant.Destroy; Pawn.Kill -> ZombieSymbiant.NotifyHostKilled",
 				error,
 				patchTargets,
-				ordinaryDamageRejected,
+				ordinaryDamageDrainsGuard,
+				guardRuptureCollapse,
+				thumperDamageNoEffect,
+				inspectTabsHidden,
 				uncontrolledDestroyDetaches,
 				hostDeathCollapse,
 				cleanup = new
@@ -2036,17 +2048,23 @@ namespace ZombieLand
 
 				var hostInjuryBefore = TotalInjurySeverity(host);
 				var reserveBefore = symbiant.DecouplingReserve;
-				if (scenario == "ordinaryDamageRejected")
+				if (scenario == "ordinaryDamageDrainsGuard")
 				{
 					var damage = 40f;
 					var symbiantInjuryBefore = TotalInjurySeverity(symbiant);
+					var guardBefore = symbiant.DamageAbsorptionBuffer;
 					var damageResult = symbiant.TakeDamage(new DamageInfo(DamageDefOf.Cut, damage, 0f, -1f, null));
 					var hostInjuryAfter = TotalInjurySeverity(host);
 					var symbiantInjuryAfter = TotalInjurySeverity(symbiant);
+					var guardAfter = symbiant.DamageAbsorptionBuffer;
+					var guardDelta = guardBefore - guardAfter;
 					action = new
 					{
 						damage,
 						damageDealt = damageResult.totalDamageDealt,
+						guardBefore,
+						guardAfter,
+						guardDelta,
 						reserveBefore,
 						reserveAfter = symbiant.DecouplingReserve,
 						hostInjuryBefore,
@@ -2054,11 +2072,108 @@ namespace ZombieLand
 						symbiantInjuryBefore,
 						symbiantInjuryAfter,
 						success = Mathf.Approximately(damageResult.totalDamageDealt, 0f)
+							&& guardAfter < guardBefore
+							&& guardDelta >= damage - 1f
+							&& guardDelta <= damage + 1f
 							&& Mathf.Approximately(reserveBefore, symbiant.DecouplingReserve)
 							&& Mathf.Approximately(hostInjuryAfter, hostInjuryBefore)
 							&& Mathf.Approximately(symbiantInjuryAfter, symbiantInjuryBefore)
 							&& symbiant.Destroyed == false
 							&& host.Dead == false
+					};
+				}
+				else if (scenario == "guardRuptureCollapse")
+				{
+					var hediffBefore = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null;
+					var guardBefore = symbiant.DamageAbsorptionBuffer;
+					var damage = symbiant.DamageAbsorptionBufferMax + 250f;
+					var damageResult = symbiant.TakeDamage(new DamageInfo(DamageDefOf.Cut, damage, 0f, -1f, null));
+					var linkedAfter = ZombieSymbiant.LinkedSymbiantFor(host);
+					var hediffAfter = host.health?.hediffSet?.GetFirstHediffOfDef(CustomDefs.SymbiantSymbiosis) != null;
+					var activeAfter = ZombieSymbiant.ActiveSymbiant(map);
+					action = new
+					{
+						damage,
+						damageDealt = damageResult.totalDamageDealt,
+						guardBefore,
+						guardAfter = symbiant.DamageAbsorptionBuffer,
+						hediffBefore,
+						hediffAfter,
+						hostDead = host.Dead,
+						symbiantDestroyed = symbiant.Destroyed,
+						linkedAfter = ZombieRuntimeActions.StableThingId(linkedAfter),
+						activeAfter = ZombieRuntimeActions.StableThingId(activeAfter),
+						success = Mathf.Approximately(damageResult.totalDamageDealt, 0f)
+							&& guardBefore > 0
+							&& hediffBefore
+							&& hediffAfter == false
+							&& host.Dead
+							&& symbiant.Destroyed
+							&& linkedAfter == null
+							&& activeAfter == null
+					};
+					symbiant = null;
+				}
+				else if (scenario == "thumperDamageNoEffect")
+				{
+					var damageDef = CustomDefs.SeismicWave;
+					var damage = symbiant.DamageAbsorptionBufferMax + 250f;
+					var symbiantInjuryBefore = TotalInjurySeverity(symbiant);
+					var guardBefore = symbiant.DamageAbsorptionBuffer;
+					var damageResult = damageDef == null ? null : symbiant.TakeDamage(new DamageInfo(damageDef, damage, 0f, -1f, null));
+					var hostInjuryAfter = TotalInjurySeverity(host);
+					var symbiantInjuryAfter = TotalInjurySeverity(symbiant);
+					var guardAfter = symbiant.DamageAbsorptionBuffer;
+					action = new
+					{
+						damageDef = damageDef?.defName,
+						damage,
+						damageDealt = damageResult?.totalDamageDealt ?? -1f,
+						guardBefore,
+						guardAfter,
+						reserveBefore,
+						reserveAfter = symbiant.DecouplingReserve,
+						hostInjuryBefore,
+						hostInjuryAfter,
+						symbiantInjuryBefore,
+						symbiantInjuryAfter,
+						success = damageDef != null
+							&& Mathf.Approximately(damageResult.totalDamageDealt, 0f)
+							&& guardAfter == guardBefore
+							&& Mathf.Approximately(reserveBefore, symbiant.DecouplingReserve)
+							&& Mathf.Approximately(hostInjuryAfter, hostInjuryBefore)
+							&& Mathf.Approximately(symbiantInjuryAfter, symbiantInjuryBefore)
+							&& symbiant.Destroyed == false
+							&& host.Dead == false
+					};
+				}
+				else if (scenario == "inspectTabsHidden")
+				{
+					Find.Selector.ClearSelection();
+					Find.Selector.Select(symbiant, false, false);
+					var selected = Find.Selector.IsSelected(symbiant);
+					var curTabs = new MainTabWindow_Inspect().CurTabs?.ToArray();
+					var directTabs = symbiant.GetInspectTabs()?.ToArray();
+					var inspectString = symbiant.GetInspectString();
+					var guardText = $"{symbiant.DamageAbsorptionBuffer}/{symbiant.DamageAbsorptionBufferMax}";
+					Find.Selector.ClearSelection();
+					action = new
+					{
+						selected,
+						curTabsNull = curTabs == null,
+						curTabCount = curTabs?.Length ?? -1,
+						curTabTypes = curTabs?.Select(tab => tab?.GetType().FullName).ToArray(),
+						directTabsNull = directTabs == null,
+						directTabCount = directTabs?.Length ?? -1,
+						directTabTypes = directTabs?.Select(tab => tab?.GetType().FullName).ToArray(),
+						inspectStringHasGuardText = inspectString?.Contains(guardText) == true,
+						guardText,
+						success = selected
+							&& curTabs != null
+							&& curTabs.Length == 0
+							&& directTabs != null
+							&& directTabs.Length == 0
+							&& inspectString?.Contains(guardText) == true
 					};
 				}
 				else if (scenario == "uncontrolledDestroyDetaches")
@@ -2660,20 +2775,22 @@ namespace ZombieLand
 					hasMaturedForSeverance = symbiant.HasMaturedForSeverance,
 					decouplingReserve = symbiant.DecouplingReserve,
 					decouplingReserveMax = symbiant.DecouplingReserveMax,
+					damageAbsorptionBuffer = symbiant.DamageAbsorptionBuffer,
+					damageAbsorptionBufferMax = symbiant.DamageAbsorptionBufferMax,
 					severanceReserveRequired = symbiant.SeveranceReserveRequired,
 					reserveMaturityFactor = symbiant.ReserveMaturityFactor,
 					effectiveDecouplingReserve = symbiant.EffectiveDecouplingReserve,
 					safeVisibleMinimum = symbiant.SafeVisibleMinimum,
 					canSafelySever = symbiant.CanSafelySever,
-						feedPulsesToday = symbiant.DecouplingFeedPulsesToday,
-						feedPulsesPerDay = symbiant.DecouplingFeedPulsesPerDay,
-						feedPulsesRemaining = symbiant.FeedPulsesRemaining,
-						feedRequested = symbiant.FeedRequested,
-						nextExpansionTick = symbiant.NextExpansionTick,
-						relocationCellDebt = symbiant.RelocationCellDebt,
-						nextRelocationPulseTick = symbiant.NextRelocationPulseTick,
-						uprootedSinceTick = symbiant.UprootedSinceTick,
-						feedPausedUntilTick = symbiant.FeedPausedUntilTick,
+					feedPulsesToday = symbiant.DecouplingFeedPulsesToday,
+					feedPulsesPerDay = symbiant.DecouplingFeedPulsesPerDay,
+					feedPulsesRemaining = symbiant.FeedPulsesRemaining,
+					feedRequested = symbiant.FeedRequested,
+					nextExpansionTick = symbiant.NextExpansionTick,
+					relocationCellDebt = symbiant.RelocationCellDebt,
+					nextRelocationPulseTick = symbiant.NextRelocationPulseTick,
+					uprootedSinceTick = symbiant.UprootedSinceTick,
+					feedPausedUntilTick = symbiant.FeedPausedUntilTick,
 					lastRecessionPulseCells = symbiant.LastRecessionPulseCells,
 					cancelNextBreach = symbiant.CancelNextBreach,
 					roomDisruption,
@@ -2696,7 +2813,8 @@ namespace ZombieLand
 					ZombieSettings.Values.symbiantMaxSkillBonus,
 					ZombieSettings.Values.symbiantPathCost,
 					ZombieSettings.Values.symbiantCanBreakConstructedWalls,
-					symbiantCoagulantPotency = ZombieSettings.Values.symbiantCoagulantPotency.ToString()
+					symbiantCoagulantPotency = ZombieSettings.Values.symbiantCoagulantPotency.ToString(),
+					ZombieSettings.Values.symbiantDamageAbsorptionFeedback
 				}
 			};
 		}
