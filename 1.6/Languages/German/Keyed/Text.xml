@@ -1,6 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
 
+	<LetterLabelZombielandMapSetupFailed>Zombieland ist auf dieser Karte nicht gestartet</LetterLabelZombielandMapSetupFailed>
+	<ZombielandMapSetupFailed>RimWorld hat diese Karte geladen, aber Zombieland konnte seine Karteneinrichtung nicht abschließen. Zombieland hat versucht, das Problem zu reparieren, konnte es aber nicht.\n\nDas bedeutet: Zombies werden auf dieser Karte nicht erscheinen oder sich bewegen. Zombie-Ereignisse, Zombie-Vermeidung, Zombie-Leichen und besonderes Zombie-Verhalten funktionieren hier möglicherweise nicht.\n\nMeistens wird das durch einen Fehler verursacht, während RimWorld oder ein anderer Mod die Karte geladen hat. Prüfen Sie den ersten roten Fehler weiter oben im Log und deaktivieren Sie testweise kürzlich hinzugefügte oder aktualisierte Mods. Stellen Sie außerdem sicher, dass RimWorld und Zombieland zueinander passen.</ZombielandMapSetupFailed>
+	<ZombielandRevealPlayerLog>Player.log anzeigen</ZombielandRevealPlayerLog>
+	<ZombielandPlayerLogRevealFailed>Player.log konnte nicht angezeigt werden. Der Pfad wurde in die Zwischenablage kopiert.</ZombielandPlayerLogRevealFailed>
+	<ZombielandPlayerLogPathUnavailable>Zombieland konnte den Pfad zur Player.log nicht finden.</ZombielandPlayerLogPathUnavailable>
+
 	<Zombieland_Settings>Bewegen Sie den Mauszeiger über ein beliebiges Element, um rechts einen Hilfetext dazu zu lesen. Alle Einstellungen können im Spiel geändert werden und sind sofort aktiv, sie werden mit dem Spiel gespeichert.\n\nUm die Standardeinstellungen für neue Spiele festzulegen, ändern Sie die Einstellungen im Hauptbildschirm (Optionen/Mod-Optionen/Zombieland).</Zombieland_Settings>
 	<ZombieLandKeyframes>Editieren Sie zeitbasierte Keyframes. Überprüfen Sie interpolierte Werte mit dem Slider. Nur Keyframes sind änderbar.</ZombieLandKeyframes>
 	<ZombieLandKeyframe0>&lt;- erster Keyframe (Spielbeginn) ... zukünftige Spielzeit -&gt;</ZombieLandKeyframe0>

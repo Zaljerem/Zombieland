@@ -132,7 +132,7 @@ namespace ZombieLand
 		{
 			var cell = GetPheromone(position);
 			if (cell != null)
-				cell.zombieCount += change;
+				cell.zombieCount = Math.Max(0, cell.zombieCount + change);
 		}
 	}
 }

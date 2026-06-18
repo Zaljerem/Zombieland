@@ -1,6 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
 
+	<LetterLabelZombielandMapSetupFailed>Zombieland не запустился на этой карте</LetterLabelZombielandMapSetupFailed>
+	<ZombielandMapSetupFailed>RimWorld загрузил эту карту, но Zombieland не смог завершить настройку карты. Zombieland попытался исправить проблему, но не смог.\n\nЧто это значит: зомби не будут появляться или двигаться на этой карте. События зомби, избегание зомби, трупы зомби и особое поведение зомби здесь могут не работать.\n\nОбычно это вызвано ошибкой во время загрузки карты RimWorld или другим модом. Проверьте первую красную ошибку выше в логе, затем попробуйте отключить недавно добавленные или обновленные моды. Также убедитесь, что версии RimWorld и Zombieland совместимы.</ZombielandMapSetupFailed>
+	<ZombielandRevealPlayerLog>Показать Player.log</ZombielandRevealPlayerLog>
+	<ZombielandPlayerLogRevealFailed>Не удалось показать Player.log. Путь скопирован в буфер обмена.</ZombielandPlayerLogRevealFailed>
+	<ZombielandPlayerLogPathUnavailable>Zombieland не смог найти путь к Player.log.</ZombielandPlayerLogPathUnavailable>
+
 	<Zombieland_Settings>Наведите курсор на любой элемент, чтобы прочитать справку о нем справа. Все настройки могут быть изменены в игре и активны сразу, они сохраняются вместе с игрой.\n\nЧтобы установить настройки по умолчанию для новых игр, измените настройки с главного экрана (Options/Mod Settings/Zombieland).</Zombieland_Settings>
 	<ZombieLandKeyframes>Добавьте ключевые кадры по времени. Проверьте значения с ползунком. Только кадры редактируемы.</ZombieLandKeyframes>
 	<ZombieLandKeyframe0>&lt;- первый ключевой кадр (начало игры) ... будущее время игры -&gt;</ZombieLandKeyframe0>

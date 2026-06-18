@@ -509,8 +509,8 @@ namespace ZombieLand
 					zombie.state = ZombieState.Wandering;
 					zombie.Rotation = Rot4.Random;
 
-					var tickManager = Find.CurrentMap.GetComponent<TickManager>();
-					_ = tickManager.allZombiesCached.Add(zombie);
+					var tickManager = map.GetComponent<TickManager>();
+					_ = tickManager?.allZombiesCached?.Add(zombie);
 				});
 				while (iterator.MoveNext())
 					;
@@ -617,9 +617,9 @@ namespace ZombieLand
 
 		public static void QueueConvertToZombie(ThingWithComps thing, Map mapForTickmanager)
 		{
-			var tickManager = mapForTickmanager.GetComponent<TickManager>();
-			if (tickManager.colonistsToConvert.Contains(thing) == false)
-				tickManager.colonistsToConvert.Enqueue(thing);
+			var queue = mapForTickmanager?.GetComponent<TickManager>()?.colonistsToConvert;
+			if (queue != null && queue.Contains(thing) == false)
+				queue.Enqueue(thing);
 		}
 
 		public static void PlayTink(Thing thing)
@@ -687,9 +687,10 @@ namespace ZombieLand
 			var rot = pawn.Rotation;
 			var wasInGround = corpse != null && corpse.ParentHolder != null && corpse.ParentHolder is not Map;
 
-			if (map == null && thing != null && thing.Destroyed == false)
+			if (map == null)
 			{
-				thing.Destroy();
+				if (thing?.Destroyed == false)
+					thing.Destroy();
 				return;
 			}
 
@@ -789,7 +790,7 @@ namespace ZombieLand
 						pawn.Corpse.Destroy();
 				}
 
-				_ = tickManager.allZombiesCached.Add(zombie);
+				_ = tickManager?.allZombiesCached?.Add(zombie);
 
 				if (map.Biome != SoSTools.sosOuterSpaceBiomeDef)
 				{
@@ -1353,7 +1354,9 @@ namespace ZombieLand
 
 		public static void DoWithAllZombies(Map map, Action<Zombie> action)
 		{
-			map.GetComponent<TickManager>()?.AllZombies().Do(action);
+			var tickManager = map?.GetComponent<TickManager>();
+			if (tickManager?.RuntimeReady == true)
+				tickManager.AllZombies().Do(action);
 		}
 
 		public static Texture2D GetMenuIcon()

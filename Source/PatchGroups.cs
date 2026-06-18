@@ -463,7 +463,10 @@ namespace ZombieLand
 		static readonly HashSet<string> CorePatchTypes = new()
 		{
 			"ZombieLand.Patches+Game_FinalizeInit_Patch",
+			"ZombieLand.Patches+Map_FinalizeInit_Patch",
 			"ZombieLand.Patches+Map_FinalizeLoading_Patch",
+			"ZombieLand.Patches+MapComponentUtility_FinalizeInit_Patch",
+			"ZombieLand.Patches+WorldGenStep_Factions_GenerateFresh_Patch",
 			"ZombieLand.Patches+FactionGenerator_GenerateFactionsIntoWorldLayer_Patch",
 			"ZombieLand.Patches+FactionManager_ExposeData_Patch",
 			"ZombieLand.Patches+IncidentWorker_TryExecute_Patch",

@@ -197,14 +197,15 @@ namespace ZombieLand
 				if (Constants.SHOW_AVOIDANCE_GRID && Tools.ShouldAvoidZombies())
 				{
 					var tickManager = map.GetComponent<TickManager>();
-					if (tickManager == null)
-						return;
-					var avoidGrid = tickManager.avoidGrid;
-					foreach (var c in currentViewRect)
+					if (tickManager?.RuntimeReady == true && tickManager.avoidGrid != null)
 					{
-						var cost = avoidGrid.GetCosts()[c.x + c.z * map.Size.x];
-						if (cost > 0)
-							Tools.DebugPosition(c.ToVector3(), new Color(0f, 1f, 0f, GenMath.LerpDouble(0, 10000, 0.4f, 1f, cost)));
+						var avoidGrid = tickManager.avoidGrid;
+						foreach (var c in currentViewRect)
+						{
+							var cost = avoidGrid.GetCosts()[c.x + c.z * map.Size.x];
+							if (cost > 0)
+								Tools.DebugPosition(c.ToVector3(), new Color(0f, 1f, 0f, GenMath.LerpDouble(0, 10000, 0.4f, 1f, cost)));
+						}
 					}
 				}
 
@@ -369,8 +370,9 @@ namespace ZombieLand
 							var currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
 							return $"Zombieland v{currentVersion.ToString(4)}";
 						}, 99799));
-						if (Mouse.IsOver(zlRect) && tickManager.allZombiesCached.Count <= 100)
-							tickManager.allZombiesCached.Do(zombie => TargetHighlighter.Highlight(new GlobalTargetInfo(zombie), true, false, false));
+						var cachedZombies = tickManager.allZombiesCached;
+						if (Mouse.IsOver(zlRect) && cachedZombies != null && cachedZombies.Count <= 100)
+							cachedZombies.Do(zombie => TargetHighlighter.Highlight(new GlobalTargetInfo(zombie), true, false, false));
 
 						curBaseY -= zlRect.height;
 					}
@@ -420,6 +422,8 @@ namespace ZombieLand
 			{
 				if (LongEventHandler.AnyEventNowOrWaiting || LongEventHandler.ShouldWaitForEvent)
 					return;
+				if (Current.Game == null || Current.ProgramState != ProgramState.Playing || Scribe.mode != LoadSaveMode.Inactive)
+					return;
 
 				_ = ZombieWanderer.processor.MoveNext();
 				if (Find.TickManager.Paused)
@@ -443,7 +447,12 @@ namespace ZombieLand
 
 				var liveZombieCount = 0;
 				for (var i = 0; i < managers.Length; i++)
-					liveZombieCount += managers[i].LiveZombieCount();
+				{
+					var manager = managers[i];
+					if (manager.TryEnsureRuntimeInitialized("Verse.TickManager.TickManagerUpdate") == false)
+						continue;
+					liveZombieCount += manager.LiveZombieCount();
+				}
 
 				ZombieTicker.maxTicking = Mathf.FloorToInt(loopEstimate * liveZombieCount);
 				ZombieTicker.currentTicking = Mathf.FloorToInt(ZombieTicker.maxTicking * ZombieTicker.PercentTicking);
@@ -1435,9 +1444,10 @@ namespace ZombieLand
 			if (map == null)
 				return false;
 
-			var avoidGrid = map.GetComponent<TickManager>()?.avoidGrid;
-			if (avoidGrid == null)
+			var tickManager = map.GetComponent<TickManager>();
+			if (tickManager?.RuntimeReady != true || tickManager.avoidGrid == null)
 				return false;
+			var avoidGrid = tickManager.avoidGrid;
 
 			var costs = avoidGrid.GetCosts();
 			if (costs.Any(cost => cost > 0) == false)
@@ -1540,9 +1550,12 @@ namespace ZombieLand
 
 				var map = pawn.Map;
 				var tickManager = map.GetComponent<TickManager>();
-				if (tickManager == null)
+				if (tickManager?.RuntimeReady != true)
 					return false;
-				var costs = tickManager.avoidGrid.GetCosts();
+				var avoidGrid = tickManager.avoidGrid;
+				if (avoidGrid == null)
+					return false;
+				var costs = avoidGrid.GetCosts();
 				var zombieDanger = costs[lookAhead.x + lookAhead.z * map.Size.x];
 				return (zombieDanger > 0);
 			}
@@ -1600,7 +1613,7 @@ namespace ZombieLand
 				var map = p.Map;
 
 				var tickManager = map.GetComponent<TickManager>();
-				if (tickManager == null)
+				if (tickManager?.RuntimeReady != true)
 					return;
 
 				var avoidGrid = tickManager.avoidGrid;
@@ -1690,8 +1703,8 @@ namespace ZombieLand
 				if (__instance.job == null || __instance.job.playerForced || Tools.ShouldAvoidZombies(___pawn) == false)
 					return;
 
-				var tickManager = ___pawn.Map.GetComponent<TickManager>();
-				if (tickManager == null)
+				var tickManager = ___pawn.Map?.GetComponent<TickManager>();
+				if (tickManager?.RuntimeReady != true)
 					return;
 
 				var avoidGrid = tickManager.avoidGrid;
@@ -1944,9 +1957,10 @@ namespace ZombieLand
 				if (p.CurJob?.playerForced ?? false)
 					return;
 
-				var avoidGrid = map.GetComponent<TickManager>()?.avoidGrid;
-				if (avoidGrid == null)
+				var tickManager = map.GetComponent<TickManager>();
+				if (tickManager?.RuntimeReady != true || tickManager.avoidGrid == null)
 					return;
+				var avoidGrid = tickManager.avoidGrid;
 
 				if (avoidGrid.ShouldAvoid(map, c))
 					__result = Danger.Deadly;
@@ -1964,10 +1978,11 @@ namespace ZombieLand
 					return false;
 
 				var tickManager = pawn.Map?.GetComponent<TickManager>();
-				if (tickManager == null)
+				if (tickManager?.RuntimeReady != true)
 					return false;
 
-				return tickManager.avoidGrid.ShouldAvoid(pawn.Map, cell);
+				var avoidGrid = tickManager.avoidGrid;
+				return avoidGrid != null && avoidGrid.ShouldAvoid(pawn.Map, cell);
 			}
 
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
@@ -2008,10 +2023,11 @@ namespace ZombieLand
 					return false;
 
 				var tickManager = pawn.Map?.GetComponent<TickManager>();
-				if (tickManager == null)
+				if (tickManager?.RuntimeReady != true)
 					return false;
 
-				return tickManager.avoidGrid.ShouldAvoid(pawn.Map, cell);
+				var avoidGrid = tickManager.avoidGrid;
+				return avoidGrid != null && avoidGrid.ShouldAvoid(pawn.Map, cell);
 			}
 
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
@@ -2051,11 +2067,16 @@ namespace ZombieLand
 				if (Tools.ShouldAvoidZombies(pawn) == false)
 					return false;
 
-				var tickManager = pawn.Map?.GetComponent<TickManager>();
-				if (tickManager == null)
+				var map = thing?.Map ?? pawn.Map;
+				if (thing == null || map == null || thing.Position.InBounds(map) == false)
 					return false;
 
-				return tickManager.avoidGrid.ShouldAvoid(thing.Map, thing.Position);
+				var tickManager = map.GetComponent<TickManager>();
+				if (tickManager?.RuntimeReady != true)
+					return false;
+
+				var avoidGrid = tickManager.avoidGrid;
+				return avoidGrid != null && avoidGrid.ShouldAvoid(map, thing.Position);
 			}
 
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
@@ -2100,10 +2121,11 @@ namespace ZombieLand
 					return false;
 
 				var tickManager = map.GetComponent<TickManager>();
-				if (tickManager == null)
+				if (tickManager?.RuntimeReady != true)
 					return false;
 
-				return tickManager.avoidGrid.ShouldAvoid(map, thing.Position);
+				var avoidGrid = tickManager.avoidGrid;
+				return avoidGrid != null && avoidGrid.ShouldAvoid(map, thing.Position);
 			}
 
 			static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
@@ -2348,8 +2370,11 @@ namespace ZombieLand
 
 				if (Tools.ShouldAvoidZombies())
 				{
-					var avoidGrid = map.GetComponent<TickManager>().avoidGrid;
-					_ = builder.AppendLine($"Avoid cost: {avoidGrid.GetCosts()[pos.x + pos.z * map.Size.x]}");
+					if (tickManager.RuntimeReady && tickManager.avoidGrid != null)
+					{
+						var avoidGrid = tickManager.avoidGrid;
+						_ = builder.AppendLine($"Avoid cost: {avoidGrid.GetCosts()[pos.x + pos.z * map.Size.x]}");
+					}
 				}
 
 				var info = ZombieWanderer.GetMapInfo(map);
@@ -2465,11 +2490,58 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(FactionGenerator.GenerateFactionsIntoWorldLayer))]
 		static class FactionGenerator_GenerateFactionsIntoWorldLayer_Patch
 		{
+			const string Phase = "FactionGenerator.GenerateFactionsIntoWorldLayer";
+
 			static void Prefix(List<FactionDef> factions)
 			{
 				if (factions != null && factions.Contains(ZombieDefOf.Zombies) == false)
 					factions.Add(ZombieDefOf.Zombies);
 
+			}
+
+			[HarmonyFinalizer]
+			[HarmonyPriority(ZombieBootstrap.CaptureFinalizerPriority)]
+			static Exception CaptureFinalizer(Exception __exception)
+				=> ZombieBootstrap.CaptureFinalizerException(Phase, __exception);
+
+			[HarmonyPriority(Priority.Last)]
+			static Exception Finalizer(PlanetLayer layer, Exception __exception, bool __runOriginal)
+			{
+				if (ZombieBootstrap.ShouldRunFinalizerRecovery(Phase, __exception, __runOriginal, out var observedException) == false)
+					return __exception;
+				if (observedException == null && __runOriginal)
+					return __exception;
+
+				var phase = observedException == null ? Phase : $"{Phase} exception";
+				ZombieBootstrap.EnsureZombieFaction(phase, out var recovered, layer, createIfMissing: true);
+				return ZombieBootstrap.RecoveryPassthrough(phase, __exception, observedException, recovered);
+			}
+		}
+
+		// patch for repairing the zombie faction after RimWorld swallowed the faction world-gen step exception
+		//
+		[HarmonyPatch(typeof(WorldGenStep_Factions))]
+		[HarmonyPatch(nameof(WorldGenStep_Factions.GenerateFresh))]
+		static class WorldGenStep_Factions_GenerateFresh_Patch
+		{
+			const string Phase = "WorldGenStep_Factions.GenerateFresh";
+
+			[HarmonyFinalizer]
+			[HarmonyPriority(ZombieBootstrap.CaptureFinalizerPriority)]
+			static Exception CaptureFinalizer(Exception __exception)
+				=> ZombieBootstrap.CaptureFinalizerException(Phase, __exception);
+
+			[HarmonyPriority(Priority.Last)]
+			static Exception Finalizer(PlanetLayer layer, Exception __exception, bool __runOriginal)
+			{
+				if (ZombieBootstrap.ShouldRunFinalizerRecovery(Phase, __exception, __runOriginal, out var observedException) == false)
+					return __exception;
+				if (observedException == null && __runOriginal)
+					return __exception;
+
+				var phase = observedException == null ? Phase : $"{Phase} exception";
+				ZombieBootstrap.EnsureZombieFaction(phase, out var recovered, layer, createIfMissing: true);
+				return ZombieBootstrap.RecoveryPassthrough(phase, __exception, observedException, recovered);
 			}
 		}
 
@@ -2479,39 +2551,36 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(FactionManager.ExposeData))]
 		static class FactionManager_ExposeData_Patch
 		{
-			static void Postfix(List<Faction> ___allFactions)
+			const string Phase = "FactionManager.ExposeData";
+
+			static void Postfix(FactionManager __instance, List<Faction> ___allFactions)
 			{
-				if (Scribe.mode == LoadSaveMode.Saving)
+				// Let vanilla finish all load cleanup/recache passes before mutating factions.
+				if (Scribe.mode != LoadSaveMode.PostLoadInit)
 					return;
-				if (___allFactions == null)
-					return;
 
-				var factionDefs = ___allFactions.Select(f => f.def).ToList();
-				if (factionDefs.Contains(ZombieDefOf.Zombies) == false)
-				{
-					var parms = new FactionGeneratorParms(ZombieDefOf.Zombies);
-					var zombies = FactionGenerator.NewGeneratedFaction(parms);
-					foreach (var faction in ___allFactions)
-					{
-						var rel1 = new FactionRelation()
-						{
-							other = faction,
-							baseGoodwill = 0,
-							kind = FactionRelationKind.Hostile
-						};
-						zombies.relations.Add(rel1);
+				ZombieBootstrap.EnsureZombieFactionAfterPostLoad(__instance, ___allFactions);
+			}
 
-						var rel2 = new FactionRelation()
-						{
-							other = zombies,
-							baseGoodwill = 0,
-							kind = FactionRelationKind.Hostile
-						};
-						faction.relations.Add(rel2);
+			[HarmonyFinalizer]
+			[HarmonyPriority(ZombieBootstrap.CaptureFinalizerPriority)]
+			static Exception CaptureFinalizer(Exception __exception)
+				=> ZombieBootstrap.CaptureFinalizerException(Phase, __exception);
 
-					}
-					___allFactions.Add(zombies);
-				}
+			[HarmonyPriority(Priority.Last)]
+			static Exception Finalizer(FactionManager __instance, List<Faction> ___allFactions, Exception __exception, bool __runOriginal)
+			{
+				if (ZombieBootstrap.ShouldRunFinalizerRecovery(Phase, __exception, __runOriginal, out var observedException) == false)
+					return __exception;
+				if (Scribe.mode != LoadSaveMode.PostLoadInit)
+					return __exception;
+				if (observedException == null && __runOriginal)
+					return __exception;
+
+				var hadZombieFaction = ___allFactions?.Any(faction => faction?.def == ZombieDefOf.Zombies) == true;
+				ZombieBootstrap.EnsureZombieFactionAfterPostLoad(__instance, ___allFactions);
+				var recovered = hadZombieFaction == false && ___allFactions?.Any(faction => faction?.def == ZombieDefOf.Zombies) == true;
+				return ZombieBootstrap.RecoveryPassthrough(Phase, __exception, observedException, recovered);
 			}
 		}
 
@@ -2623,7 +2692,7 @@ namespace ZombieLand
 				if (isNotInfected && pawn.IsColonist)
 				{
 					var tickManager = map.GetComponent<TickManager>();
-					if (tickManager?.avoidGrid?.InAvoidDanger(pawn) ?? false)
+					if (tickManager?.RuntimeReady == true && (tickManager.avoidGrid?.InAvoidDanger(pawn) ?? false))
 						tickManager.MarkZombieContact();
 				}
 
@@ -5665,11 +5734,71 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(Game.FinalizeInit))]
 		static class Game_FinalizeInit_Patch
 		{
+			const string Phase = "Game.FinalizeInit";
+
+			static void Prefix()
+			{
+				ZombieBootstrap.ResetLogDedupers();
+			}
+
 			static void Postfix()
 			{
-				Tools.EnableTwinkie(ZombieSettings.Values.replaceTwinkie);
-				CustomDefs.Zombie.race.baseHealthScale = ZombieSettings.Values.healthFactor;
-				ZombieSymbiant.ClearActiveSymbiantCaches();
+				ApplyFinalizeInitSettings(Phase);
+			}
+
+			[HarmonyFinalizer]
+			[HarmonyPriority(ZombieBootstrap.CaptureFinalizerPriority)]
+			static Exception CaptureFinalizer(Exception __exception)
+				=> ZombieBootstrap.CaptureFinalizerException(Phase, __exception);
+
+			[HarmonyPriority(Priority.Last)]
+			static Exception Finalizer(Exception __exception, bool __runOriginal)
+			{
+				if (ZombieBootstrap.ShouldRunFinalizerRecovery(Phase, __exception, __runOriginal, out var observedException, runWhenOriginalSucceeded: true) == false)
+					return __exception;
+
+				var phase = observedException == null ? Phase : $"{Phase} exception";
+				// The Postfix owns normal settings. This clean-success finalizer only
+				// sweeps already-loaded maps after vanilla game init reached Playing.
+				if (observedException != null)
+					ApplyFinalizeInitSettings(phase);
+
+				var recovered = false;
+				if (__runOriginal || observedException != null)
+					ZombieBootstrap.RunSafely(phase, "map bootstrap sweep", () => Find.Maps?.Do(map => recovered |= ZombieBootstrap.EnsureMapStateAfterFinalize(phase, map, observedException == null)));
+				return ZombieBootstrap.RecoveryPassthrough(phase, __exception, observedException, recovered);
+			}
+
+			static void ApplyFinalizeInitSettings(string phase)
+			{
+				ZombieBootstrap.RunSafely(phase, "Twinkie graphics", () => Tools.EnableTwinkie(ZombieSettings.Values.replaceTwinkie));
+				ZombieBootstrap.RunSafely(phase, "zombie health scale", () => CustomDefs.Zombie.race.baseHealthScale = ZombieSettings.Values.healthFactor);
+				ZombieBootstrap.RunSafely(phase, "symbiant cache clear", ZombieSymbiant.ClearActiveSymbiantCaches);
+			}
+		}
+
+		// patch for retrying essential map state after partial vanilla map init
+		//
+		[HarmonyPatch(typeof(Map))]
+		[HarmonyPatch(nameof(Map.FinalizeInit))]
+		static class Map_FinalizeInit_Patch
+		{
+			const string Phase = "Map.FinalizeInit";
+
+			[HarmonyFinalizer]
+			[HarmonyPriority(ZombieBootstrap.CaptureFinalizerPriority)]
+			static Exception CaptureFinalizer(Exception __exception)
+				=> ZombieBootstrap.CaptureFinalizerException(Phase, __exception);
+
+			[HarmonyPriority(Priority.Last)]
+			static Exception Finalizer(Map __instance, Exception __exception, bool __runOriginal)
+			{
+				if (ZombieBootstrap.ShouldRunFinalizerRecovery(Phase, __exception, __runOriginal, out var observedException, runWhenOriginalSucceeded: true) == false)
+					return __exception;
+
+				var phase = observedException == null ? Phase : $"{Phase} exception";
+				var recovered = ZombieBootstrap.EnsureMapStateAfterFinalize(phase, __instance, observedException == null);
+				return ZombieBootstrap.RecoveryPassthrough(phase, __exception, observedException, recovered);
 			}
 		}
 
@@ -5679,10 +5808,56 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(Map.FinalizeLoading))]
 		static class Map_FinalizeLoading_Patch
 		{
+			const string Phase = "Map.FinalizeLoading";
+
 			static void Prefix(Map __instance)
 			{
-				var grid = __instance.GetGrid();
-				grid.IterateCellsQuick(cell => cell.zombieCount = 0);
+				ZombieBootstrap.ResetZombieGrid(Phase, __instance);
+			}
+
+			[HarmonyFinalizer]
+			[HarmonyPriority(ZombieBootstrap.CaptureFinalizerPriority)]
+			static Exception CaptureFinalizer(Exception __exception)
+				=> ZombieBootstrap.CaptureFinalizerException(Phase, __exception);
+
+			[HarmonyPriority(Priority.Last)]
+			static Exception Finalizer(Map __instance, Exception __exception, bool __runOriginal)
+			{
+				if (ZombieBootstrap.ShouldRunFinalizerRecovery(Phase, __exception, __runOriginal, out var observedException) == false)
+					return __exception;
+
+				var phase = observedException == null ? Phase : $"{Phase} exception";
+				if (observedException != null)
+					ZombieBootstrap.ResetZombieGrid(phase, __instance, false);
+				var recovered = false;
+				if (__runOriginal || observedException != null)
+					recovered = ZombieBootstrap.EnsureMapStateAfterFinalize(phase, __instance, false);
+				return ZombieBootstrap.RecoveryPassthrough(phase, __exception, observedException, recovered);
+			}
+		}
+
+		// patch for retrying essential map state after RimWorld's per-component init loop
+		//
+		[HarmonyPatch(typeof(MapComponentUtility))]
+		[HarmonyPatch(nameof(MapComponentUtility.FinalizeInit))]
+		static class MapComponentUtility_FinalizeInit_Patch
+		{
+			const string Phase = "MapComponentUtility.FinalizeInit";
+
+			[HarmonyFinalizer]
+			[HarmonyPriority(ZombieBootstrap.CaptureFinalizerPriority)]
+			static Exception CaptureFinalizer(Exception __exception)
+				=> ZombieBootstrap.CaptureFinalizerException(Phase, __exception);
+
+			[HarmonyPriority(Priority.Last)]
+			static Exception Finalizer(Map map, Exception __exception, bool __runOriginal)
+			{
+				if (ZombieBootstrap.ShouldRunFinalizerRecovery(Phase, __exception, __runOriginal, out var observedException, runWhenOriginalSucceeded: true) == false)
+					return __exception;
+
+				var phase = observedException == null ? Phase : $"{Phase} exception";
+				var recovered = ZombieBootstrap.EnsureMapStateAfterFinalize(phase, map, observedException == null);
+				return ZombieBootstrap.RecoveryPassthrough(phase, __exception, observedException, recovered);
 			}
 		}
 
@@ -6212,6 +6387,11 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(Game.InitNewGame))]
 		class Game_InitNewGame_Patch
 		{
+			static void Prefix()
+			{
+				ZombieBootstrap.ResetLogDedupers();
+			}
+
 			static void Postfix()
 			{
 				Find.CurrentMap?.mapPawns.FreeColonists
@@ -6441,24 +6621,28 @@ namespace ZombieLand
 				if (selectedPawns == null || selectedPawns.Count != 1)
 					return;
 				var pawn = selectedPawns[0];
+				var map = pawn.Map;
+				if (map == null)
+					return;
+
 				var opts = __result;
-				var shocker = pawn.Map.thingGrid.ThingAt<ZombieShocker>(IntVec3.FromVector3(clickPos));
-				if (shocker != null)
+				var shocker = map.thingGrid.ThingAt<ZombieShocker>(IntVec3.FromVector3(clickPos));
+				if (shocker != null
+					&& pawn.CanReach(shocker, PathEndMode.ClosestTouch, Danger.Deadly, false, false, TraverseMode.ByPawn)
+					&& pawn.CanReserve(shocker)
+					&& shocker.compPowerTrader.PowerOn
+					&& shocker.HasValidRoom())
 				{
-					if (pawn.CanReach(shocker, PathEndMode.ClosestTouch, Danger.Deadly, false, false, TraverseMode.ByPawn))
-						if (pawn.CanReserve(shocker) && shocker.compPowerTrader.PowerOn && shocker.HasValidRoom())
-						{
-							void job()
-							{
-								var job = JobMaker.MakeJob(CustomDefs.ZapZombies, shocker);
-								_ = pawn.jobs.TryTakeOrderedJob(job, new JobTag?(JobTag.Misc), false);
-							}
-							;
-							opts.Add(new FloatMenuOption(zapZombiesLabel, job));
-						}
+					void job()
+					{
+						var job = JobMaker.MakeJob(CustomDefs.ZapZombies, shocker);
+						_ = pawn.jobs.TryTakeOrderedJob(job, new JobTag?(JobTag.Misc), false);
+					}
+					;
+					opts.Add(new FloatMenuOption(zapZombiesLabel, job));
 				}
 
-				var ropableZombie = pawn.Map.GetComponent<TickManager>().GetRopableZombie(clickPos);
+				var ropableZombie = map.GetComponent<TickManager>()?.GetRopableZombie(clickPos);
 				if (ropableZombie != null)
 				{
 					void job()

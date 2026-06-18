@@ -55,8 +55,8 @@ namespace ZombieLand
 			if (ticks / (float)GenDate.TicksPerDay <= ZombieSettings.Values.daysBeforeZombiesCome)
 				return 0f;
 
-			var tm = map.GetComponent<TickManager>();
-			if (tm.NewMapZombieDelay(ticks))
+			var tm = map?.GetComponent<TickManager>();
+			if (tm == null || tm.NewMapZombieDelay(ticks))
 				return 0f;
 
 			var currentDay = t / (float)GenDate.TicksPerDay;

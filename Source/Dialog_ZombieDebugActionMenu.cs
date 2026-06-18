@@ -91,11 +91,14 @@ namespace ZombieLand
 		[DebugAction("Zombieland", "Trigger: Incident")]
 		private static void TriggerZombieIncident()
 		{
-			var tm = Find.CurrentMap.GetComponent<TickManager>();
+			var map = Find.CurrentMap;
+			var tm = map?.GetComponent<TickManager>();
+			if (tm?.RuntimeReady != true || tm.incidentInfo?.parameters == null)
+				return;
 			var size = tm.incidentInfo.parameters.incidentSize;
 			if (size > 0)
 			{
-				var success = ZombiesRising.TryExecute(Find.CurrentMap, size, IntVec3.Invalid, false, false);
+				var success = ZombiesRising.TryExecute(map, size, IntVec3.Invalid, false, false);
 				if (success == false)
 					Log.Error("Incident creation failed. Most likely no valid spawn point found.");
 			}

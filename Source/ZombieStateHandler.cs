@@ -178,10 +178,11 @@ namespace ZombieLand
 			if (roof == RoofDefOf.RoofRockThick || roof == RoofDefOf.RoofRockThin)
 				return false;
 
-			var tickManager = Find.CurrentMap.GetComponent<TickManager>();
-			foreach (var z in tickManager.allZombiesCached)
-				if (z.Position == destination)
-					return false;
+			var cachedZombies = map.GetComponent<TickManager>()?.allZombiesCached;
+			if (cachedZombies != null)
+				foreach (var z in cachedZombies)
+					if (z.Position == destination)
+						return false;
 
 			zombie.wallPushProgress = 0f;
 			zombie.wallPushStart = pos.ToVector3Shifted();

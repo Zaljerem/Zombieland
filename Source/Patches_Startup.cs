@@ -95,6 +95,7 @@ namespace ZombieLand
 		{
 			static void Prefix()
 			{
+				ZombieBootstrap.ResetLogDedupers();
 				ZombieSymbiant.ResetTransientStaticState();
 			}
 		}

@@ -281,19 +281,22 @@ namespace ZombieLand
 			if (RimThreaded == null)
 				managers.Do(tickManager =>
 				{
+					if (tickManager.TryEnsureRuntimeInitialized("ZombieTicker.DoSingleTick"))
+					{
+						tickManager.ZombieTicking();
+						return;
+					}
+
 					switch (tickManager.isInitialized)
 					{
 						case 0:
-							Log.Error("Fatal error! Zombieland's TickManager is not initialized. This should never happen unless you're using another mod that caused an error in MapComponent.FinalizeInit");
+							tickManager.ReportInitializationProblemOnce("Zombieland's TickManager was never initialized. This usually means RimWorld or another mod failed before MapComponent.FinalizeInit reached Zombieland.");
 							break;
 						case 1:
-							Log.Error("Fatal error! Zombieland's TickManager is not initialized. The base implementation never returned which means another mod is causing an error in MapComponent.FinalizeInit");
+							tickManager.ReportInitializationProblemOnce("Zombieland's TickManager stopped while entering MapComponent.FinalizeInit.");
 							break;
 						case 2:
-							Log.Error("Fatal error! Zombieland's TickManager is not initialized because its FinalizeInit method caused an error. Maybe another mod caused this error indirectly, you should report this.");
-							break;
-						case 3:
-							tickManager.ZombieTicking();
+							tickManager.ReportInitializationProblemOnce("Zombieland's TickManager stopped while finalizing its map state.");
 							break;
 					}
 				});
@@ -315,7 +318,13 @@ namespace ZombieLand
 
 	public class TickManager : MapComponent
 	{
+		public const int InitializationReady = 3;
+
 		public int isInitialized = 0;
+		bool initializationProblemLogged;
+		bool initializationPlayerNoticeQueued;
+		bool initializationPlayerNoticeShown;
+		int nextInitializationRetryTick;
 		int populationSpawnCounter;
 
 		int nextVisibleGridUpdate;
@@ -349,6 +358,7 @@ namespace ZombieLand
 
 		public int CurrentZombiesTickingCandidatesCount => currentZombiesTickingCandidatesCount;
 		public int CurrentZombiesTickingCandidatesCapacity => currentZombiesTickingCandidates?.Length ?? 0;
+		public bool RuntimeReady => isInitialized == InitializationReady && taskTicker != null;
 		public List<ZombieCorpse> allZombieCorpses;
 		public AvoidGrid avoidGrid;
 		public AvoidGrid emptyAvoidGrid;
@@ -425,13 +435,117 @@ namespace ZombieLand
 		public override void FinalizeInit()
 		{
 			isInitialized = 1;
-			base.FinalizeInit();
+			try
+			{
+				base.FinalizeInit();
+			}
+			finally
+			{
+				_ = EnsureRuntimeInitialized("TickManager.FinalizeInit");
+			}
+		}
+
+		public bool TryEnsureRuntimeInitialized(string phase)
+		{
+			if (RuntimeReady)
+				return true;
+			if (CanRetryRuntimeInitialization() == false)
+				return false;
+			return EnsureRuntimeInitialized(phase);
+		}
+
+		public bool EnsureRuntimeInitialized(string phase)
+			=> EnsureRuntimeInitialized(phase, out _);
+
+		public bool EnsureRuntimeInitialized(string phase, out bool changed)
+		{
+			changed = false;
+			if (RuntimeReady)
+				return true;
+			if (isInitialized == 0)
+			{
+				ReportInitializationProblemOnce($"runtime initialization skipped during {phase}: TickManager.FinalizeInit has not run, so Zombieland will not synthesize the vanilla map-component lifecycle.");
+				return false;
+			}
+			if (HasRuntimePrerequisites(phase) == false)
+				return false;
+
+			try
+			{
+				// Late retries rebuild only Zombieland runtime fields; they must not
+				// compensate for vanilla map initialization that did not finish.
+				InitializeRuntimeState(phase);
+				ClearInitializationProblemState();
+				nextInitializationRetryTick = 0;
+				changed = true;
+				return true;
+			}
+			catch (Exception ex)
+			{
+				taskTicker = null;
+				isInitialized = 2;
+				ReportInitializationProblemOnce($"runtime initialization failed during {phase}: {ex}");
+				return false;
+			}
+		}
+
+		bool CanRetryRuntimeInitialization()
+		{
+			if (RuntimeReady)
+				return true;
+			var ticks = GenTicks.TicksGame;
+			if (ticks < nextInitializationRetryTick)
+				return false;
+			nextInitializationRetryTick = ticks + 250;
+			return true;
+		}
+
+		bool HasRuntimePrerequisites(string phase)
+		{
+			if (map == null)
+			{
+				ReportInitializationProblemOnce($"runtime initialization skipped during {phase}: map is missing.");
+				return false;
+			}
+
+			var missing = new List<string>();
+			if (map.components == null)
+				missing.Add("components");
+			if (map.mapPawns == null)
+				missing.Add("mapPawns");
+			if (map.areaManager?.Home == null)
+				missing.Add("home area");
+			if (map.regionGrid?.allRooms == null)
+				missing.Add("region rooms");
+			if (map.listerThings == null)
+				missing.Add("thing lister");
+			if (map.thingGrid == null)
+				missing.Add("thing grid");
+			if (map.edificeGrid == null)
+				missing.Add("edifice grid");
+			if (map.floodFiller == null)
+				missing.Add("flood filler");
+			if (map.pathing == null)
+				missing.Add("pathing");
+			if (map.listerBuildings == null)
+				missing.Add("building lister");
+			if (map.pawnDestinationReservationManager == null)
+				missing.Add("destination reservations");
+
+			if (missing.Count == 0)
+				return true;
+
+			ReportInitializationProblemOnce($"runtime initialization skipped during {phase}: map services missing ({string.Join(", ", missing)}).");
+			return false;
+		}
+
+		void InitializeRuntimeState(string phase)
+		{
 			isInitialized = 2;
 
 			Tools.nextPlayerReachableRegionsUpdate = 0;
 
-			var grid = map.GetGrid();
-			grid.IterateCellsQuick(cell => cell.zombieCount = 0);
+			ZombieBootstrap.ResetZombieGrid(phase, map, rebuildLiveZombieCounts: true);
 
 			colonyPointsTickCounter = -1;
 			RecalculateColonyPoints();
@@ -439,10 +553,11 @@ namespace ZombieLand
 			nextVisibleGridUpdate = 0;
 			RecalculateZombieWanderDestination();
 
-			var destinations = map.pawnDestinationReservationManager.reservedDestinations;
-			var zombieFaction = Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies);
-			if (!destinations.ContainsKey(zombieFaction))
-				_ = map.pawnDestinationReservationManager.GetPawnDestinationSetFor(zombieFaction);
+			var zombieFaction = ZombieBootstrap.EnsureZombieFaction(phase);
+			if (zombieFaction == null)
+				throw new InvalidOperationException("zombie faction is missing");
+			if (ZombieBootstrap.EnsureZombieDestinationReservations(phase, map, zombieFaction) == false)
+				throw new InvalidOperationException("zombie destination reservations are not ready");
 
 			var allZombies = AllZombies();
 			if (Tools.ShouldAvoidZombies())
@@ -471,7 +586,74 @@ namespace ZombieLand
 			while (taskTicker.Current as string != "end")
 				_ = taskTicker.MoveNext();
 
-			isInitialized = 3;
+			isInitialized = InitializationReady;
+		}
+
+		public void ReportInitializationProblemOnce(string reason)
+		{
+			if (initializationProblemLogged)
+			{
+				QueuePlayerInitializationProblemNotice();
+				return;
+			}
+			initializationProblemLogged = true;
+			QueuePlayerInitializationProblemNotice();
+
+			var mapLabel = "unknown map";
+			try
+			{
+				if (map != null)
+					mapLabel = $"map {map.uniqueID}";
+			}
+			catch
+			{
+			}
+
+			Log.Error($"Zombieland is skipping zombie ticking for {mapLabel} because required map initialization is incomplete. This is a downstream safety guard; the original cause is usually the first earlier exception during map or mod initialization. Details: {reason}");
+		}
+
+		void ClearInitializationProblemState()
+		{
+			initializationProblemLogged = false;
+			initializationPlayerNoticeQueued = false;
+			initializationPlayerNoticeShown = false;
+		}
+
+		void QueuePlayerInitializationProblemNotice()
+		{
+			if (initializationPlayerNoticeQueued || initializationPlayerNoticeShown)
+				return;
+
+			initializationPlayerNoticeQueued = true;
+		}
+
+		void ShowQueuedPlayerInitializationProblemNoticeIfStillBroken()
+		{
+			try
+			{
+				if (initializationPlayerNoticeQueued == false || initializationPlayerNoticeShown || RuntimeReady)
+					return;
+				if (Current.Game == null || Current.ProgramState != ProgramState.Playing)
+					return;
+				if (map == null || Find.Maps?.Contains(map) != true || Find.LetterStack == null)
+					return;
+
+				initializationPlayerNoticeQueued = false;
+				var letter = new ChoiceLetter_ZombielandMapSetupFailed
+				{
+					def = LetterDefOf.NegativeEvent,
+					ID = Find.UniqueIDsManager.GetNextLetterID(),
+					Label = "LetterLabelZombielandMapSetupFailed".Translate(),
+					Text = "ZombielandMapSetupFailed".Translate(),
+					lookTargets = new LookTargets(map.Center, map)
+				};
+				Find.LetterStack.ReceiveLetter(letter);
+				initializationPlayerNoticeShown = true;
+			}
+			catch (Exception ex)
+			{
+				Log.Error($"Zombieland failed to show its player-facing initialization problem notice: {ex}");
+			}
 		}
 
 		public override void MapRemoved()
@@ -483,7 +665,8 @@ namespace ZombieLand
 		public void Cleanup()
 		{
 			StopAmbientSound();
-			zombiePathing.running = false;
+			if (zombiePathing != null)
+				zombiePathing.running = false;
 			zombiePathing = null;
 		}
 
@@ -551,7 +734,7 @@ namespace ZombieLand
 				return;
 			colonyPointsTickCounter = 100;
 
-			currentColonyPoints = Tools.ColonyPoints().Sum();
+			currentColonyPoints = Tools.ColonyPoints(map).Sum();
 		}
 
 		public void RecalculateZombieWanderDestination()
@@ -649,6 +832,8 @@ namespace ZombieLand
 
 		public int LiveZombieCount()
 		{
+			if (RuntimeReady == false || allZombiesCached == null)
+				return 0;
 			var count = 0;
 			foreach (var zombie in allZombiesCached)
 				if (zombie != null && zombie.Spawned && zombie.Dead == false)
@@ -659,6 +844,13 @@ namespace ZombieLand
 		public static void PrepareThreadedTicking(object input)
 		{
 			var tickManager = (TickManager)input;
+			if (tickManager.RuntimeReady == false)
+			{
+				tickManager.ReportInitializationProblemOnce($"RimThreaded prepare skipped because TickManager is not ready (state {tickManager.isInitialized}).");
+				tickManager.ClearZombieTickingBuffers();
+				return;
+			}
+
 			var previousCandidateCount = tickManager.currentZombiesTickingCandidatesCount;
 			var allZombies = tickManager.allZombiesCached;
 			var candidateCapacity = allZombies?.Count ?? 0;
@@ -863,6 +1055,9 @@ namespace ZombieLand
 		{
 			// is being called by many threads at the same time
 			var tickManager = (TickManager)input;
+			if (tickManager.RuntimeReady == false || tickManager.currentZombiesTickingCount <= 0)
+				return;
+
 			var threatLevel = ZombieWeather.GetThreatLevel(tickManager.map);
 			while (true)
 			{
@@ -881,6 +1076,8 @@ namespace ZombieLand
 
 		public Zombie GetRopableZombie(Vector3 clickPos)
 		{
+			if (allZombiesCached == null)
+				return null;
 			return allZombiesCached.FirstOrDefault(zombie => zombie.IsConfused && (clickPos - zombie.DrawPos).MagnitudeHorizontalSquared() <= 0.5f);
 		}
 
@@ -1044,7 +1241,7 @@ namespace ZombieLand
 
 		public int ZombieCount()
 		{
-			return allZombiesCached.Count(zombie => zombie.Spawned && zombie.Dead == false) + ZombieGenerator.ZombiesSpawning;
+			return (allZombiesCached?.Count(zombie => zombie.Spawned && zombie.Dead == false) ?? 0) + ZombieGenerator.ZombiesSpawning;
 		}
 
 		public bool CanHaveMoreZombies()
@@ -1368,6 +1565,14 @@ namespace ZombieLand
 		public override void MapComponentTick()
 		{
 			base.MapComponentTick();
+			ShowQueuedPlayerInitializationProblemNoticeIfStillBroken();
+
+			if (TryEnsureRuntimeInitialized("TickManager.MapComponentTick") == false)
+			{
+				ReportInitializationProblemOnce($"MapComponentTick skipped because TickManager is not ready (state {isInitialized}, taskTicker {(taskTicker == null ? "missing" : "present")}).");
+				ShowQueuedPlayerInitializationProblemNoticeIfStillBroken();
+				return;
+			}
 
 			_ = taskTicker.MoveNext();
 			IncreaseZombiePopulation();

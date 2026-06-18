@@ -23,16 +23,16 @@ namespace ZombieLand
 			GenExplosion.DoExplosion(pos, map, radius, damageDef, null);
 
 			var r2 = (radius - 1) * (radius - 1);
-			map.GetComponent<TickManager>().allZombiesCached
-				.DoIf(zombie => zombie.IsTanky && zombie.Position.DistanceToSquared(pos) <= r2, zombie =>
-					{
-						zombie.hasTankyShield = -1;
-						zombie.hasTankySuit = -1;
-						if (Tools.Difficulty() <= 3)
-							zombie.hasTankyHelmet = -1;
-						if (ZombieAwarenessCues.ShouldPlayZombieActionSound())
-							SoundDefOf.Crunch.PlayOneShot(SoundInfo.InMap(new TargetInfo(zombie.Position, zombie.Map, false), MaintenanceType.None));
-					});
+			var zombies = map.GetComponent<TickManager>()?.allZombiesCached;
+			zombies?.DoIf(zombie => zombie.IsTanky && zombie.Position.DistanceToSquared(pos) <= r2, zombie =>
+			{
+				zombie.hasTankyShield = -1;
+				zombie.hasTankySuit = -1;
+				if (Tools.Difficulty() <= 3)
+					zombie.hasTankyHelmet = -1;
+				if (ZombieAwarenessCues.ShouldPlayZombieActionSound())
+					SoundDefOf.Crunch.PlayOneShot(SoundInfo.InMap(new TargetInfo(zombie.Position, zombie.Map, false), MaintenanceType.None));
+			});
 		}
 	}
 

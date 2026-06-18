@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
 
+	<LetterLabelZombielandMapSetupFailed>Zombieland bu haritada başlamadı</LetterLabelZombielandMapSetupFailed>
+	<ZombielandMapSetupFailed>RimWorld bu haritayı yükledi, ancak Zombieland harita kurulumunu bitiremedi. Zombieland sorunu onarmayı denedi ama başaramadı.\n\nBunun anlamı: zombiler bu haritada ortaya çıkmayacak veya hareket etmeyecek. Zombi olayları, zombilerden kaçınma, zombi cesetleri ve özel zombi davranışları burada çalışmayabilir.\n\nBu genellikle RimWorld veya başka bir mod haritayı yüklerken oluşan bir hatadan kaynaklanır. Logda daha yukarıdaki ilk kırmızı hatayı kontrol edin, sonra yakın zamanda eklenen veya güncellenen modları devre dışı bırakmayı deneyin. RimWorld ve Zombieland sürümlerinin uyumlu olduğundan da emin olun.</ZombielandMapSetupFailed>
+	<ZombielandRevealPlayerLog>Player.log dosyasını göster</ZombielandRevealPlayerLog>
+	<ZombielandPlayerLogRevealFailed>Player.log gösterilemedi. Yol panoya kopyalandı.</ZombielandPlayerLogRevealFailed>
+	<ZombielandPlayerLogPathUnavailable>Zombieland Player.log yolunu bulamadı.</ZombielandPlayerLogPathUnavailable>
+
 	<Zombieland_Settings>Sağ taraftaki yardım metnini okumak için herhangi bir öğenin üzerine gelin. Tüm ayarlar oyun içinde değiştirilebilir ve hemen aktif olur, oyunla birlikte kaydedilir.\n\nYeni oyunlar için varsayılanları ayarlamak için, ayarları ana ekrandan değiştirin (Seçenekler/Mod Ayarları/Zombieland).</Zombieland_Settings>
 	<ZombieLandKeyframes>Zamana bağlı anahtar kare ekleyin. Değerleri slaytla kontrol edin. Sadece kareler düzenlenebilir.</ZombieLandKeyframes>
 	<ZombieLandKeyframe0>&lt;- ilk ana kare (oyunun başlangıcı) . . . gelecekteki oyun zamanı -&gt;</ZombieLandKeyframe0>

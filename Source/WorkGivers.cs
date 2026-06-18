@@ -32,7 +32,10 @@ namespace ZombieLand
 			var area = map.areaManager.AllAreas.FirstOrDefault(area => area.Label == ZombieSettings.Values.extractZombieArea);
 
 			var tickManager = map.GetComponent<TickManager>();
-			return tickManager.allZombieCorpses
+			var corpses = tickManager?.RuntimeReady == true ? tickManager.allZombieCorpses : null;
+			if (corpses == null)
+				return Enumerable.Empty<Thing>();
+			return corpses
 				.Where(corpse => corpse.DestroyedOrNull() == false && corpse.Spawned && (area == null || area[corpse.Position]))
 				.OrderBy(corpse => corpse.Position.DistanceToSquared(pos)).Take(8); // just consider the nearest 8
 		}
@@ -60,9 +63,9 @@ namespace ZombieLand
 			if (result && forced == false && ZombieSettings.Values.betterZombieAvoidance)
 			{
 				var tickManager = map.GetComponent<TickManager>();
-				if (tickManager != null)
+				var avoidGrid = tickManager?.avoidGrid;
+				if (tickManager?.RuntimeReady == true && avoidGrid != null)
 				{
-					var avoidGrid = tickManager.avoidGrid;
 					var path = pawn.Map.pathFinder.FindPathNow(pawn.Position, t, pawn, null, PathEndMode.ClosestTouch);
 					var shouldAvoid = path.NodesReversed.Any(cell => avoidGrid.ShouldAvoid(map, cell));
 					path.ReleaseToPool();
@@ -138,9 +141,9 @@ namespace ZombieLand
 			{
 				var map = pawn.Map;
 				var tickManager = map.GetComponent<TickManager>();
-				if (tickManager != null)
+				var avoidGrid = tickManager?.avoidGrid;
+				if (tickManager?.RuntimeReady == true && avoidGrid != null)
 				{
-					var avoidGrid = tickManager.avoidGrid;
 					var path = pawn.Map.pathFinder.FindPathNow(pawn.Position, t, pawn, null, PathEndMode.ClosestTouch);
 					var shouldAvoid = path.NodesReversed.Any(cell => avoidGrid.ShouldAvoid(map, cell));
 					path.ReleaseToPool();

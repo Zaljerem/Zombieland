@@ -212,6 +212,8 @@ namespace ZombieLand
 			var zombiesSpawning = 0;
 			var counter = 1;
 			var tickManager = map.GetComponent<TickManager>();
+			if (tickManager?.RuntimeReady != true)
+				yield break;
 			while (incidentSize > 0 && (ignoreLimit || tickManager.CanHaveMoreZombies()) && counter <= 10)
 			{
 				var cells = Tools.GetCircle(Constants.SPAWN_INCIDENT_RADIUS)
@@ -224,7 +226,7 @@ namespace ZombieLand
 
 				foreach (var cell in cells)
 				{
-					var it = ZombieGenerator.SpawnZombieIterativ(cell, map, zombieType, zombie => tickManager.allZombiesCached.Add(zombie));
+					var it = ZombieGenerator.SpawnZombieIterativ(cell, map, zombieType, zombie => tickManager.allZombiesCached?.Add(zombie));
 					while (it.MoveNext())
 					{
 						if (ZombielandMod.frameWatch.ElapsedMilliseconds >= 10)
@@ -307,7 +309,10 @@ namespace ZombieLand
 
 		public static bool TryExecute(Map map, int incidentSize, IntVec3 spot, bool useAlert, bool ignoreLimit = false, ZombieType zombieType = ZombieType.Random)
 		{
-			if (map.IsBlacklisted())
+			if (map == null || map.IsBlacklisted())
+				return false;
+			var tickManager = map.GetComponent<TickManager>();
+			if (tickManager?.RuntimeReady != true)
 				return false;
 			var cellValidator = Tools.ZombieSpawnLocator(map, true);
 			spot = GetValidSpot(map, spot, cellValidator);

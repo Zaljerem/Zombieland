@@ -403,7 +403,7 @@ namespace ZombieLand
 				bombTickingInterval = -1f;
 				bombWillGoOff = false;
 				hasTankyShield = -1f;
-				Map.GetComponent<TickManager>()?.AddExplosion(Position);
+				Map?.GetComponent<TickManager>()?.AddExplosion(Position);
 			}
 
 			if (isToxicSplasher)

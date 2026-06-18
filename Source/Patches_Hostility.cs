@@ -419,9 +419,16 @@ namespace ZombieLand
 						var canHarmElectricZombies = verb.CanHarmElectricZombies();
 						if (props.IsMeleeAttack == false && props.range > 0)
 						{
+							var map = attacker.Map;
+							if (map == null)
+								return;
+
 							var maxDownedRangeSquared = 6 * 6;
 							var maxRangeSquared = (int)(props.range * props.range);
-							var tickManager = attacker.Map.GetComponent<TickManager>();
+							var tickManager = map.GetComponent<TickManager>();
+							var cachedZombies = tickManager?.RuntimeReady == true ? tickManager.allZombiesCached : null;
+							if (cachedZombies == null)
+								return;
 							var pos = attacker.Position;
 							int zombiePrioritySorter(Zombie zombie)
 							{
@@ -441,7 +448,7 @@ namespace ZombieLand
 								return -score;
 							}
 							var losFlags = TargetScanFlags.NeedLOSToPawns | TargetScanFlags.NeedLOSToAll;
-							__result = tickManager.allZombiesCached
+							__result = cachedZombies
 								.Where(zombie =>
 								{
 									if (zombie.state == ZombieState.Emerging || zombie.IsRopedOrConfused)

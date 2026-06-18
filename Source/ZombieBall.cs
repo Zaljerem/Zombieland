@@ -75,7 +75,7 @@ namespace ZombieLand
 			zombie.state = ZombieState.Wandering;
 			zombie.Rotation = Rot4.Random;
 			var tickManager = map.GetComponent<TickManager>();
-			_ = tickManager?.allZombiesCached.Add(zombie);
+			_ = tickManager?.allZombiesCached?.Add(zombie);
 		}
 	}
 }

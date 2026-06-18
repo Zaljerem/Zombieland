@@ -59,10 +59,10 @@ namespace ZombieLand
 		public static (string, IntVec3) SpawnZombies(int amount, string boughtBy, ZombieType type)
 		{
 			var map = Find.CurrentMap;
-			if (map.IsBlacklisted())
+			if (map == null || map.IsBlacklisted())
 				return (null, IntVec3.Invalid);
 			var tickManager = map.GetComponent<TickManager>();
-			if (tickManager == null)
+			if (tickManager?.RuntimeReady != true)
 				return (null, IntVec3.Invalid);
 			var available = Mathf.Max(0, ZombieSettings.Values.maximumNumberOfZombies - tickManager.ZombieCount());
 			amount = Mathf.Min(available, amount);
@@ -81,9 +81,10 @@ namespace ZombieLand
 			if (map == null)
 				return (null, IntVec3.Invalid);
 			var tickManager = map.GetComponent<TickManager>();
-			if (tickManager == null)
+			var cachedZombies = tickManager?.RuntimeReady == true ? tickManager.allZombiesCached : null;
+			if (cachedZombies == null)
 				return (null, IntVec3.Invalid);
-			tickManager.allZombiesCached.Do(zombie =>
+			cachedZombies.Do(zombie =>
 			{
 				for (int i = 0; i < 1000; i++)
 				{
@@ -103,9 +104,10 @@ namespace ZombieLand
 			if (map == null)
 				return (null, IntVec3.Invalid);
 			var tickManager = map.GetComponent<TickManager>();
-			if (tickManager == null)
+			var cachedZombies = tickManager?.RuntimeReady == true ? tickManager.allZombiesCached : null;
+			if (cachedZombies == null)
 				return (null, IntVec3.Invalid);
-			tickManager.allZombiesCached.Do(ZombieStateHandler.StartRage);
+			cachedZombies.Do(ZombieStateHandler.StartRage);
 			return ($"{boughtBy} made all zombies on the map rage", IntVec3.Invalid);
 		}
 
@@ -115,7 +117,7 @@ namespace ZombieLand
 			if (map == null)
 				return (null, IntVec3.Invalid);
 			var tickManager = map.GetComponent<TickManager>();
-			if (tickManager == null)
+			if (tickManager?.RuntimeReady != true)
 				return (null, IntVec3.Invalid);
 			var available = Mathf.Max(0, ZombieSettings.Values.maximumNumberOfZombies - tickManager.ZombieCount());
 			amount = Mathf.Min(available, amount);

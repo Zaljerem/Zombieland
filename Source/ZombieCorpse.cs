@@ -44,7 +44,7 @@ namespace ZombieLand
 				});
 
 			var tickManager = map.GetComponent<TickManager>();
-			tickManager.allZombieCorpses.Add(this);
+			tickManager?.allZombieCorpses?.Add(this);
 		}
 
 		public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
@@ -52,7 +52,7 @@ namespace ZombieLand
 			try
 			{
 				var tickManager = Map.GetComponent<TickManager>();
-				_ = tickManager?.allZombieCorpses.Remove(this);
+				_ = tickManager?.allZombieCorpses?.Remove(this);
 			}
 			catch
 			{

@@ -1,6 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
 
+	<LetterLabelZombielandMapSetupFailed>Zombieland did not start on this map</LetterLabelZombielandMapSetupFailed>
+	<ZombielandMapSetupFailed>RimWorld loaded this map, but Zombieland could not finish its map setup. Zombieland tried to repair the problem and could not.\n\nWhat this means: zombies will not spawn or move on this map. Zombie events, zombie avoidance, zombie corpses, and special zombie behavior may not work here.\n\nThis is usually caused by an error while RimWorld or another mod was loading the map. Check the first red error earlier in the log, then try disabling recently added or updated mods. Also make sure RimWorld and Zombieland are compatible versions.</ZombielandMapSetupFailed>
+	<ZombielandRevealPlayerLog>Reveal Player.log</ZombielandRevealPlayerLog>
+	<ZombielandPlayerLogRevealFailed>Could not reveal Player.log. The path was copied to the clipboard.</ZombielandPlayerLogRevealFailed>
+	<ZombielandPlayerLogPathUnavailable>Zombieland could not find the Player.log path.</ZombielandPlayerLogPathUnavailable>
+
 	<Zombieland_Settings>Hover over any element to read a help text about it to the right. All settings can be changed in-game and are active immediately, they are saved with the game.\n\nTo set defaults for new games, change the settings from the main screen (Options/Mod Settings/Zombieland).</Zombieland_Settings>
 	<ZombieLandKeyframes>You can add keyframes that define settings in time. Use the slider to check the values in-between. Only settings for keyframes can be edited.</ZombieLandKeyframes>
 	<ZombieLandKeyframe0>&lt;- first keyframe (start of the game) . . . future game time -&gt;</ZombieLandKeyframe0>

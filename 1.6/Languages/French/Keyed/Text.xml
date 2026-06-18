@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
 
+	<LetterLabelZombielandMapSetupFailed>Zombieland n'a pas démarré sur cette carte</LetterLabelZombielandMapSetupFailed>
+	<ZombielandMapSetupFailed>RimWorld a chargé cette carte, mais Zombieland n'a pas pu terminer sa préparation de carte. Zombieland a essayé de réparer le problème, sans succès.\n\nConséquence : les zombies n'apparaîtront pas et ne se déplaceront pas sur cette carte. Les événements zombies, l'évitement des zombies, les cadavres de zombies et les comportements spéciaux peuvent ne pas fonctionner ici.\n\nCela vient généralement d'une erreur pendant le chargement de la carte par RimWorld ou par un autre mod. Vérifiez la première erreur rouge plus haut dans le log, puis essayez de désactiver les mods ajoutés ou mis à jour récemment. Vérifiez aussi que vos versions de RimWorld et Zombieland sont compatibles.</ZombielandMapSetupFailed>
+	<ZombielandRevealPlayerLog>Afficher Player.log</ZombielandRevealPlayerLog>
+	<ZombielandPlayerLogRevealFailed>Impossible d'afficher Player.log. Le chemin a été copié dans le presse-papiers.</ZombielandPlayerLogRevealFailed>
+	<ZombielandPlayerLogPathUnavailable>Zombieland n'a pas trouvé le chemin de Player.log.</ZombielandPlayerLogPathUnavailable>
+
 	<Zombieland_Settings>Survolez un élément pour lire un texte d'aide à son sujet à droite. Tous les paramètres peuvent être modifiés dans le jeu et sont actifs immédiatement, ils sont sauvegardés avec le jeu.\n\nPour définir les paramètres par défaut pour les nouvelles parties, modifiez les paramètres à partir de l'écran principal (Options/Mod Settings/Zombieland).</Zombieland_Settings>
 	<ZombieLandKeyframes>Ajoutez des images clés définissant le temps. Vérifiez les valeurs avec le curseur. Seuls images clés sont modifiables.</ZombieLandKeyframes>
 	<ZombieLandKeyframe0>&lt;- première image clé (début du jeu) . . . temps de jeu futur -&gt;</ZombieLandKeyframe0>

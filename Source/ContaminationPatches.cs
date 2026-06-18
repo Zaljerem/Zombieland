@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
@@ -25,11 +26,37 @@ namespace ZombieLand
 	[HarmonyPatch(nameof(Game.FinalizeInit))]
 	static class Game_FinalizeInit_Patch
 	{
+		const string Phase = "Game.FinalizeInit contamination";
+
 		static bool Prepare() => Constants.CONTAMINATION;
 
 		static void Postfix()
 		{
-			ContaminationManager.Instance.FixGrounds();
+			FixGrounds(Phase);
+		}
+
+		[HarmonyFinalizer]
+		[HarmonyPriority(ZombieBootstrap.CaptureFinalizerPriority)]
+		static Exception CaptureFinalizer(Exception __exception)
+			=> ZombieBootstrap.CaptureFinalizerException(Phase, __exception);
+
+		[HarmonyPriority(Priority.Last)]
+		static void Finalizer(Exception __exception, bool __runOriginal)
+		{
+			if (ZombieBootstrap.ShouldRunFinalizerRecovery(Phase, __exception, __runOriginal, out var observedException) == false)
+				return;
+			if (observedException == null && __runOriginal)
+				return;
+
+			// The Postfix owns the normal and clean skipped-original paths; the finalizer covers failed paths.
+			FixGrounds(observedException == null
+				? Phase
+				: $"{Phase} exception");
+		}
+
+		static void FixGrounds(string phase)
+		{
+			ZombieBootstrap.RunSafely(phase, "contamination ground repair", () => ContaminationManager.Instance.FixGrounds());
 		}
 	}
 
