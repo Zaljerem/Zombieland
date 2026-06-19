@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Bson;
 using RimWorld;
+using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -105,6 +106,42 @@ namespace ZombieLand
 
 		public static bool OnMainScreen() => Current.Game == null;
 		public static bool IsPlaying() => Current.ProgramState == ProgramState.Playing;
+
+		// True when 'map' is the map the engine is currently drawing (so ZombieLand's
+		// map-space overlays/effects should be live). Mirrors the engine's own map-draw
+		// gate in Map.MapUpdate (DrawingMap && Find.CurrentMap == this) so we draw in
+		// exactly the same render modes - including WorldRenderMode.Background - instead
+		// of suppressing whenever the world is rendered at all.
+		//
+		// This is on the render hot path (CanDrawPawnExtras calls it up to 3x per pawn
+		// per frame). All conjuncts except the per-map comparison are frame-global, and
+		// WorldRendererUtility.DrawingMap reads the non-trivial CurrentWorldRenderMode
+		// getter, so we evaluate the global part once per frame and cache it. Draws run
+		// single-threaded on the main thread (DynamicDrawManager's Draw phase), so the
+		// static cache needs no synchronization.
+		static int mapViewGateFrame = -1;
+		static bool mapViewGateValue;
+		static Map mapViewGateMap;
+
+		public static bool MapViewActiveFor(Map map)
+		{
+			if (map == null)
+				return false;
+
+			var frame = Time.frameCount;
+			if (frame != mapViewGateFrame)
+			{
+				mapViewGateFrame = frame;
+				mapViewGateMap = Find.CurrentMap;
+				mapViewGateValue = Current.ProgramState == ProgramState.Playing
+					&& Scribe.mode == LoadSaveMode.Inactive
+					&& WorldRendererUtility.DrawingMap
+					&& mapViewGateMap != null
+					&& Find.CameraDriver != null;
+			}
+
+			return mapViewGateValue && map == mapViewGateMap;
+		}
 
 		public static void ResetSettings()
 		{

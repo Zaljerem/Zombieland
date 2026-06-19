@@ -38,6 +38,15 @@ namespace ZombieLand
 
 		public static void Reset() => _instance = null;
 
+		public static bool CanDrawOverlayFor(Map map) => Tools.MapViewActiveFor(map);
+
+		public void ClearCurrentDrawer()
+		{
+			currentMapDrawer = null;
+			currentDrawerMap = null;
+			currentMapDirty = true;
+		}
+
 		public override void ExposeData()
 		{
 			base.ExposeData();
@@ -356,9 +365,14 @@ namespace ZombieLand
 			return ContaminationGrid.color.ToTransparent(a);
 		}
 
-		public void DrawerUpdate()
+		public void DrawerUpdate(Map map)
 		{
-			var map = Find.CurrentMap;
+			if (CanDrawOverlayFor(map) == false)
+			{
+				ClearCurrentDrawer();
+				return;
+			}
+
 			if (currentDrawerMap != map)
 			{
 				currentMapDrawer = new CellBoolDrawer(this, map.Size.x, map.Size.z, 3640, 0.8f);
@@ -541,10 +555,17 @@ namespace ZombieLand
 
 		public static void ContaminationGridUpdate(this Map map)
 		{
+			var manager = ContaminationManager.Instance;
+			if (ContaminationManager.CanDrawOverlayFor(map) == false)
+			{
+				manager.ClearCurrentDrawer();
+				return;
+			}
+
 			var drawer = map.GetContaminationDrawer();
 			drawer.CellBoolDrawerUpdate();
 			drawer.MarkForDraw();
-			ContaminationManager.Instance.DrawerUpdate();
+			manager.DrawerUpdate(map);
 		}
 	}
 }

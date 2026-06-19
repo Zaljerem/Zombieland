@@ -280,6 +280,8 @@ namespace ZombieLand
 				return true;
 
 			var map = Find.CurrentMap;
+			if (ContaminationManager.CanDrawOverlayFor(map) == false)
+				return true;
 			var mouseCell = UI.MouseCell();
 			var grid = map.GetContamination();
 

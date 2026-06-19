@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using RimWorld;
+using RimWorld.Planet;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -718,6 +719,11 @@ namespace ZombieLand
 
 		public override void MapComponentUpdate()
 		{
+			if (victimHeads.Count == 0)
+				return;
+			if (Tools.MapViewActiveFor(map) == false)
+				return;
+
 			foreach (var head in victimHeads)
 			{
 				var material = head.material;

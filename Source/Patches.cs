@@ -119,9 +119,12 @@ namespace ZombieLand
 			{
 				if (Constants.SHOW_PHEROMONE_GRID == false)
 					return;
+				var map = Find.CurrentMap;
+				if (Tools.MapViewActiveFor(map) == false)
+					return;
 
 				// debug zombie counts
-				Find.CurrentMap.GetGrid().IterateCells((x, z, cell) =>
+				map.GetGrid().IterateCells((x, z, cell) =>
 				{
 					var pos = new Vector3(x, pawnAltitude, z);
 					if (cell.zombieCount > 1)
@@ -134,7 +137,7 @@ namespace ZombieLand
 				// debug timestamps
 				var fadeOff = Tools.PheromoneFadeoff();
 				var now = Tools.Ticks();
-				Find.CurrentMap.GetGrid().IterateCells((x, z, cell) =>
+				map.GetGrid().IterateCells((x, z, cell) =>
 				{
 					var pos = new Vector3(x, pawnAltitude, z);
 					var diff = now - cell.timestamp;
@@ -162,8 +165,12 @@ namespace ZombieLand
 			static void Postfix()
 			{
 				var map = Find.CurrentMap;
-				if (map == null)
+				if (Tools.MapViewActiveFor(map) == false)
+				{
+					if (Constants.CONTAMINATION)
+						ContaminationManager.Instance.ClearCurrentDrawer();
 					return;
+				}
 
 				var currentViewRect = Find.CameraDriver.CurrentViewRect;
 				currentViewRect.ClipInsideMap(map);
@@ -257,7 +264,7 @@ namespace ZombieLand
 					return;
 
 				var map = Find.CurrentMap;
-				if (map == null)
+				if (Tools.MapViewActiveFor(map) == false)
 					return;
 
 				var basePos = UI.MouseCell();
@@ -334,7 +341,7 @@ namespace ZombieLand
 			static void Postfix(float leftX, float width, ref float curBaseY)
 			{
 				var map = Find.CurrentMap;
-				if (map == null)
+				if (Tools.MapViewActiveFor(map) == false)
 					return;
 
 				if (map.IsBlacklisted())
@@ -2609,6 +2616,12 @@ namespace ZombieLand
 
 			static readonly HashSet<IntVec3> exclude = new(Tools.GetCircle(2));
 
+			static void TryMakeTarSlime(IntVec3 cell, Map map)
+			{
+				if (cell.InBounds(map))
+					_ = FilthMaker.TryMakeFilth(cell, map, CustomDefs.TarSlime);
+			}
+
 			static void Prefix(Thing __instance, IntVec3 value)
 			{
 				if (__instance is not Pawn pawn)
@@ -2620,6 +2633,8 @@ namespace ZombieLand
 				if (pos == value)
 					return;
 				map.GetComponent<ZombieAttackTargetIndex>()?.InvalidateFor(pawn);
+				if (pos.InBounds(map) == false || value.InBounds(map) == false)
+					return;
 
 				if (pawn is ZombieSpitter)
 				{
@@ -2672,15 +2687,15 @@ namespace ZombieLand
 					//
 					if (zombie.isDarkSlimer)
 					{
-						_ = FilthMaker.TryMakeFilth(value, map, CustomDefs.TarSlime);
+						TryMakeTarSlime(value, map);
 						if (Tools.Difficulty() > 1)
 						{
 							var x = Math.Sign(value.x - pos.x) + 1;
 							var z = Math.Sign(value.z - pos.z) + 1;
 							var orthIdx = x + 3 * z;
 							var pair = orthogonalIndices[orthIdx];
-							_ = FilthMaker.TryMakeFilth(pos + pair[0], map, CustomDefs.TarSlime);
-							_ = FilthMaker.TryMakeFilth(pos + pair[1], map, CustomDefs.TarSlime);
+							TryMakeTarSlime(pos + pair[0], map);
+							TryMakeTarSlime(pos + pair[1], map);
 						}
 					}
 
@@ -3424,11 +3439,17 @@ namespace ZombieLand
 				return zombie;
 			}
 
+			static bool CanDrawPawnExtras(Pawn pawn)
+				=> pawn?.Spawned == true && Tools.MapViewActiveFor(pawn.Map);
+
 			[HarmonyPriority(Priority.First)]
 			static bool Prefix(PawnRenderer __instance, Vector3 drawLoc)
 			{
-				if (ZombieRenderCompat.Pawn(__instance) is ZombieSpitter)
+				var pawn = ZombieRenderCompat.Pawn(__instance);
+				if (pawn is ZombieSpitter)
 					return false;
+				if (CanDrawPawnExtras(pawn) == false)
+					return true;
 
 				var zombie = PrepareZombieGraphics(__instance);
 				if (zombie == null)
@@ -3463,7 +3484,11 @@ namespace ZombieLand
 			[HarmonyPriority(Priority.First)]
 			static void Postfix(PawnRenderer __instance, Vector3 drawLoc)
 			{
-				if (ZombieRenderCompat.Pawn(__instance) is not Zombie zombie)
+				var pawn = ZombieRenderCompat.Pawn(__instance);
+				if (CanDrawPawnExtras(pawn) == false)
+					return;
+
+				if (pawn is not Zombie zombie)
 					return;
 
 				if (zombie.isAlbino && zombie.scream > 0)
@@ -3518,6 +3543,8 @@ namespace ZombieLand
 			static void RenderExtras(PawnRenderer renderer, Vector3 drawLoc)
 			{
 				var pawn = ZombieRenderCompat.Pawn(renderer);
+				if (CanDrawPawnExtras(pawn) == false)
+					return;
 				DrawSymbiantHostAura(pawn, renderer, drawLoc);
 				if (pawn is not Zombie zombie)
 					return;
