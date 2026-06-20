@@ -5,8 +5,6 @@
   <Sabotage.reportString>破坏性的。</Sabotage.reportString>
   <ExtractZombieSerum.reportString>从TargetA提取僵尸血清。</ExtractZombieSerum.reportString>
   <DoubleTap.reportString>双击TargetA。</DoubleTap.reportString>
-  <Symbiant.reportString>正在蔓延。</Symbiant.reportString>
-  <FeedZombieSymbiant.reportString>正在把 TargetB 喂给 TargetA。</FeedZombieSymbiant.reportString>
   <RopeZombie.reportString>绳索目标A。</RopeZombie.reportString>
   <ZapZombies.reportString>启动僵尸清除器。</ZapZombies.reportString>
 

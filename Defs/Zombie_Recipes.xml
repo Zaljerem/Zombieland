@@ -50,53 +50,10 @@
 		<workerClass>ZombieLand.ZombieSerumFilterWorker</workerClass>
 	</SpecialThingFilterDef>
 
-	<RecipeDef ParentName="SurgeryFlesh">
-		<defName>SeverSymbiantSymbiosis</defName>
-		<label>sever Symbiant bond</label>
-		<description>Separates a colonist from a prepared Zombie Symbiant. The Symbiant must be mature, have full surgery reserve, and be reduced to three visible cells or fewer. Failed surgery consumes reserve and injures the host.</description>
-		<workerClass>ZombieLand.Recipe_SeverSymbiantSymbiosis</workerClass>
-		<jobString>Severing Symbiant bond.</jobString>
-		<targetsBodyPart>true</targetsBodyPart>
-		<anesthetize>true</anesthetize>
-		<workAmount>2600</workAmount>
-		<effectWorking>Surgery</effectWorking>
-		<soundWorking>Recipe_Surgery</soundWorking>
-		<workSpeedStat>MedicalOperationSpeed</workSpeedStat>
-		<workSkill>Medicine</workSkill>
-		<workSkillLearnFactor>32</workSkillLearnFactor>
-		<hideBodyPartNames>false</hideBodyPartNames>
-		<ingredients>
-			<li>
-				<filter>
-					<thingDefs>
-						<li>SymbiantCoagulantPack</li>
-					</thingDefs>
-				</filter>
-				<count>1</count>
-			</li>
-			<li>
-				<filter>
-					<categories>
-						<li>Medicine</li>
-					</categories>
-				</filter>
-				<count>1</count>
-			</li>
-		</ingredients>
-		<fixedIngredientFilter>
-			<thingDefs>
-				<li>SymbiantCoagulantPack</li>
-			</thingDefs>
-			<categories>
-				<li>Medicine</li>
-			</categories>
-		</fixedIngredientFilter>
-	</RecipeDef>
-
 	<RecipeDef>
 		<defName>MakeZombieSerum</defName>
-		<label>make zombie serum from zombie extract</label>
-		<description>Craft one zombie serum from zombie extract. Zombie serum cures zombie infections during operations.</description>
+		<label>make serum out of zombie extract</label>
+		<description>Craft one zombie serum from zombie extract that cures zombie infections during operations.</description>
 		<jobString>Making zombie serum.</jobString>
 		<workAmount>2400</workAmount>
 		<ingredients>
@@ -147,44 +104,6 @@
 		</recipeUsers>
 		<products>
 			<ZombieSerumSimple>1</ZombieSerumSimple>
-		</products>
-	</RecipeDef>
-
-	<RecipeDef>
-		<defName>MakeSymbiantCoagulantPack</defName>
-		<label>make Symbiant coagulant pack</label>
-		<description>Craft one Symbiant coagulant pack from zombie extract and chemfuel. Feed it to a Symbiant to restore its damage guard, build surgery reserve, shrink the visible mass, and prepare the linked host for severance surgery.</description>
-		<jobString>Making Symbiant coagulant pack.</jobString>
-		<workAmount>900</workAmount>
-		<ingredients>
-			<li>
-				<filter>
-					<thingDefs>
-						<li>ZombieExtract</li>
-					</thingDefs>
-				</filter>
-				<count>5</count>
-			</li>
-			<li>
-				<filter>
-					<thingDefs>
-						<li>Chemfuel</li>
-					</thingDefs>
-				</filter>
-				<count>10</count>
-			</li>
-		</ingredients>
-		<fixedIngredientFilter>
-			<thingDefs>
-				<li>ZombieExtract</li>
-				<li>Chemfuel</li>
-			</thingDefs>
-		</fixedIngredientFilter>
-		<recipeUsers>
-			<li>CraftingSpot</li>
-		</recipeUsers>
-		<products>
-			<SymbiantCoagulantPack>1</SymbiantCoagulantPack>
 		</products>
 	</RecipeDef>
 

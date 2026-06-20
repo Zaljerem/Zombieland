@@ -15,22 +15,8 @@
 		<suspendable>false</suspendable>
 	</JobDef>
 
-		<JobDef>
-			<defName>Symbiant</defName>
-			<driverClass>ZombieLand.JobDriver_Symbiant</driverClass>
-			<reportString>spreading.</reportString>
-			<suspendable>false</suspendable>
-		</JobDef>
-
-		<JobDef>
-			<defName>FeedZombieSymbiant</defName>
-			<driverClass>ZombieLand.JobDriver_FeedZombieSymbiant</driverClass>
-			<reportString>feeding TargetB to TargetA.</reportString>
-			<allowOpportunisticPrefix>false</allowOpportunisticPrefix>
-		</JobDef>
-
-		<JobDef>
-			<defName>Spitter</defName>
+	<JobDef>
+		<defName>Spitter</defName>
 		<driverClass>ZombieLand.JobDriver_Spitter</driverClass>
 		<reportString>spitting.</reportString>
 		<suspendable>false</suspendable>
@@ -39,7 +25,7 @@
 	<JobDef>
 		<defName>ExtractZombieSerum</defName>
 		<driverClass>ZombieLand.JobDriver_ExtractZombieSerum</driverClass>
-		<reportString>harvesting zombie extract from TargetA.</reportString>
+		<reportString>extracting zombie serum from TargetA.</reportString>
 		<allowOpportunisticPrefix>false</allowOpportunisticPrefix>
 	</JobDef>
 
@@ -60,7 +46,7 @@
 	<JobDef>
 		<defName>ZapZombies</defName>
 		<driverClass>ZombieLand.JobDriver_ZapZombies</driverClass>
-		<reportString>starting zombie shocker.</reportString>
+		<reportString>starting zombie zapper.</reportString>
 		<allowOpportunisticPrefix>false</allowOpportunisticPrefix>
 	</JobDef>
 
@@ -102,7 +88,7 @@
 	<JobDef>
 		<defName>ContaminationJobMimic</defName>
 		<driverClass>ZombieLand.JobDriver_ContaminationMimic</driverClass>
-		<reportString>mimicking.</reportString>
+		<reportString>mimicing.</reportString>
 		<suspendable>false</suspendable>
 	</JobDef>
 

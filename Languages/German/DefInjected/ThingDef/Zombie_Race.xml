@@ -7,13 +7,14 @@
 	<Zombie.tools.1.label>Linke Hand</Zombie.tools.1.label>
 	<Zombie.tools.2.label>Rechte Hand</Zombie.tools.2.label>
 
+	<Zombie_Corpse.label>Zombieleiche</Zombie_Corpse.label>
+	<Zombie_Corpse.description>Ein toter Zombie</Zombie_Corpse.description>
+
 	<ElectricalField.label>Elektrisches Schutzschild</ElectricalField.label>
-	<ElectricalField.verbs.0.label>Schock</ElectricalField.verbs.0.label>
-	<ElectricalField.tools.0.label>Schock</ElectricalField.tools.0.label>
+	<ElectricalField.verbs.li.label>Schock</ElectricalField.verbs.li.label>
+	<ElectricalField.tools.li.label>Schock</ElectricalField.tools.li.label>
 
 	<ZombieSpitter.label>Zombiespucker</ZombieSpitter.label>
 	<ZombieSpitter.description>Ein Unwesen das Zombies spuckt um dich aus der Luft anzugreifen.</ZombieSpitter.description>
-	<ZombieSymbiant.label>Zombie-Symbiant</ZombieSymbiant.label>
-	<ZombieSymbiant.description>Eine Innenraum-Infektion durch einen Zombie-Symbiant. Er breitet sich als sichtbarer Schleim durch genutzte Räume aus, verlangsamt Figuren, die ihn überqueren, senkt die Raumqualität und verbindet sich mit einem Kolonisten. Er stört eher, als sofort zu töten, und der verbundene Wirt wird stärker, wenn der Symbiant wächst. Einen Raum um eine verbundene Wurzel offen zu lassen, lässt sie in einen anderen genutzten Raum wandern. Angriffe zehren seinen Schadensschutz auf und können die Verbindung gewaltsam kollabieren lassen; Füttern und Operation sind der kontrollierte Weg, ihn zu beenden.</ZombieSymbiant.description>
 
 </LanguageData>

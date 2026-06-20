@@ -4,7 +4,5 @@
 	<ZombieBite.label>Zombiebiss</ZombieBite.label>
 	<ZombieBite.injuryProps.destroyedLabel>Von einem Zombie abgebissen</ZombieBite.injuryProps.destroyedLabel>
 	<ZombieBite.injuryProps.destroyedOutLabel>Von einem Zombie weggebissen</ZombieBite.injuryProps.destroyedOutLabel>
-	<SymbiantSymbiosis.label>Symbiant-Verbindung</SymbiantSymbiosis.label>
-	<SymbiantSymbiosis.description>Dieser Kolonist ist mit einem Zombie-Symbiant verbunden. Der Wirt gewinnt Schutz und Fertigkeit, während der Symbiant sich durch genutzte Räume ausbreitet. Die Verbindung ist ein beherrschbares Risiko: Angriffe zehren den Schadensschutz des Symbiants auf, und ein gewaltsamer Schutzbruch tötet den Wirt. Trennen Sie sie erst, nachdem der Symbiant gefüttert wurde, um Schutz wiederherzustellen, Operationsreserve aufzubauen und ihn zu verkleinern. Eine fehlgeschlagene Operation kann den Wirt verletzen; den Wirt zu töten beendet die Verbindung auf Kosten des Kolonisten.</SymbiantSymbiosis.description>
 
 </LanguageData>

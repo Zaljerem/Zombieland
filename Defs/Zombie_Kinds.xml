@@ -26,30 +26,6 @@
 		<initialResistanceRange>0~0</initialResistanceRange>
 	</PawnKindDef>
 
-	<PawnKindDef class="ZombieLand.PawnKindDef_ZombieSymbiant">
-		<defName>ZombieSymbiant</defName>
-		<race>ZombieSymbiant</race>
-		<lifeStages>
-			<li>
-				<label>zombie symbiant</label>
-				<labelPlural>zombie symbiants</labelPlural>
-				<bodyGraphicData>
-					<texPath>Symbiant/Symbiant</texPath>
-				</bodyGraphicData>
-			</li>
-		</lifeStages>
-		<destroyGearOnDrop>true</destroyGearOnDrop>
-		<canStrip>false</canStrip>
-		<forceNormalGearQuality>false</forceNormalGearQuality>
-		<combatPower>0</combatPower>
-		<defaultFactionType>Zombies</defaultFactionType>
-		<isFighter>false</isFighter>
-		<itemQuality>Shoddy</itemQuality>
-		<backstoryCryptosleepCommonality>0.0</backstoryCryptosleepCommonality>
-		<initialWillRange>0~0</initialWillRange>
-		<initialResistanceRange>0~0</initialResistanceRange>
-	</PawnKindDef>
-
 	<PawnKindDef class="ZombieLand.PawnKindDef_ZombieSpitter">
 		<defName>ZombieSpitter</defName>
 		<race>ZombieSpitter</race>

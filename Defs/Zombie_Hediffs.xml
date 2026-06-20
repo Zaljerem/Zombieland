@@ -5,7 +5,7 @@
 		<defName>ZombieBite</defName>
 		<hediffClass>Zombieland.Hediff_Injury_ZombieBite</hediffClass>
 		<label>zombie bite</label>
-		<description>An infectious bite from a zombie.</description>
+		<description>A infectious bite of a zombie.</description>
 		<displayWound>true</displayWound>
 		<isBad>true</isBad>
 		<comps>
@@ -42,21 +42,11 @@
 		</stages>
 	</HediffDef>
 
-	<HediffDef>
-		<defName>SymbiantSymbiosis</defName>
-		<label>symbiant bond</label>
-		<description>This colonist is linked to a Zombie Symbiant. The host gains protection and skill as the Symbiant spreads through used rooms. The bond is a managed risk: attacks drain the Symbiant damage guard and violent guard failure kills the host. Sever it only after feeding the Symbiant to restore the guard, build surgery reserve, and shrink it. Failed surgery can injure the host; killing the host ends the bond at the cost of the colonist.</description>
-		<hediffClass>ZombieLand.Hediff_SymbiantSymbiosis</hediffClass>
-		<isBad>false</isBad>
-		<scenarioCanAdd>false</scenarioCanAdd>
-		<everCurableByItem>false</everCurableByItem>
-	</HediffDef>
-
 	<HediffDef ParentName="DiseaseBase">
 		<defName>ContaminationEffect</defName>
 		<label>contamination</label>
 		<labelNoun>contamination</labelNoun>
-		<description>Zombie contamination in the brain and mind. Caused by touching and being exposed to contaminated things and places. It will increasingly affect overall effectiveness and will cause strange side effects. At 100%, death will occur.</description>
+		<description>Zombie contamination in the brain and mind. Caused by touching and being exposed by contaminated things and places. It will increasingly affect overall effectiveness and will cause strange side effects. At 100% death will occur.</description>
 		<descriptionShort>Zombie contamination in the brain and mind.</descriptionShort>
 		<hediffClass>ZombieLand.Hediff_Contamination</hediffClass>
 		<defaultLabelColor>(0,0.75,0)</defaultLabelColor>
@@ -94,7 +84,7 @@
 			</li>
 			<li>
 				<minSeverity>0.2</minSeverity>
-				<label>noticeable</label>
+				<label>noticable</label>
 				<socialFightChanceFactor>1.5</socialFightChanceFactor>
 				<capMods>
 					<li>

@@ -1,25 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
 
-	<Zombieland_Settings>Survolez un élément pour lire un texte d'aide à son sujet à droite. Tous les paramètres peuvent être modifiés dans le jeu et sont actifs immédiatement, ils sont sauvegardés avec le jeu.\n\nPour définir les paramètres par défaut pour les nouvelles parties, modifiez les paramètres à partir de l'écran principal (Options/Mod Settings/Zombieland).</Zombieland_Settings>
+	<Zombieland_Settings>Survolez un élément pour lire un texte d'aide à son sujet à droite. Tous les paramètres peuvent être modifiés dans le jeu et sont actifs immédiatement, ils sont sauvegardés avec le jeu.\NPour définir les paramètres par défaut pour les nouvelles parties, modifiez les paramètres à partir de l'écran principal (Options/Mod Settings/Zombieland).</Zombieland_Settings>
 	<ZombieLandKeyframes>Ajoutez des images clés définissant le temps. Vérifiez les valeurs avec le curseur. Seuls images clés sont modifiables.</ZombieLandKeyframes>
 	<ZombieLandKeyframe0>&lt;- première image clé (début du jeu) . . . temps de jeu futur -&gt;</ZombieLandKeyframe0>
 
 	<Difficulty_ZombielandThreatScale_Info>Contrôle la difficulté de presque tout dans Zombieland, comme les capacités des zombies, la prévision des menaces et bien plus encore.</Difficulty_ZombielandThreatScale_Info>
 	<Difficulty_ZombielandThreatScale_Label>L'échelle de menace de Zombieland</Difficulty_ZombielandThreatScale_Label>
-
-	<ZombieSuicideBomber>Zombie kamikaze</ZombieSuicideBomber>
-	<ZombieToxicSplasher>Zombie cracheur toxique</ZombieToxicSplasher>
-	<ZombieTanky>Zombie opérateur blindé</ZombieTanky>
-	<ZombieMiner>Zombie mineur</ZombieMiner>
-	<ZombieElectrifier>Zombie électrificateur</ZombieElectrifier>
-	<ZombieAlbino>Zombie albinos</ZombieAlbino>
-	<ZombieDarkSlimer>Zombie gluant sombre</ZombieDarkSlimer>
-	<ZombieHealer>Zombie soigneur</ZombieHealer>
-	<ZombieChild>Enfant zombie</ZombieChild>
-	<ZombieWeak>Zombie faible</ZombieWeak>
-	<ZombieStrong>Zombie puissant</ZombieStrong>
-	<ZombieSimple>Zombie simple</ZombieSimple>
 
 	<LetterLabelZombiesRising>Attaque de Zombie</LetterLabelZombiesRising>
 	<ZombiesRising>Un groupe de zombie est apparu</ZombiesRising>
@@ -29,48 +16,6 @@
 
 	<LetterLabelZombiesSpitter>Attaque d'un zombie cracheur</LetterLabelZombiesSpitter>
 	<ZombiesSpitter>Un zombie cracheur est entré sur la carte et va vous assiéger</ZombiesSpitter>
-	<LetterLabelZombieSymbiant>Symbiant zombie lié à {0}</LetterLabelZombieSymbiant>
-	<LetterLabelZombieSymbiantNoHost>Symbiant zombie apparu</LetterLabelZombieSymbiantNoHost>
-	<ZombieSymbiant>Un Symbiant zombie a émergé dans {0} et s'est lié à {1}. Il perturbe la colonie, sans représenter une menace mortelle immédiate : il se répand dans les pièces utilisées, ralentit les pions qui traversent sa vase, réduit la qualité de la pièce et renforce l'hôte à mesure qu'il grandit. Les attaques drainent d'abord sa protection ; une rupture violente de cette protection tue l'hôte. Laisser sa pièce ouverte ne fait que déplacer une racine liée vers une autre pièce utilisée. Nourrissez-le avec un cadavre humanoïde ou un pack coagulant pour restaurer la protection, remplir la réserve chirurgicale et le réduire ; lorsque le panneau d'inspection indique que l'opération est prête, opérez {1}. Une opération ratée peut blesser l'hôte ; tuer l'hôte met fin au lien au prix de la vie du colon.</ZombieSymbiant>
-	<ZombieSymbiantNoHost>Un Symbiant zombie a émergé dans {0}. Il perturbe la colonie, sans représenter une menace mortelle immédiate : il se répand dans les pièces utilisées, ralentit les pions qui traversent sa vase et réduit la qualité de la pièce. Les attaques drainent d'abord sa protection. Nourrissez-le avec un cadavre humanoïde ou un pack coagulant pour restaurer la protection, remplir la réserve chirurgicale et le réduire.</ZombieSymbiantNoHost>
-	<ZombieSymbiantUnknownRoom>une de vos pièces</ZombieSymbiantUnknownRoom>
-	<ZombieSymbiantInspect>Taille du Symbiant : {0}/{1} cases\nHôte lié : {2}\nAvantage de l'hôte : {3}%\nProtection : {12}/{13}\nAttaque : {11}\nCroissance : {4}\nMaturité du lien : {5}\nRéserve chirurgicale : {6}/{7}\nTaille sûre pour l'opération : {8} cases\nNourrissages restants aujourd'hui : {9}\nOpération : {10}</ZombieSymbiantInspect>
-	<SymbiantGrowthInactive>inactif</SymbiantGrowthInactive>
-	<SymbiantGrowthCapped>à la limite de taille</SymbiantGrowthCapped>
-	<SymbiantGrowthPaused>en pause après nourrissage</SymbiantGrowthPaused>
-	<SymbiantGrowthWaiting>en attente</SymbiantGrowthWaiting>
-	<SymbiantGrowthGrowing>se répand dans les pièces utilisées</SymbiantGrowthGrowing>
-	<SymbiantGrowthUprooted>déraciné ; attend une pièce stable</SymbiantGrowthUprooted>
-	<SymbiantGrowthRelocating>déplace l'ancienne vase vers les pièces utilisées</SymbiantGrowthRelocating>
-	<SymbiantGrowthDormantNoRoom>dormant ; attend une pièce intérieure utilisée</SymbiantGrowthDormantNoRoom>
-	<SymbiantGrowthContained>contenu ; aucune pièce intérieure utilisée accessible</SymbiantGrowthContained>
-	<SymbiantMaturityReady>mature</SymbiantMaturityReady>
-	<SymbiantMaturityProgress>{0}/{1} cases de pièce</SymbiantMaturityProgress>
-	<SymbiantSeveranceNoHost>aucun hôte lié</SymbiantSeveranceNoHost>
-	<SymbiantSeveranceNeedsMaturity>doit rester plus longtemps dans des pièces utilisées</SymbiantSeveranceNeedsMaturity>
-	<SymbiantSeveranceNeedsReserve>nourrissez-le pour remplir la réserve chirurgicale</SymbiantSeveranceNeedsReserve>
-	<SymbiantSeveranceNeedsShrink>nourrissez-le jusqu'à 3 cases ou moins</SymbiantSeveranceNeedsShrink>
-	<SymbiantSeveranceReady>prêt ; opérez l'hôte</SymbiantSeveranceReady>
-	<SymbiantWeaponInspect>draine la protection ; nourrir pour l'opération</SymbiantWeaponInspect>
-	<SymbiantWeaponRejectedMessage>La protection du Symbiant a absorbé le coup. Protection : {0}/{1}. Le nourrir restaure la protection, remplit la réserve chirurgicale et réduit la masse visible.</SymbiantWeaponRejectedMessage>
-	<SymbiantWeaponRejectedMote>protection</SymbiantWeaponRejectedMote>
-	<SymbiantDamageGuardBrokenMessage>La protection du Symbiant s'est rompue. Le lien de {0} s'est effondré violemment.</SymbiantDamageGuardBrokenMessage>
-	<SymbiantHostUnknown>l'hôte</SymbiantHostUnknown>
-	<FeedZombieSymbiant>Nourrir le Symbiant</FeedZombieSymbiant>
-	<CancelFeedZombieSymbiant>Annuler le nourrissage du Symbiant</CancelFeedZombieSymbiant>
-	<FeedZombieSymbiantDesc>Marque le Symbiant pour le nourrissage. Les colons apporteront un cadavre humanoïde ou un pack coagulant de Symbiant. Le nourrissage restaure la protection, remplit la réserve chirurgicale, peut réduire la masse visible, met la croissance en pause et ne peut pas retirer les dernières cases. Quand l'opération est prête, opérez l'hôte lié.</FeedZombieSymbiantDesc>
-	<FeedingZombieSymbiant>nourrit un Symbiant</FeedingZombieSymbiant>
-	<NoSymbiantFeed>Aucun cadavre humanoïde ni pack coagulant de Symbiant disponible</NoSymbiantFeed>
-	<SymbiantFeedLimitReached>Limite quotidienne de nourrissage du Symbiant atteinte</SymbiantFeedLimitReached>
-	<SymbiantFedMote>réserve +{0}, cases -{1}</SymbiantFedMote>
-	<SeverSymbiantSymbiosis>rompre le lien du Symbiant</SeverSymbiantSymbiosis>
-	<SymbiantSeveredMessage>Le lien de Symbiant de {0} a été rompu.</SymbiantSeveredMessage>
-	<SymbiantHostBondDescription>Lien : {0}/{1} cases, {2}% d'avantage pour l'hôte, réserve chirurgicale {3}/{4}. {5}</SymbiantHostBondDescription>
-	<SymbiantHostBondReady>L'opération est prête.</SymbiantHostBondReady>
-	<SymbiantHostBondNotReady>Opération dangereuse : nourrissez le Symbiant jusqu'à remplir la réserve et réduire la taille visible à {0} cases ou moins.</SymbiantHostBondNotReady>
-	<SymbiantHostBondMissing>Aucun Symbiant actif n'est lié à cet hôte.</SymbiantHostBondMissing>
-	<SymbiantHostRelocatedMessage>Le lien de Symbiant de {0} est devenu dormant après avoir quitté la carte. La vase restante sans hôte peut être éliminée en la nourrissant.</SymbiantHostRelocatedMessage>
-	<SymbiantReseededMessage>La racine du Symbiant de {0} s'est déplacée vers une autre pièce utilisée après que sa chambre est restée ouverte. L'ancienne vase revient vers la nouvelle racine ; nourrissage et opération restent le moyen fiable de mettre fin au lien.</SymbiantReseededMessage>
 
 	<LetterLabelXDaysUntilZombies>{0} avant que les zombies arrivent</LetterLabelXDaysUntilZombies>
 	<XDaysUntilZombies>Les zombies vont apparaitre là où il y a du sol meuble, de poussière, de sable ou de pierre. La construction de plancher empêche les zombies d’apparaitre</XDaysUntilZombies>
@@ -89,7 +34,6 @@
 	<ContaminationEnabled>Globalement activée</ContaminationEnabled>
 	<ZombielandRestartRequired>La modification de ce paramètre nécessite un redémarrage de RimWorld</ZombielandRestartRequired>
 	<ZombielandContamination>Intensité</ZombielandContamination>
-	<ContaminationEffectiveness>Efficacité totale {0} %</ContaminationEffectiveness>
 
 	<WhenDoZombiesSpawn>Quand les Zombies arrivent-ils ? </WhenDoZombiesSpawn>
 	<SpawnWhenType_AllTheTime>Tout le temps</SpawnWhenType_AllTheTime>
@@ -112,17 +56,6 @@
 	<AttackMode_OnlyColonists>Seulement les colons</AttackMode_OnlyColonists>
 	<EnemiesAttackZombies>Les ennemis attaquent les zombies</EnemiesAttackZombies>
 	<AnimalsAttackZombies>Les animaux attaquent les zombies</AnimalsAttackZombies>
-	<AnomalyTargetingTitle>Exceptions Anomaly</AnomalyTargetingTitle>
-	<AnomalyTargetingRelations>Les zombies peuvent attaquer :</AnomalyTargetingRelations>
-	<AnomalyTargetGhouls>Goules</AnomalyTargetGhouls>
-	<AnomalyTargetShamblers>Shamblers et humains mutants</AnomalyTargetShamblers>
-	<AnomalyTargetOtherEntities>Autres entités Anomaly</AnomalyTargetOtherEntities>
-	<AnomalyTargetNociosphere>Nociosphère</AnomalyTargetNociosphere>
-	<AnomalyZombieHostilityRelations>Les pions Anomaly peuvent attaquer les zombies :</AnomalyZombieHostilityRelations>
-	<AnomalyTargetingOverride_Automatic>Automatique</AnomalyTargetingOverride_Automatic>
-	<AnomalyTargetingOverride_Never>Jamais</AnomalyTargetingOverride_Never>
-	<AnomalyTargetingOverride_Allow>Autoriser</AnomalyTargetingOverride_Allow>
-	<AnomalyTargetingOverride_Mixed>Mixte</AnomalyTargetingOverride_Mixed>
 
 	<WhatDoZombiesSmash>Que vont détruire les Zombies ?</WhatDoZombiesSmash>
 	<SmashMode_Nothing>Rien</SmashMode_Nothing>
@@ -222,46 +155,15 @@
 	<ChildZombieChance>es enfants zombies</ChildZombieChance>
 	<SpitterThreat>Difficulté du cracheur de zombies</SpitterThreat>
 	<WallPushing>Quantité de zombies qui poussent les zombies par-dessus les murs</WallPushing>
-	<ZombieSymbiantTitle>Symbiant zombie</ZombieSymbiantTitle>
-	<SymbiantEnabled>Activer les Symbiants zombies</SymbiantEnabled>
-	<SymbiantPostFeedPauseHours>Pause de croissance après nourrissage</SymbiantPostFeedPauseHours>
-	<SymbiantMaxCells>Taille maximale du Symbiant</SymbiantMaxCells>
-	<SymbiantFullBenefitRoomCoverage>Couverture de pièce pour le lien complet du Symbiant</SymbiantFullBenefitRoomCoverage>
-	<SymbiantSeveranceMaturityCoverage>Couverture de maturité pour l'opération</SymbiantSeveranceMaturityCoverage>
-	<SymbiantSeveranceMaturityMinCells>Cases min. de maturité pour l'opération</SymbiantSeveranceMaturityMinCells>
-	<SymbiantSeveranceMaturityMaxCells>Cases max. de maturité pour l'opération</SymbiantSeveranceMaturityMaxCells>
-	<SymbiantSeveranceReserveCoverage>Couverture de réserve chirurgicale</SymbiantSeveranceReserveCoverage>
-	<SymbiantSeveranceReserveMin>Impulsions min. de réserve chirurgicale</SymbiantSeveranceReserveMin>
-	<SymbiantSeveranceReserveMax>Impulsions max. de réserve chirurgicale</SymbiantSeveranceReserveMax>
-	<SymbiantZombieIgnoreMinBenefit>Seuil de protection zombie de l'hôte</SymbiantZombieIgnoreMinBenefit>
-	<SymbiantDecouplingFeedPulsesPerDay>Nourrissages du Symbiant par jour</SymbiantDecouplingFeedPulsesPerDay>
-	<SymbiantMaxSkillBonus>Bonus de compétence max. du Symbiant</SymbiantMaxSkillBonus>
-	<SymbiantPathCost>Coût de déplacement dans la vase du Symbiant</SymbiantPathCost>
-	<SymbiantCanBreakConstructedWalls>Le Symbiant peut briser les murs construits</SymbiantCanBreakConstructedWalls>
-	<SymbiantCoagulantPotency>Puissance du pack coagulant</SymbiantCoagulantPotency>
-	<SymbiantDamageAbsorptionFeedback>Afficher les messages de protection du Symbiant</SymbiantDamageAbsorptionFeedback>
-	<SymbiantCoagulantPotency_Cheap>Faible</SymbiantCoagulantPotency_Cheap>
-	<SymbiantCoagulantPotency_Normal>Normale</SymbiantCoagulantPotency_Normal>
-	<SymbiantCoagulantPotency_Expensive>Forte</SymbiantCoagulantPotency_Expensive>
 
 	<ZombieMiscTitle>Divers</ZombieMiscTitle>
 	<UseCustomTextures>Utiliser des textures personnalisées </UseCustomTextures>
 	<ReplaceTwinkie>Change les repas de survie en Twinkies (miam!)</ReplaceTwinkie>
-	<Zombieland_Twinkie_Label>Twinkie</Zombieland_Twinkie_Label>
-	<Zombieland_Twinkie_Description>Un Twinkie est un gâteau apéritif américain, vendu comme un « gâteau éponge doré fourré à la crème ».</Zombieland_Twinkie_Description>
 	<ZombiesTriggerDangerMusic>Les Zombies influences la musique de danger</ZombiesTriggerDangerMusic>
 	<PlayCreepyAmbientSound>Jouer le bruit ambiant effrayant la nuit</PlayCreepyAmbientSound>
 	<BetterZombieAvoidance>Evitement automatique des Zombies</BetterZombieAvoidance>
 	<ZombiesDropBlood>Les zombies lache du sang</ZombiesDropBlood>
 	<ZombiesBurnLonger>Les zombies brûlent plus longtemps</ZombiesBurnLonger>
-
-	<AwarenessCuesTitle>Indices d'activité</AwarenessCuesTitle>
-	<ShowZombieEventLetters>Afficher les alertes d'événements zombies</ShowZombieEventLetters>
-	<PlayZombieEventSiren>Jouer la sirène des événements zombies</PlayZombieEventSiren>
-	<PlaySpecialZombieAmbientSounds>Jouer l'ambiance des zombies spéciaux</PlaySpecialZombieAmbientSounds>
-	<PlayZombieActionSounds>Jouer les sons d'action des zombies</PlayZombieActionSounds>
-	<PlayWallAndSabotageSounds>Jouer les sons de murs et de sabotage</PlayWallAndSabotageSounds>
-	<ShowZombieThoughtBubbles>Afficher les bulles de pensée des zombies</ShowZombieThoughtBubbles>
 
 	<ZombieActionsTitle>Actions</ZombieActionsTitle>
 	<ZombieSettingsReset>Restaurer les paramètres par defaut</ZombieSettingsReset>
@@ -287,7 +189,7 @@
 	<ColonistsBittenByZombieDesc>Ce colon a été mordu par un zombie. A ce stade, on ne sait pas s’il va développer l’infection. Surveillez les blessures car les infections prennent du temps à se développer</ColonistsBittenByZombieDesc>
 
 	<ImminentZombiInfection>Zombification imminente</ImminentZombiInfection>
-	<ImminentZombiInfectionDesc>Ce colon est sur le point d’être infecté par une morsure de zombie:\n\n{0}\nVous pouvez encore le sauver en lui donnant immédiatement un traitement optimal dans les meilleurs conditions. Mais il est nécessaire d’avoir un bon docteur, un lit médical et une salle stérile avec un moniteur vital.</ImminentZombiInfectionDesc>
+	<ImminentZombiInfectionDesc>Ce colon est sur le point d’être infecté par une morsure de zombie:\n\n{0}\Vous pouvez encore le sauver en lui donnant immédiatement un traitement optimal dans les meilleurs conditions. Mais il est nécessaire d’avoir un bon docteur, un lit médical et une sale stérile avec un moniteur vital.</ImminentZombiInfectionDesc>
 
 	<ZombieInfection>Zombification</ZombieInfection>
 	<ZombieInfectionDesc>Ce colon est infecté et va devenir un Zombie. Il n’y a plus moyen de le sauver. Pendant l’infection il est indifférent aux pensés, aux sentiments, à la douleur et à la faim. A la fin, il meurt et devient un Zombie.</ZombieInfectionDesc>
@@ -327,7 +229,6 @@
 	<ShowHealthBar>Barre de santé de zombies</ShowHealthBar>
 	<ShowZombieStats>Afficher les statistiques des zombies</ShowZombieStats>
 
-	<SnowAndSandClear>Déneigement et désensablement</SnowAndSandClear>
 	<ShowZombieRisk>Afficher le risque zombie</ShowZombieRisk>
 	<ColonistInside>Colon à l'intérieur</ColonistInside>
 	<ColonistOutside>Colon dehors</ColonistOutside>

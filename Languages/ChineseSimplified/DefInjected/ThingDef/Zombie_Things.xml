@@ -8,7 +8,7 @@
   <TarSlime.description>一种非常粘稠的粘液，使你的行动更加缓慢</TarSlime.description>
 
   <TarSmoke.label>烟雾</TarSmoke.label>
-  <TarSmoke.description>一种使人难以看清事物的黑烟</TarSmoke.description>
+  <TarSmoke.描述>一种使人难以看清事物的黑烟</TarSmoke.描述>
 
   <StickyGoo.label>剧毒 &amp; 丧尸粘液</StickyGoo.label>
   <StickyGoo.description>一种有毒和粘性的物质，可能会使你生病</StickyGoo.description>
@@ -60,7 +60,5 @@
   <ZombieSpitter.label>僵尸喷吐者</ZombieSpitter.label>
   <ZombieSpitter.description>从空中喷出僵尸攻击你的基地的怪物。</ZombieSpitter.description>
   <ZombieBall.label>僵尸球</ZombieBall.label>
-  <SymbiantCoagulantPack.label>共生体凝结剂包</SymbiantCoagulantPack.label>
-  <SymbiantCoagulantPack.description>一种用于喂养共生体的浓缩包。它会恢复伤害护盾，积累手术储备，通常缩小可见体量，暂停生长，并帮助为连接宿主的切断手术做准备。</SymbiantCoagulantPack.description>
 
 </LanguageData>

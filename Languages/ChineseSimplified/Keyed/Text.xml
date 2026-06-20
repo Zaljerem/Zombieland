@@ -8,19 +8,6 @@
 	<Difficulty_ZombielandThreatScale_Info>控制僵尸乐园中几乎所有事物的难度，如僵尸能力、威胁预测等等。</Difficulty_ZombielandThreatScale_Info>
 	<Difficulty_ZombielandThreatScale_Label>僵尸之地的威胁等级</Difficulty_ZombielandThreatScale_Label>
 
-	<ZombieSuicideBomber>自爆僵尸</ZombieSuicideBomber>
-	<ZombieToxicSplasher>毒液喷溅僵尸</ZombieToxicSplasher>
-	<ZombieTanky>重装操作员僵尸</ZombieTanky>
-	<ZombieMiner>矿工僵尸</ZombieMiner>
-	<ZombieElectrifier>电击僵尸</ZombieElectrifier>
-	<ZombieAlbino>白化僵尸</ZombieAlbino>
-	<ZombieDarkSlimer>黑色黏液僵尸</ZombieDarkSlimer>
-	<ZombieHealer>治疗僵尸</ZombieHealer>
-	<ZombieChild>儿童僵尸</ZombieChild>
-	<ZombieWeak>弱小僵尸</ZombieWeak>
-	<ZombieStrong>强壮僵尸</ZombieStrong>
-	<ZombieSimple>普通僵尸</ZombieSimple>
-
 	<LetterLabelZombiesRising>丧尸袭击</LetterLabelZombiesRising>
 	<ZombiesRising>一群丧尸出现。</ZombiesRising>
 
@@ -29,48 +16,6 @@
 
 	<LetterLabelZombiesSpitter>僵尸喷吐者攻击</LetterLabelZombiesSpitter>
 	<ZombiesSpitter>僵尸喷吐者进入地图并将围攻你</ZombiesSpitter>
-	<LetterLabelZombieSymbiant>僵尸共生体连接到 {0}</LetterLabelZombieSymbiant>
-	<LetterLabelZombieSymbiantNoHost>僵尸共生体出现</LetterLabelZombieSymbiantNoHost>
-	<ZombieSymbiant>一个僵尸共生体在 {0} 中出现，并连接到 {1}。它会扰乱殖民地，但不是立刻致命的威胁：它会在使用中的房间里蔓延，减慢穿过黏液的角色，降低房间质量，并随着成长强化宿主。攻击会先消耗它的伤害护盾；护盾猛烈破裂会杀死宿主。让它的房间保持开放只会使已连接的根部移动到另一个使用中的房间。用人形生物尸体或凝结剂包喂养它，以恢复护盾、积累手术储备并缩小它；当检查面板显示手术已准备好时，对 {1} 进行手术。手术失败可能伤害宿主；杀死宿主会以殖民者的生命为代价结束连接。</ZombieSymbiant>
-	<ZombieSymbiantNoHost>一个僵尸共生体在 {0} 中出现。它会扰乱殖民地，但不是立刻致命的威胁：它会在使用中的房间里蔓延，减慢穿过黏液的角色，并降低房间质量。攻击会先消耗它的伤害护盾。用人形生物尸体或凝结剂包喂养它，以恢复护盾、积累手术储备并缩小它。</ZombieSymbiantNoHost>
-	<ZombieSymbiantUnknownRoom>你的一个房间</ZombieSymbiantUnknownRoom>
-	<ZombieSymbiantInspect>共生体大小：{0}/{1} 格\n连接宿主：{2}\n宿主增益：{3}%\n伤害护盾：{12}/{13}\n攻击：{11}\n生长：{4}\n连接成熟度：{5}\n手术储备：{6}/{7}\n安全手术大小：{8} 格\n今日剩余喂养：{9}\n手术：{10}</ZombieSymbiantInspect>
-	<SymbiantGrowthInactive>不活跃</SymbiantGrowthInactive>
-	<SymbiantGrowthCapped>达到大小上限</SymbiantGrowthCapped>
-	<SymbiantGrowthPaused>喂养后暂停</SymbiantGrowthPaused>
-	<SymbiantGrowthWaiting>等待中</SymbiantGrowthWaiting>
-	<SymbiantGrowthGrowing>正在使用中的房间蔓延</SymbiantGrowthGrowing>
-	<SymbiantGrowthUprooted>已脱离根部；等待稳定房间</SymbiantGrowthUprooted>
-	<SymbiantGrowthRelocating>正在把旧黏液移入使用中的房间</SymbiantGrowthRelocating>
-	<SymbiantGrowthDormantNoRoom>休眠；等待使用中的室内房间</SymbiantGrowthDormantNoRoom>
-	<SymbiantGrowthContained>被困住；无法到达使用中的室内房间</SymbiantGrowthContained>
-	<SymbiantMaturityReady>成熟</SymbiantMaturityReady>
-	<SymbiantMaturityProgress>{0}/{1} 房间格</SymbiantMaturityProgress>
-	<SymbiantSeveranceNoHost>无连接宿主</SymbiantSeveranceNoHost>
-	<SymbiantSeveranceNeedsMaturity>需要在使用中的房间里停留更久</SymbiantSeveranceNeedsMaturity>
-	<SymbiantSeveranceNeedsReserve>喂养它以填满手术储备</SymbiantSeveranceNeedsReserve>
-	<SymbiantSeveranceNeedsShrink>喂养到 3 格或更少</SymbiantSeveranceNeedsShrink>
-	<SymbiantSeveranceReady>已准备；对宿主手术</SymbiantSeveranceReady>
-	<SymbiantWeaponInspect>消耗护盾；喂养以准备手术</SymbiantWeaponInspect>
-	<SymbiantWeaponRejectedMessage>共生体伤害护盾吸收了这一击。护盾：{0}/{1}。喂养会恢复护盾、积累手术储备并缩小可见体量。</SymbiantWeaponRejectedMessage>
-	<SymbiantWeaponRejectedMote>护盾吸收</SymbiantWeaponRejectedMote>
-	<SymbiantDamageGuardBrokenMessage>共生体伤害护盾破裂。{0} 的连接猛烈崩溃。</SymbiantDamageGuardBrokenMessage>
-	<SymbiantHostUnknown>宿主</SymbiantHostUnknown>
-	<FeedZombieSymbiant>喂养共生体</FeedZombieSymbiant>
-	<CancelFeedZombieSymbiant>取消共生体喂养</CancelFeedZombieSymbiant>
-	<FeedZombieSymbiantDesc>标记共生体进行喂养。殖民者会搬来人形生物尸体或共生体凝结剂包。喂养会恢复伤害护盾、积累手术储备、可能缩小可见体量、暂停生长，并且不能移除最后的格子。当手术准备好时，对连接的宿主进行手术。</FeedZombieSymbiantDesc>
-	<FeedingZombieSymbiant>正在喂养共生体</FeedingZombieSymbiant>
-	<NoSymbiantFeed>没有可用的人形生物尸体或共生体凝结剂包</NoSymbiantFeed>
-	<SymbiantFeedLimitReached>今天已达到共生体喂养上限</SymbiantFeedLimitReached>
-	<SymbiantFedMote>储备 +{0}，格子 -{1}</SymbiantFedMote>
-	<SeverSymbiantSymbiosis>切断共生体连接</SeverSymbiantSymbiosis>
-	<SymbiantSeveredMessage>{0} 的共生体连接已被切断。</SymbiantSeveredMessage>
-	<SymbiantHostBondDescription>连接：{0}/{1} 格，{2}% 宿主增益，手术储备 {3}/{4}。{5}</SymbiantHostBondDescription>
-	<SymbiantHostBondReady>手术已准备好。</SymbiantHostBondReady>
-	<SymbiantHostBondNotReady>危险手术：喂养共生体直到储备填满且可见大小为 {0} 格或更少。</SymbiantHostBondNotReady>
-	<SymbiantHostBondMissing>没有活跃共生体连接到此宿主。</SymbiantHostBondMissing>
-	<SymbiantHostRelocatedMessage>{0} 离开地图后，共生体连接进入休眠。剩余的无宿主黏液可以被喂掉。</SymbiantHostRelocatedMessage>
-	<SymbiantReseededMessage>{0} 的共生体房间保持开放后，根部移动到了另一个使用中的房间。旧黏液正在移回新的根部；喂养和手术仍是结束连接的可靠方法。</SymbiantReseededMessage>
 
 	<LetterLabelXDaysUntilZombies>{0} 后丧尸出现</LetterLabelXDaysUntilZombies>
 	<XDaysUntilZombies>丧尸会出现在有土地、泥地、沙地、沙砾的地方，建造地板可以防止丧尸从这些地方出现。</XDaysUntilZombies>
@@ -89,7 +34,6 @@
 	<ContaminationEnabled>全球启用</ContaminationEnabled>
 	<ZombielandRestartRequired>更改此设置需要重新启动</ZombielandRestartRequired>
 	<ZombielandContamination>强度</ZombielandContamination>
-	<ContaminationEffectiveness>总效果 {0}%</ContaminationEffectiveness>
 
 	<WhenDoZombiesSpawn>丧尸出现的时间段？</WhenDoZombiesSpawn>
 	<SpawnWhenType_AllTheTime>所有时间</SpawnWhenType_AllTheTime>
@@ -112,17 +56,6 @@
 	<AttackMode_OnlyColonists>只攻击殖民者</AttackMode_OnlyColonists>
 	<EnemiesAttackZombies>敌人攻击丧尸</EnemiesAttackZombies>
 	<AnimalsAttackZombies>动物攻击丧尸</AnimalsAttackZombies>
-	<AnomalyTargetingTitle>Anomaly 例外</AnomalyTargetingTitle>
-	<AnomalyTargetingRelations>丧尸可以攻击：</AnomalyTargetingRelations>
-	<AnomalyTargetGhouls>尸鬼</AnomalyTargetGhouls>
-	<AnomalyTargetShamblers>蹒跚者和变异人类</AnomalyTargetShamblers>
-	<AnomalyTargetOtherEntities>其他 Anomaly 实体</AnomalyTargetOtherEntities>
-	<AnomalyTargetNociosphere>Nociosphere</AnomalyTargetNociosphere>
-	<AnomalyZombieHostilityRelations>Anomaly 角色可以攻击丧尸：</AnomalyZombieHostilityRelations>
-	<AnomalyTargetingOverride_Automatic>自动</AnomalyTargetingOverride_Automatic>
-	<AnomalyTargetingOverride_Never>从不</AnomalyTargetingOverride_Never>
-	<AnomalyTargetingOverride_Allow>允许</AnomalyTargetingOverride_Allow>
-	<AnomalyTargetingOverride_Mixed>混合</AnomalyTargetingOverride_Mixed>
 
 	<WhatDoZombiesSmash>丧尸会摧毁什么建筑？</WhatDoZombiesSmash>
 	<SmashMode_Nothing>无</SmashMode_Nothing>
@@ -222,46 +155,15 @@
 	<ChildZombieChance>僵尸儿童</ChildZombieChance>
 	<SpitterThreat>僵尸喷射难度</SpitterThreat>
 	<WallPushing>将僵尸推到墙上的僵尸数量</WallPushing>
-	<ZombieSymbiantTitle>僵尸共生体</ZombieSymbiantTitle>
-	<SymbiantEnabled>启用僵尸共生体</SymbiantEnabled>
-	<SymbiantPostFeedPauseHours>喂养后的生长暂停</SymbiantPostFeedPauseHours>
-	<SymbiantMaxCells>共生体最大大小</SymbiantMaxCells>
-	<SymbiantFullBenefitRoomCoverage>完整共生体连接的房间覆盖</SymbiantFullBenefitRoomCoverage>
-	<SymbiantSeveranceMaturityCoverage>手术成熟覆盖</SymbiantSeveranceMaturityCoverage>
-	<SymbiantSeveranceMaturityMinCells>手术成熟最少格数</SymbiantSeveranceMaturityMinCells>
-	<SymbiantSeveranceMaturityMaxCells>手术成熟最多格数</SymbiantSeveranceMaturityMaxCells>
-	<SymbiantSeveranceReserveCoverage>手术储备覆盖</SymbiantSeveranceReserveCoverage>
-	<SymbiantSeveranceReserveMin>手术储备最少脉冲</SymbiantSeveranceReserveMin>
-	<SymbiantSeveranceReserveMax>手术储备最多脉冲</SymbiantSeveranceReserveMax>
-	<SymbiantZombieIgnoreMinBenefit>宿主僵尸保护阈值</SymbiantZombieIgnoreMinBenefit>
-	<SymbiantDecouplingFeedPulsesPerDay>每日共生体喂养次数</SymbiantDecouplingFeedPulsesPerDay>
-	<SymbiantMaxSkillBonus>最大共生体技能加成</SymbiantMaxSkillBonus>
-	<SymbiantPathCost>共生体黏液移动消耗</SymbiantPathCost>
-	<SymbiantCanBreakConstructedWalls>共生体可破坏建造墙</SymbiantCanBreakConstructedWalls>
-	<SymbiantCoagulantPotency>凝结剂包强度</SymbiantCoagulantPotency>
-	<SymbiantDamageAbsorptionFeedback>显示共生体护盾消息</SymbiantDamageAbsorptionFeedback>
-	<SymbiantCoagulantPotency_Cheap>低</SymbiantCoagulantPotency_Cheap>
-	<SymbiantCoagulantPotency_Normal>普通</SymbiantCoagulantPotency_Normal>
-	<SymbiantCoagulantPotency_Expensive>高</SymbiantCoagulantPotency_Expensive>
 
 	<ZombieMiscTitle>其他</ZombieMiscTitle>
 	<UseCustomTextures>使用自定义纹理</UseCustomTextures>
 	<ReplaceTwinkie>将包装生存食品改为Twinkies</ReplaceTwinkie>
-	<Zombieland_Twinkie_Label>Twinkie</Zombieland_Twinkie_Label>
-	<Zombieland_Twinkie_Description>Twinkie 是一种美式点心蛋糕，宣传语为“带奶油夹心的金色海绵蛋糕”。</Zombieland_Twinkie_Description>
 	<ZombiesTriggerDangerMusic>丧尸会触发危险音乐效果</ZombiesTriggerDangerMusic>
 	<PlayCreepyAmbientSound>在夜晚播放令人毛骨悚然的环境声效</PlayCreepyAmbientSound>
 	<BetterZombieAvoidance>自动回避丧尸</BetterZombieAvoidance>
 	<ZombiesDropBlood>丧尸流血</ZombiesDropBlood>
 	<ZombiesBurnLonger>僵尸燃烧时间更长</ZombiesBurnLonger>
-
-	<AwarenessCuesTitle>感知提示</AwarenessCuesTitle>
-	<ShowZombieEventLetters>显示僵尸事件警报</ShowZombieEventLetters>
-	<PlayZombieEventSiren>播放僵尸事件警报声</PlayZombieEventSiren>
-	<PlaySpecialZombieAmbientSounds>播放特殊僵尸环境音</PlaySpecialZombieAmbientSounds>
-	<PlayZombieActionSounds>播放僵尸行动音效</PlayZombieActionSounds>
-	<PlayWallAndSabotageSounds>播放撞墙和破坏音效</PlayWallAndSabotageSounds>
-	<ShowZombieThoughtBubbles>显示僵尸思维气泡</ShowZombieThoughtBubbles>
 
 	<ZombieActionsTitle>操作</ZombieActionsTitle>
 	<ZombieSettingsReset>恢复默认设置</ZombieSettingsReset>
@@ -327,7 +229,6 @@
 	<ShowHealthBar>僵尸健康酒吧</ShowHealthBar>
 	<ShowZombieStats>显示僵尸统计信息</ShowZombieStats>
 
-	<SnowAndSandClear>清除雪和沙</SnowAndSandClear>
 	<ShowZombieRisk>显示僵尸风险</ShowZombieRisk>
 	<ColonistInside>里面的殖民者</ColonistInside>
 	<ColonistOutside>外面的殖民者</ColonistOutside>

@@ -8,19 +8,6 @@
 	<Difficulty_ZombielandThreatScale_Info>Zombieland'deki zombi yetenekleri, tehdit tahmini ve çok daha fazlası gibi neredeyse her şeyin zorluğunu kontrol eder.</Difficulty_ZombielandThreatScale_Info>
 	<Difficulty_ZombielandThreatScale_Label>Zombieland tehdit ölçeği</Difficulty_ZombielandThreatScale_Label>
 
-	<ZombieSuicideBomber>İntihar bombacısı zombi</ZombieSuicideBomber>
-	<ZombieToxicSplasher>Zehir saçan zombi</ZombieToxicSplasher>
-	<ZombieTanky>Zırhlı operatör zombi</ZombieTanky>
-	<ZombieMiner>Madenci zombi</ZombieMiner>
-	<ZombieElectrifier>Elektrik yayan zombi</ZombieElectrifier>
-	<ZombieAlbino>Albino zombi</ZombieAlbino>
-	<ZombieDarkSlimer>Kara balçık zombi</ZombieDarkSlimer>
-	<ZombieHealer>Şifacı zombi</ZombieHealer>
-	<ZombieChild>Çocuk zombi</ZombieChild>
-	<ZombieWeak>Zayıf zombi</ZombieWeak>
-	<ZombieStrong>Güçlü zombi</ZombieStrong>
-	<ZombieSimple>Basit zombi</ZombieSimple>
-
 	<LetterLabelZombiesRising>Zombi Saldırısı</LetterLabelZombiesRising>
 	<ZombiesRising>Bir grup zombi ortaya çıkar.</ZombiesRising>
 
@@ -29,48 +16,6 @@
 
 	<LetterLabelZombiesSpitter>Zombi tükürük saldırısı</LetterLabelZombiesSpitter>
 	<ZombiesSpitter>Bir zombi tükürücü haritaya girdi ve sizi kuşatacak</ZombiesSpitter>
-	<LetterLabelZombieSymbiant>Zombi Simbiyantı {0} ile bağ kurdu</LetterLabelZombieSymbiant>
-	<LetterLabelZombieSymbiantNoHost>Zombi Simbiyantı ortaya çıktı</LetterLabelZombieSymbiantNoHost>
-	<ZombieSymbiant>Bir Zombi Simbiyantı {0} içinde ortaya çıktı ve {1} ile bağ kurdu. Koloniyi bozar ama ani bir ölüm tehdidi değildir: kullanılan odalara yayılır, balçığının üzerinden geçen piyonları yavaşlatır, oda kalitesini düşürür ve büyüdükçe konağı güçlendirir. Saldırılar önce hasar korumasını tüketir; korumanın şiddetle çökmesi konağı öldürür. Odasını açık bırakmak bağlı kökü yalnızca başka bir kullanılan odaya taşır. Korumayı yenilemek, ameliyat rezervi oluşturmak ve onu küçültmek için insansı ceset veya pıhtılaştırıcı paketle besleyin; inceleme paneli ameliyatın hazır olduğunu söylediğinde {1} üzerinde ameliyat yapın. Başarısız ameliyat konağı yaralayabilir; konağı öldürmek bağı kolonistin canı pahasına bitirir.</ZombieSymbiant>
-	<ZombieSymbiantNoHost>Bir Zombi Simbiyantı {0} içinde ortaya çıktı. Koloniyi bozar ama ani bir ölüm tehdidi değildir: kullanılan odalara yayılır, balçığının üzerinden geçen piyonları yavaşlatır ve oda kalitesini düşürür. Saldırılar önce hasar korumasını tüketir. Korumayı yenilemek, ameliyat rezervi oluşturmak ve onu küçültmek için insansı ceset veya pıhtılaştırıcı paketle besleyin.</ZombieSymbiantNoHost>
-	<ZombieSymbiantUnknownRoom>odalarınızdan biri</ZombieSymbiantUnknownRoom>
-	<ZombieSymbiantInspect>Simbiyant boyutu: {0}/{1} hücre\nBağlı konak: {2}\nKonak faydası: {3}%\nHasar koruması: {12}/{13}\nSaldırı: {11}\nBüyüme: {4}\nBağ olgunluğu: {5}\nAmeliyat rezervi: {6}/{7}\nGüvenli ameliyat boyutu: {8} hücre\nBugün kalan besleme: {9}\nAmeliyat: {10}</ZombieSymbiantInspect>
-	<SymbiantGrowthInactive>pasif</SymbiantGrowthInactive>
-	<SymbiantGrowthCapped>boyut sınırında</SymbiantGrowthCapped>
-	<SymbiantGrowthPaused>beslemeden sonra durakladı</SymbiantGrowthPaused>
-	<SymbiantGrowthWaiting>bekliyor</SymbiantGrowthWaiting>
-	<SymbiantGrowthGrowing>kullanılan odalara yayılıyor</SymbiantGrowthGrowing>
-	<SymbiantGrowthUprooted>kökünden ayrıldı; dengeli oda bekliyor</SymbiantGrowthUprooted>
-	<SymbiantGrowthRelocating>eski balçığı kullanılan odalara taşıyor</SymbiantGrowthRelocating>
-	<SymbiantGrowthDormantNoRoom>uykuda; kullanılan iç oda bekliyor</SymbiantGrowthDormantNoRoom>
-	<SymbiantGrowthContained>hapsedildi; ulaşılabilir kullanılan iç oda yok</SymbiantGrowthContained>
-	<SymbiantMaturityReady>olgun</SymbiantMaturityReady>
-	<SymbiantMaturityProgress>{0}/{1} oda hücresi</SymbiantMaturityProgress>
-	<SymbiantSeveranceNoHost>bağlı konak yok</SymbiantSeveranceNoHost>
-	<SymbiantSeveranceNeedsMaturity>kullanılan odalarda daha fazla süre gerekir</SymbiantSeveranceNeedsMaturity>
-	<SymbiantSeveranceNeedsReserve>ameliyat rezervini doldurmak için besleyin</SymbiantSeveranceNeedsReserve>
-	<SymbiantSeveranceNeedsShrink>3 hücreye veya daha aza inene kadar besleyin</SymbiantSeveranceNeedsShrink>
-	<SymbiantSeveranceReady>hazır; konak üzerinde ameliyat yapın</SymbiantSeveranceReady>
-	<SymbiantWeaponInspect>korumayı tüketir; ameliyat için besleyin</SymbiantWeaponInspect>
-	<SymbiantWeaponRejectedMessage>Simbiyant hasar koruması darbeyi emdi. Koruma: {0}/{1}. Besleme korumayı yeniler, ameliyat rezervi oluşturur ve görünür kütleyi küçültür.</SymbiantWeaponRejectedMessage>
-	<SymbiantWeaponRejectedMote>koruma emer</SymbiantWeaponRejectedMote>
-	<SymbiantDamageGuardBrokenMessage>Simbiyant hasar koruması çöktü. {0} bağını şiddetle kaybetti.</SymbiantDamageGuardBrokenMessage>
-	<SymbiantHostUnknown>konak</SymbiantHostUnknown>
-	<FeedZombieSymbiant>Simbiyantı besle</FeedZombieSymbiant>
-	<CancelFeedZombieSymbiant>Simbiyant beslemesini iptal et</CancelFeedZombieSymbiant>
-	<FeedZombieSymbiantDesc>Simbiyantı besleme için işaretler. Kolonistler insansı ceset veya Simbiyant pıhtılaştırıcı paketi getirir. Besleme hasar korumasını yeniler, ameliyat rezervi oluşturur, görünür kütleyi küçültebilir, büyümeyi duraklatır ve son hücreleri kaldıramaz. Ameliyat hazır olduğunda bağlı konak üzerinde ameliyat yapın.</FeedZombieSymbiantDesc>
-	<FeedingZombieSymbiant>bir Simbiyantı besliyor</FeedingZombieSymbiant>
-	<NoSymbiantFeed>Kullanılabilir insansı ceset veya Simbiyant pıhtılaştırıcı paketi yok</NoSymbiantFeed>
-	<SymbiantFeedLimitReached>Bugünkü Simbiyant besleme sınırına ulaşıldı</SymbiantFeedLimitReached>
-	<SymbiantFedMote>rezerv +{0}, hücre -{1}</SymbiantFedMote>
-	<SeverSymbiantSymbiosis>Simbiyant bağını kes</SeverSymbiantSymbiosis>
-	<SymbiantSeveredMessage>{0} üzerindeki Simbiyant bağı kesildi.</SymbiantSeveredMessage>
-	<SymbiantHostBondDescription>Bağ: {0}/{1} hücre, {2}% konak faydası, ameliyat rezervi {3}/{4}. {5}</SymbiantHostBondDescription>
-	<SymbiantHostBondReady>Ameliyat hazır.</SymbiantHostBondReady>
-	<SymbiantHostBondNotReady>Güvensiz ameliyat: rezerv dolana ve görünür boyut {0} hücre veya daha az olana kadar Simbiyantı besleyin.</SymbiantHostBondNotReady>
-	<SymbiantHostBondMissing>Bu konağa bağlı aktif Simbiyant yok.</SymbiantHostBondMissing>
-	<SymbiantHostRelocatedMessage>{0} haritadan ayrıldıktan sonra Simbiyant bağı uykuya geçti. Kalan konaksız balçık beslenerek azaltılabilir.</SymbiantHostRelocatedMessage>
-	<SymbiantReseededMessage>{0} üzerindeki Simbiyant kökü, odası açık kaldıktan sonra başka bir kullanılan odaya taşındı. Eski balçık yeni köke geri taşınıyor; bağı bitirmenin güvenilir yolu besleme ve ameliyat olmaya devam eder.</SymbiantReseededMessage>
 
 	<LetterLabelXDaysUntilZombies>Zombiler gelene kadar {0} gün kaldı.</LetterLabelXDaysUntilZombies>
 	<XDaysUntilZombies>Zombiler yumuşak toprağın, toprağın, kumun ve de çakılın olduğu yerlerde ortaya çıkar. Bunların bulunduğu yerlere yol ve benzeri şeyler inşa etmek zombilerin oradan çıkmasını engeller.</XDaysUntilZombies>
@@ -89,7 +34,6 @@
 
 	<ZombielandContaminationTitle>Kirlilik</ZombielandContaminationTitle>
 	<ZombielandContamination>Yoğunluk</ZombielandContamination>
-	<ContaminationEffectiveness>Toplam etkinlik {0}%</ContaminationEffectiveness>
 
 	<WhenDoZombiesSpawn>Zombiler ne zaman ortaya çıksın?</WhenDoZombiesSpawn>
 	<SpawnWhenType_AllTheTime>Her zaman</SpawnWhenType_AllTheTime>
@@ -112,17 +56,6 @@
 	<AttackMode_OnlyColonists>Sadece kolonistler</AttackMode_OnlyColonists>
 	<EnemiesAttackZombies>Düşmanlar zombi saldırır</EnemiesAttackZombies>
 	<AnimalsAttackZombies>Hayvanlar zombi saldırı</AnimalsAttackZombies>
-	<AnomalyTargetingTitle>Anomaly istisnaları</AnomalyTargetingTitle>
-	<AnomalyTargetingRelations>Zombiler saldırabilir:</AnomalyTargetingRelations>
-	<AnomalyTargetGhouls>Ghoullar</AnomalyTargetGhouls>
-	<AnomalyTargetShamblers>Shamblerlar ve mutant insanlar</AnomalyTargetShamblers>
-	<AnomalyTargetOtherEntities>Diğer Anomaly varlıkları</AnomalyTargetOtherEntities>
-	<AnomalyTargetNociosphere>Nociosphere</AnomalyTargetNociosphere>
-	<AnomalyZombieHostilityRelations>Anomaly piyonları zombilere saldırabilir:</AnomalyZombieHostilityRelations>
-	<AnomalyTargetingOverride_Automatic>Otomatik</AnomalyTargetingOverride_Automatic>
-	<AnomalyTargetingOverride_Never>Asla</AnomalyTargetingOverride_Never>
-	<AnomalyTargetingOverride_Allow>İzin ver</AnomalyTargetingOverride_Allow>
-	<AnomalyTargetingOverride_Mixed>Karışık</AnomalyTargetingOverride_Mixed>
 
 	<WhatDoZombiesSmash>Zombiler neyi mahvedecek?</WhatDoZombiesSmash>
 	<SmashMode_Nothing>Hiçbir şey</SmashMode_Nothing>
@@ -222,46 +155,15 @@
 	<ChildZombieChance>Zombi çocukları</ChildZombieChance>
 	<SpitterThreat>Zombi tükürme zorluğu</SpitterThreat>
 	<WallPushing>Zombileri duvarların üzerinden itecek zombi miktarı</WallPushing>
-	<ZombieSymbiantTitle>Zombi Simbiyantı</ZombieSymbiantTitle>
-	<SymbiantEnabled>Zombi Simbiyantlarını etkinleştir</SymbiantEnabled>
-	<SymbiantPostFeedPauseHours>Beslemeden sonra büyüme duraklaması</SymbiantPostFeedPauseHours>
-	<SymbiantMaxCells>En fazla Simbiyant boyutu</SymbiantMaxCells>
-	<SymbiantFullBenefitRoomCoverage>Tam Simbiyant bağı için oda kapsamı</SymbiantFullBenefitRoomCoverage>
-	<SymbiantSeveranceMaturityCoverage>Ameliyat olgunluğu kapsamı</SymbiantSeveranceMaturityCoverage>
-	<SymbiantSeveranceMaturityMinCells>Ameliyat olgunluğu en az hücre</SymbiantSeveranceMaturityMinCells>
-	<SymbiantSeveranceMaturityMaxCells>Ameliyat olgunluğu en çok hücre</SymbiantSeveranceMaturityMaxCells>
-	<SymbiantSeveranceReserveCoverage>Ameliyat rezervi kapsamı</SymbiantSeveranceReserveCoverage>
-	<SymbiantSeveranceReserveMin>Ameliyat rezervi en az atım</SymbiantSeveranceReserveMin>
-	<SymbiantSeveranceReserveMax>Ameliyat rezervi en çok atım</SymbiantSeveranceReserveMax>
-	<SymbiantZombieIgnoreMinBenefit>Konak zombi koruması eşiği</SymbiantZombieIgnoreMinBenefit>
-	<SymbiantDecouplingFeedPulsesPerDay>Günlük Simbiyant beslemeleri</SymbiantDecouplingFeedPulsesPerDay>
-	<SymbiantMaxSkillBonus>En fazla Simbiyant beceri bonusu</SymbiantMaxSkillBonus>
-	<SymbiantPathCost>Simbiyant balçığı hareket maliyeti</SymbiantPathCost>
-	<SymbiantCanBreakConstructedWalls>Simbiyant inşa edilmiş duvarları kırabilir</SymbiantCanBreakConstructedWalls>
-	<SymbiantCoagulantPotency>Pıhtılaştırıcı paket gücü</SymbiantCoagulantPotency>
-	<SymbiantDamageAbsorptionFeedback>Simbiyant koruma mesajlarını göster</SymbiantDamageAbsorptionFeedback>
-	<SymbiantCoagulantPotency_Cheap>Düşük</SymbiantCoagulantPotency_Cheap>
-	<SymbiantCoagulantPotency_Normal>Normal</SymbiantCoagulantPotency_Normal>
-	<SymbiantCoagulantPotency_Expensive>Yüksek</SymbiantCoagulantPotency_Expensive>
 
 	<ZombieMiscTitle>Çeşitli</ZombieMiscTitle>
 	<UseCustomTextures>Özel dokular kullanın</UseCustomTextures>
 	<ReplaceTwinkie>Hayatta kalma öğünlerini Twinkies olarak değiştir</ReplaceTwinkie>
-	<Zombieland_Twinkie_Label>Twinkie</Zombieland_Twinkie_Label>
-	<Zombieland_Twinkie_Description>Twinkie, "kremalı dolgulu altın sünger kek" olarak pazarlanan Amerikan atıştırmalık kekidir.</Zombieland_Twinkie_Description>
 	<ZombiesTriggerDangerMusic>Zombiler tehlike müziğini etkiliyor</ZombiesTriggerDangerMusic>
 	<PlayCreepyAmbientSound>Geceleri ürpertici ortam sesi çal</PlayCreepyAmbientSound>
 	<BetterZombieAvoidance>Zombilerden otomatik olarak kaçınma</BetterZombieAvoidance>
 	<ZombiesDropBlood>Zombiler kan damlar</ZombiesDropBlood>
 	<ZombiesBurnLonger>Zombiler uzun süre yanacak</ZombiesBurnLonger>
-
-	<AwarenessCuesTitle>Zombi etkinliği ipuçları</AwarenessCuesTitle>
-	<ShowZombieEventLetters>Zombi olay uyarılarını göster</ShowZombieEventLetters>
-	<PlayZombieEventSiren>Zombi olay sirenini çal</PlayZombieEventSiren>
-	<PlaySpecialZombieAmbientSounds>Özel zombi ortam seslerini çal</PlaySpecialZombieAmbientSounds>
-	<PlayZombieActionSounds>Zombi eylem seslerini çal</PlayZombieActionSounds>
-	<PlayWallAndSabotageSounds>Duvar ve sabotaj seslerini çal</PlayWallAndSabotageSounds>
-	<ShowZombieThoughtBubbles>Zombi düşünce balonlarını göster</ShowZombieThoughtBubbles>
 
 	<ZombieActionsTitle>Eylemler</ZombieActionsTitle>
 	<ZombieSettingsReset>Ayarları varsayılan duruma getirmek</ZombieSettingsReset>
@@ -274,7 +176,6 @@
 	<ClipboardActionTitle>Panoya</ClipboardActionTitle>
 	<CopySettings>Ayarları panoya kopyala</CopySettings>
 	<CopyButton>Kopyala</CopyButton>
-	<DuplicateButton>Çoğalt</DuplicateButton>
 	<PasteSettings>Panodan ayarları ayarla</PasteSettings>
 	<PasteButton>Yapıştırmak</PasteButton>
 	<RopeZombie>Bu zombiyi yakala</RopeZombie>
@@ -327,7 +228,6 @@
 	<ShowHealthBar>Zombiler sağlık çubuğu</ShowHealthBar>
 	<ShowZombieStats>Zombi istatistiklerini göster</ShowZombieStats>
 
-	<SnowAndSandClear>Kar ve kum temizleme</SnowAndSandClear>
 	<ShowZombieRisk>Zombi riskini göster</ShowZombieRisk>
 	<ColonistInside>Kolonist içeride</ColonistInside>
 	<ColonistOutside>Kolonist dışarıda</ColonistOutside>
