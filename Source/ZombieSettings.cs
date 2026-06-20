@@ -532,6 +532,7 @@ namespace ZombieLand
 				var ticks = Mathf.Clamp(GenTicks.TicksGame, 0, ValuesOverTime.Last().Ticks);
 				var settings = CalculateInterpolation(ValuesOverTime, ticks);
 				ContaminationFactors.ApplyBaseFactor(settings.contamination, settings.contaminationBaseFactor);
+				LongEventHandler.ExecuteWhenFinished(RimHudIntegration.TryApplyForActiveGame);
 			}
 		}
 	}

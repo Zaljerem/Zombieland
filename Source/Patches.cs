@@ -5801,6 +5801,7 @@ namespace ZombieLand
 				ZombieBootstrap.RunSafely(phase, "Twinkie graphics", () => Tools.EnableTwinkie(ZombieSettings.Values.replaceTwinkie));
 				ZombieBootstrap.RunSafely(phase, "zombie health scale", () => CustomDefs.Zombie.race.baseHealthScale = ZombieSettings.Values.healthFactor);
 				ZombieBootstrap.RunSafely(phase, "symbiant cache clear", ZombieSymbiant.ClearActiveSymbiantCaches);
+				ZombieBootstrap.RunSafely(phase, "RimHUD integration", RimHudIntegration.TryApplyForActiveGame);
 			}
 		}
 
@@ -6423,6 +6424,7 @@ namespace ZombieLand
 			{
 				Find.CurrentMap?.mapPawns.FreeColonists
 					.Do(pawn => pawn.playerSettings.hostilityResponse = HostilityResponseMode.Attack);
+				RimHudIntegration.TryApplyForActiveGame();
 			}
 		}
 

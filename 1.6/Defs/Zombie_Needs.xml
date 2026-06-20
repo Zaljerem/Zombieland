@@ -4,7 +4,7 @@
 	<NeedDef>
 		<defName>Contamination</defName>
 		<needClass>ZombieLand.ContaminationNeed</needClass>
-		<label>zombie contamination</label>
+		<label>contamination</label>
 		<description>Contamination is something that increases with contact to contaminated things.</description>
 		<baseLevel>0.2</baseLevel>
 		<major>true</major>
