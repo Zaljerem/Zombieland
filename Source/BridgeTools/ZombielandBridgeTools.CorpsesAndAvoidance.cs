@@ -684,6 +684,133 @@ namespace ZombieLand
 			}
 		}
 
+		[Tool("zombieland/extract_serum_respects_allowed_area", Description = "Verify automatic zombie extract harvesting respects a doctor's assigned allowed area while manual forced harvesting still works.")]
+		public static object ExtractSerumRespectsAllowedArea()
+		{
+			var map = CurrentMap;
+			if (map == null)
+			{
+				return new
+				{
+					success = false,
+					error = "No current map is loaded."
+				};
+			}
+
+			var oldAmount = ZombieSettings.Values.corpsesExtractAmount;
+			var oldExtractArea = ZombieSettings.Values.extractZombieArea;
+			var actor = (Pawn)null;
+			var corpse = (ZombieCorpse)null;
+			var allowedArea = (Area_Allowed)null;
+			try
+			{
+				ZombieSettings.Values.corpsesExtractAmount = Math.Max(1f, oldAmount);
+				ZombieSettings.Values.extractZombieArea = "";
+
+				var root = new IntVec3(map.Size.x / 2, 0, map.Size.z / 2);
+				if (TryFindClearSpawnCell(map, root, 16f, out var actorCell, out var actorSpawnError) == false)
+					return actorSpawnError;
+				actor = CreateWorkflowColonist(map, actorCell, "Extract area doctor", true);
+				var config = ColonistSettings.Values.ConfigFor(actor);
+				if (config != null)
+					config.autoExtractZombieSerum = true;
+
+				if (TryFindClearSpawnCell(map, actor.Position + new IntVec3(6, 0, 0), 8f, out var zombieCell, out var zombieSpawnError) == false)
+					return zombieSpawnError;
+				var zombie = ZombieRuntimeActions.SpawnZombie(zombieCell, map, ZombieType.Normal, true);
+				if (zombie == null)
+				{
+					return new
+					{
+						success = false,
+						actor = DescribePawn(actor),
+						zombieCell = ZombieRuntimeActions.DescribeCell(zombieCell),
+						error = "ZombieGenerator.SpawnZombie returned no zombie."
+					};
+				}
+
+				zombie.Kill(null);
+				corpse = zombie.Corpse as ZombieCorpse
+					?? map.listerThings.AllThings.OfType<ZombieCorpse>().OrderBy(thing => thing.Position.DistanceToSquared(zombieCell)).FirstOrDefault();
+				if (corpse == null)
+				{
+					return new
+					{
+						success = false,
+						actor = DescribePawn(actor),
+						zombieCell = ZombieRuntimeActions.DescribeCell(zombieCell),
+						error = "Killing the zombie did not leave a ZombieCorpse."
+					};
+				}
+
+				if (map.areaManager.TryMakeNewAllowed(out allowedArea) == false)
+				{
+					return new
+					{
+						success = false,
+						actor = DescribePawn(actor),
+						corpse = DescribeCorpse(corpse),
+						error = "Could not create a temporary allowed area."
+					};
+				}
+				allowedArea.labelInt = "ZL extract area gate";
+				foreach (var cell in allowedArea.ActiveCells.ToArray())
+					allowedArea[cell] = false;
+				allowedArea[actor.Position] = true;
+				actor.playerSettings.AreaRestrictionInPawnCurrentMap = allowedArea;
+
+				var tickManager = map.GetComponent<TickManager>();
+				if (tickManager?.allZombieCorpses?.Contains(corpse) == false)
+					tickManager.allZombieCorpses.Add(corpse);
+
+				var workGiver = new WorkGiver_ExtractZombieSerum();
+				var candidates = workGiver.PotentialWorkThingsGlobal(actor).ToArray();
+				var listedOutsideAreaCorpse = candidates.Contains(corpse);
+				var hasUnforcedJob = workGiver.HasJobOnThing(actor, corpse, false);
+				var unforcedJob = workGiver.JobOnThing(actor, corpse, false);
+				var hasForcedJob = workGiver.HasJobOnThing(actor, corpse, true);
+				var forcedJob = hasForcedJob ? workGiver.JobOnThing(actor, corpse, true) : null;
+
+				return new
+				{
+					success = listedOutsideAreaCorpse == false
+						&& hasUnforcedJob == false
+						&& unforcedJob == null
+						&& hasForcedJob
+						&& forcedJob?.def == CustomDefs.ExtractZombieSerum,
+					actor = DescribePawn(actor),
+					corpse = DescribeCorpse(corpse),
+					allowedArea = allowedArea.Label,
+					actorCell = ZombieRuntimeActions.DescribeCell(actor.Position),
+					corpseCell = ZombieRuntimeActions.DescribeCell(corpse.Position),
+					actorCellAllowed = allowedArea[actor.Position],
+					corpseCellAllowed = allowedArea[corpse.Position],
+					candidateCount = candidates.Length,
+					listedOutsideAreaCorpse,
+					hasUnforcedJob,
+					unforcedJobDef = unforcedJob?.def?.defName,
+					hasForcedJob,
+					forcedJobDef = forcedJob?.def?.defName,
+					restoredCorpsesExtractAmount = oldAmount,
+					restoredExtractArea = oldExtractArea
+				};
+			}
+			finally
+			{
+				ZombieSettings.Values.corpsesExtractAmount = oldAmount;
+				ZombieSettings.Values.extractZombieArea = oldExtractArea;
+				if (actor != null && actor.Destroyed == false)
+				{
+					actor.jobs?.EndCurrentJob(JobCondition.InterruptForced);
+					actor.Destroy(DestroyMode.Vanish);
+				}
+				if (corpse != null && corpse.Destroyed == false)
+					corpse.Destroy(DestroyMode.Vanish);
+				if (allowedArea != null && map.areaManager.AllAreas.Contains(allowedArea))
+					map.areaManager.Remove(allowedArea);
+			}
+		}
+
 		[Tool("zombieland/zombie_extract_filter_visibility", Description = "Verify the broad zombie ThingFilter patch still allows zombie extract and serum defs while blocking actual zombie defs.")]
 		public static object ZombieExtractFilterVisibility()
 		{

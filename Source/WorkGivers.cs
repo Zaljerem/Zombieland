@@ -36,7 +36,10 @@ namespace ZombieLand
 			if (corpses == null)
 				return Enumerable.Empty<Thing>();
 			return corpses
-				.Where(corpse => corpse.DestroyedOrNull() == false && corpse.Spawned && (area == null || area[corpse.Position]))
+				.Where(corpse => corpse.DestroyedOrNull() == false
+					&& corpse.Spawned
+					&& (area == null || area[corpse.Position])
+					&& IsAllowedByPawnArea(pawn, corpse.Position, false))
 				.OrderBy(corpse => corpse.Position.DistanceToSquared(pos)).Take(8); // just consider the nearest 8
 		}
 
@@ -51,6 +54,9 @@ namespace ZombieLand
 			var map = pawn.Map;
 			if (forced == false)
 			{
+				if (IsAllowedByPawnArea(pawn, t.Position, forced) == false)
+					return false;
+
 				var area = map.areaManager.AllAreas.FirstOrDefault(area => area.Label == ZombieSettings.Values.extractZombieArea);
 				if (area != null && area[t.Position] == false)
 					return false;
@@ -76,9 +82,20 @@ namespace ZombieLand
 			return result;
 		}
 
+		static bool IsAllowedByPawnArea(Pawn pawn, IntVec3 cell, bool forced)
+		{
+			if (forced)
+				return true;
+
+			var allowedArea = pawn.playerSettings?.AreaRestrictionInPawnCurrentMap;
+			return allowedArea == null || allowedArea[cell];
+		}
+
 		public override Job JobOnThing(Pawn pawn, Thing t, bool forced = false)
 		{
 			if (t is not ZombieCorpse corpse)
+				return null;
+			if (forced == false && IsAllowedByPawnArea(pawn, t.Position, forced) == false)
 				return null;
 			return JobMaker.MakeJob(CustomDefs.ExtractZombieSerum, corpse);
 		}
