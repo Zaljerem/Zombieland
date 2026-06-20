@@ -120,7 +120,7 @@ namespace ZombieLand
 			if (thing == null)
 				return;
 			var contamination = thing.GetContamination();
-			if (contamination == 0)
+			if (ContaminationThresholds.IsVisible(contamination) == false)
 				return;
 			var textureIdx = Mathf.Clamp(Mathf.FloorToInt(alpha * 4f + 0.2f), 0, Constants.thingIconTextures.Length - 1);
 			var texture = Constants.thingIconTextures[textureIdx];
@@ -174,7 +174,7 @@ namespace ZombieLand
 			if (cell.InBounds(map))
 			{
 				var contamination = map.GetContamination(cell);
-				if (contamination >= ContaminationFactors.minContaminationThreshold)
+				if (ContaminationThresholds.IsVisible(contamination))
 					result += $" Contaminated ({contamination:P2})";
 			}
 			return result;
@@ -186,7 +186,7 @@ namespace ZombieLand
 			if (self is Thing thing)
 			{
 				var contamination = thing.GetContamination();
-				if (contamination >= ContaminationFactors.minContaminationThreshold)
+				if (ContaminationThresholds.IsVisible(contamination))
 					result += $", {contamination:P2} contaminated";
 			}
 			return result;
@@ -242,6 +242,8 @@ namespace ZombieLand
 				var map = t.Map ?? pawn?.Map;
 				contamination = map?.GetContamination(t.Position, true) ?? 0;
 			}
+			if (ContaminationThresholds.IsVisible(contamination) == false)
+				contamination = 0f;
 
 			GUI.color = Color.gray;
 			if (contamination > 0.2f)
@@ -297,7 +299,7 @@ namespace ZombieLand
 						.Where(thing => thing.DrawPos == thing.Position.ToVector3Shifted())
 						.Sum(thing => thing.GetContamination());
 					var totalContamination = contaminationCell + contaminationThings;
-					if (totalContamination >= ContaminationFactors.minContaminationThreshold)
+					if (ContaminationThresholds.IsVisible(totalContamination))
 					{
 						var textColor = Color.gray;
 						if (contaminationCell > 0.2f || contaminationThings > 0.2f)
@@ -315,7 +317,7 @@ namespace ZombieLand
 						.DoIf(thing => thing.DrawPos != thing.Position.ToVector3Shifted(), thing =>
 						{
 							var contaminiaton = thing.GetContamination();
-							if (contaminiaton < ContaminationFactors.minContaminationThreshold)
+							if (ContaminationThresholds.IsVisible(contaminiaton) == false)
 								return;
 
 							var textColor = Color.gray;

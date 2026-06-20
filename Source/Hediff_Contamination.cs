@@ -30,7 +30,8 @@ namespace ZombieLand
 		public override string Description => base.Description + " " + "ContaminationEffectiveness".Translate(Mathf.FloorToInt(pawn.GetEffectiveness() * 100));
 
 		public override bool ShouldRemove => Constants.CONTAMINATION == false;
-		public override TextureAndColor StateIcon => new(Constants.ShowContaminationOverlay, Color.green);
+		public override TextureAndColor StateIcon
+			=> ContaminationThresholds.IsVisible(pawn.GetContamination()) ? new(Constants.ShowContaminationOverlay, Color.green) : base.StateIcon;
 		public override void Tended(float quality, float maxQuality, int batchPosition) { }
 		public override bool TryMergeWith(Hediff other) => false;
 		public override IEnumerable<Gizmo> GetGizmos() { yield break; }

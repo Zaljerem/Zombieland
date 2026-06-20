@@ -184,6 +184,7 @@ namespace ZombieLand
 		[Tool("zombieland/contamination_ui_quest_contract", Description = "Prepare and verify contamination player-facing UI state plus decontamination quest availability from a reusable current-map fixture.")]
 		public static object ContaminationUiQuestContract(
 			[ToolParameter(Description = "Create a contaminated thing/cell fixture and select it for inspect-pane and mouseover UI checks.", Required = false, DefaultValue = true)] bool createVisualFixture = true,
+			[ToolParameter(Description = "Contamination value for the created visual fixture. Defaults to a clearly visible 65%; use values below 0.001 for visual-threshold edge checks.", Required = false, DefaultValue = 0.65f)] float visualFixtureContamination = 0.65f,
 			[ToolParameter(Description = "Create temporary quest preconditions and generate a decontamination quest if none is present.", Required = false, DefaultValue = true)] bool createQuest = true,
 			[ToolParameter(Description = "Destroy only the newly created visual fixture before returning. Leave false for screenshot/save-load testing.", Required = false, DefaultValue = false)] bool cleanupVisualFixture = false)
 		{
@@ -205,7 +206,7 @@ namespace ZombieLand
 				};
 			}
 
-			const float fixtureContamination = 0.65f;
+			var fixtureContamination = Mathf.Clamp01(visualFixtureContamination);
 			var createdThings = new List<Thing>();
 			var createdColonists = new List<Pawn>();
 			var createdQuestException = (string)null;
@@ -384,8 +385,8 @@ namespace ZombieLand
 				var expectedStatValue = $"{100 * thingContamination:F2}%";
 				var thingMouseoverHasContamination = thingMouseover?.IndexOf("contaminated", StringComparison.OrdinalIgnoreCase) >= 0;
 				var glowMouseoverHasContamination = glowMouseover?.IndexOf("Contaminated", StringComparison.OrdinalIgnoreCase) >= 0;
-				var expectedThingMouseoverContamination = thingContamination >= ContaminationFactors.minContaminationThreshold;
-				var expectedGlowContamination = cellContamination >= ContaminationFactors.minContaminationThreshold;
+				var expectedThingMouseoverContamination = ContaminationThresholds.IsVisible(thingContamination);
+				var expectedGlowContamination = ContaminationThresholds.IsVisible(cellContamination);
 
 				return new
 				{

@@ -77,10 +77,7 @@ namespace ZombieLand
 			if (listOfLeavingsOut.Any())
 			{
 				var leavingsArray = listOfLeavingsOut.ToArray();
-				var savedMapIndex = diedThing.mapIndexOrState;
-				diedThing.mapIndexOrState = (sbyte)map.Index;
-				diedThing.TransferContamination(ZombieSettings.Values.contamination.leavingsTransfer, leavingsArray);
-				diedThing.mapIndexOrState = savedMapIndex;
+				diedThing.TransferContamination(ZombieSettings.Values.contamination.leavingsTransfer, map, leavingsArray);
 			}
 		}
 	}
@@ -227,7 +224,7 @@ namespace ZombieLand
 		public static TargetInfo filthCell = null;
 		public static Thing filthSource = null;
 		public static float? filthSourceContamination = null;
-		public static sbyte? filthSourceMapIndex = null;
+		public static Map filthSourceMap = null;
 
 		static bool Prepare() => Constants.CONTAMINATION;
 
@@ -235,11 +232,11 @@ namespace ZombieLand
 		{
 			filthSource = source;
 			filthSourceContamination = null;
-			filthSourceMapIndex = null;
+			filthSourceMap = null;
 			if (snapshotContamination && source != null)
 			{
-				filthSourceContamination = source.GetContamination(includeHoldings: true);
-				filthSourceMapIndex = source.mapIndexOrState;
+				_ = ContaminationManager.TryGetThingMap(source, null, out filthSourceMap);
+				filthSourceContamination = ContaminationManager.Instance.Get(source, true, filthSourceMap);
 			}
 		}
 
@@ -247,7 +244,7 @@ namespace ZombieLand
 		{
 			filthSource = null;
 			filthSourceContamination = null;
-			filthSourceMapIndex = null;
+			filthSourceMap = null;
 		}
 
 		static IEnumerable<MethodBase> TargetMethods()
@@ -266,18 +263,15 @@ namespace ZombieLand
 			if (Tools.IsPlaying())
 			{
 				if (filthCell.IsValid)
-				{
-					var savedMapIndex = newThing.mapIndexOrState;
-					newThing.mapIndexOrState = (sbyte)filthCell.mapInt.Index;
-					ZombieSettings.Values.contamination.filthEqualize.Equalize((LocalTargetInfo)filthCell, newThing);
-					newThing.mapIndexOrState = savedMapIndex;
-				}
+					ZombieSettings.Values.contamination.filthEqualize.Equalize((LocalTargetInfo)filthCell, newThing, filthCell.mapInt);
 				if (filthSource != null || filthSourceContamination.HasValue)
 				{
 					var factor = filthSource != null && nastyFilths.Contains(filthSource.def) ? ZombieSettings.Values.contamination.bloodEqualize : ZombieSettings.Values.contamination.filthEqualize;
-					var sourceContamination = filthSourceContamination ?? filthSource.GetContamination(includeHoldings: true);
-					var sourceMapIndex = filthSourceMapIndex ?? filthSource?.mapIndexOrState;
-					newThing.AddContamination(sourceContamination, sourceMapIndex, factor);
+					var sourceMap = filthSourceMap;
+					if (sourceMap == null)
+						_ = ContaminationManager.TryGetThingMap(filthSource, null, out sourceMap);
+					var sourceContamination = filthSourceContamination ?? ContaminationManager.Instance.Get(filthSource, true, sourceMap);
+					ContaminationManager.Instance.Add(newThing, sourceContamination * factor, sourceMap);
 				}
 			}
 			return newThing;

@@ -13,28 +13,28 @@ namespace ZombieLand
 	readonly struct ReplacementContaminationState
 	{
 		readonly float contamination;
-		readonly sbyte? mapIndex;
+		readonly Map map;
 
-		ReplacementContaminationState(float contamination, sbyte? mapIndex)
+		ReplacementContaminationState(float contamination, Map map)
 		{
 			this.contamination = contamination;
-			this.mapIndex = mapIndex;
+			this.map = map;
 		}
 
 		public static ReplacementContaminationState Capture(Thing thing)
 		{
 			if (thing == null)
 				return default;
-			var mapIndex = thing.Map == null ? (sbyte?)thing.mapIndexOrState : (sbyte)thing.Map.Index;
-			return new ReplacementContaminationState(thing.GetContamination(), mapIndex);
+			_ = ContaminationManager.TryGetThingMap(thing, null, out var map);
+			return new ReplacementContaminationState(ContaminationManager.Instance.Get(thing, false, map), map);
 		}
 
 		public void Move(Thing source, Thing target)
 		{
 			if (target == null || contamination <= 0)
 				return;
-			source?.ClearContamination();
-			target.AddContamination(contamination, target.Map == null ? mapIndex : null);
+			ContaminationManager.Instance.Remove(source, map);
+			ContaminationManager.Instance.Add(target, contamination, map);
 		}
 	}
 

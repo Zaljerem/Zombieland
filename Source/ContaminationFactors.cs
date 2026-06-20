@@ -8,8 +8,6 @@ namespace ZombieLand
 {
 	public class ContaminationFactors : IExposable
 	{
-		public const float minContaminationThreshold = 0.0001f;
-
 		[ValueRange(0f, 1f)] public float contaminationElevationPercentage = 0.5f;
 		[ValueRange(GenDate.TicksPerYear / 4, GenDate.TicksPerYear * 2)] public float decontaminationQuestInterval = GenDate.TicksPerYear / 2f;
 		[ValueRange(0f, 1f)] public float contaminationEffectivenessPercentage = 0.5f;

@@ -24,7 +24,7 @@ namespace ZombieLand
 
 		public static void DrawContamination(Vector3 vec, float contamination, bool small)
 		{
-			if (contamination < ContaminationFactors.minContaminationThreshold)
+			if (ContaminationThresholds.IsVisible(contamination) == false)
 				return;
 			vec.y = AltitudeLayer.MetaOverlays.AltitudeFor();
 			var size = 1.5f;

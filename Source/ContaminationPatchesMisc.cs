@@ -93,32 +93,30 @@ namespace ZombieLand
 	[HarmonyPatch([typeof(Thing), typeof(ThingOwner), typeof(int), typeof(Thing), typeof(bool)], [ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Out, ArgumentType.Normal])]
 	static class ThingOwner_TryTransferToContainer_Patch
 	{
-		public static sbyte activeThingOwnerMapIndex;
+		public static Map activeThingOwnerMap;
 
 		static bool Prepare() => Constants.CONTAMINATION;
 
 		static void Prefix(ThingOwner __instance, Thing item, ThingOwner otherContainer)
 		{
-			activeThingOwnerMapIndex = (sbyte)(ThingOwnerUtility.GetRootMap(__instance.owner)?.Index ?? -1);
+			activeThingOwnerMap = ThingOwnerUtility.GetRootMap(__instance.owner);
 			if (otherContainer.owner is Frame frame && frame.mapIndexOrState >= 0)
 			{
-				var savedMapIndex = item.mapIndexOrState;
-				item.mapIndexOrState = frame.mapIndexOrState;
-				frame.SetContamination(item.GetContamination());
-				item.mapIndexOrState = savedMapIndex;
+				_ = ContaminationManager.TryGetThingMap(frame, activeThingOwnerMap, out var frameMap);
+				ContaminationManager.Instance.Set(frame, ContaminationManager.Instance.Get(item, false, frameMap), frameMap);
 			}
 		}
 
 		static void Postfix()
 		{
-			activeThingOwnerMapIndex = -1;
+			activeThingOwnerMap = null;
 		}
 	}
 
 	[HarmonyPatch]
 	static class Pawn_CarryTracker_TryStartCarry_Patch_Patch
 	{
-		public static sbyte pawnMapIndex;
+		public static Map pawnMap;
 
 		static bool Prepare() => Constants.CONTAMINATION;
 
@@ -132,12 +130,12 @@ namespace ZombieLand
 
 		static void Prefix(Pawn_CarryTracker __instance)
 		{
-			pawnMapIndex = __instance.pawn.mapIndexOrState;
+			_ = ContaminationManager.TryGetThingMap(__instance.pawn, null, out pawnMap);
 		}
 
 		static void Postfix()
 		{
-			pawnMapIndex = -1;
+			pawnMap = null;
 		}
 	}
 
@@ -153,33 +151,29 @@ namespace ZombieLand
 
 		static void Postfix(bool __result, Thing __instance, Thing other, (int, float) __state)
 		{
-			if (Tools.IsPlaying() == false)
+			if (Tools.IsPlaying() == false || other == null)
 				return;
 
 			var (otherOldStackSize, otherContamination) = __state;
 			var otherNewStackSize = other.stackCount;
 			var otherCount = otherOldStackSize - otherNewStackSize;
 			var thisCount = __instance.stackCount - otherCount;
+			if (thisCount + otherCount <= 0)
+				return;
 
 			var thisContamination = __instance.GetContamination(includeHoldings: true);
 			var newContamination = (otherCount * otherContamination + thisCount * thisContamination) / (thisCount + otherCount);
 			var transfer = newContamination - thisContamination;
 
-			var savedMapIndex = __instance.mapIndexOrState;
-			__instance.mapIndexOrState = Pawn_CarryTracker_TryStartCarry_Patch_Patch.pawnMapIndex;
 			if (transfer > 0)
-				__instance.AddContamination(transfer);
+				ContaminationManager.Instance.Add(__instance, transfer, Pawn_CarryTracker_TryStartCarry_Patch_Patch.pawnMap);
 			if (transfer < 0)
-				__instance.SubtractContamination(-transfer);
-			__instance.mapIndexOrState = savedMapIndex;
+				ContaminationManager.Instance.Subtract(__instance, -transfer, Pawn_CarryTracker_TryStartCarry_Patch_Patch.pawnMap);
 
-			if (__result == false && other != null)
+			if (__result == false && otherOldStackSize > 0)
 			{
 				var factor = otherNewStackSize / (float)otherOldStackSize;
-				savedMapIndex = other.mapIndexOrState;
-				other.mapIndexOrState = Pawn_CarryTracker_TryStartCarry_Patch_Patch.pawnMapIndex;
-				other.SubtractContamination(otherContamination * factor);
-				other.mapIndexOrState = savedMapIndex;
+				ContaminationManager.Instance.Subtract(other, otherContamination * factor, Pawn_CarryTracker_TryStartCarry_Patch_Patch.pawnMap);
 			}
 		}
 	}
@@ -196,31 +190,16 @@ namespace ZombieLand
 			if (Tools.IsPlaying() == false)
 				return;
 
-			var contamination = instance.GetContamination();
+			var contextMap = ThingOwner_TryTransferToContainer_Patch.activeThingOwnerMap;
+			_ = ContaminationManager.TryGetThingMap(instance, contextMap, out contextMap);
+			var contamination = ContaminationManager.Instance.Get(instance, false, contextMap);
 			if (contamination == 0)
 				return;
 
-			if (Mathf.Abs(result.GetContamination() - contamination) < 0.0001f)
+			if (Mathf.Abs(ContaminationManager.Instance.Get(result, false, contextMap) - contamination) < ContaminationThresholds.MinimumForCalculations)
 				return;
 
-			var savedMapIndex1 = instance.mapIndexOrState;
-			var savedMapIndex2 = result.mapIndexOrState;
-			var ownerMapIndex = ThingOwner_TryTransferToContainer_Patch.activeThingOwnerMapIndex;
-			if (savedMapIndex1 < 0 && ownerMapIndex >= 0)
-			{
-				instance.mapIndexOrState = ownerMapIndex;
-				result.mapIndexOrState = ownerMapIndex;
-				result.SetContamination(contamination);
-				instance.mapIndexOrState = savedMapIndex1;
-				result.mapIndexOrState = savedMapIndex2;
-			}
-			else
-			{
-				var savedMapIndex = result.mapIndexOrState;
-				result.mapIndexOrState = instance.mapIndexOrState;
-				result.SetContamination(contamination);
-				result.mapIndexOrState = savedMapIndex;
-			}
+			ContaminationManager.Instance.Set(result, contamination, contextMap);
 		}
 
 		static void Postfix(Thing __result, Thing __instance)
