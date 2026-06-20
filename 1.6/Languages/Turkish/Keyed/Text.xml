@@ -335,6 +335,8 @@
 
 	<SnowAndSandClear>Kar ve kum temizleme</SnowAndSandClear>
 	<ShowZombieRisk>Zombi riskini göster</ShowZombieRisk>
+	<ZombieRiskAreaColumnHintLong>Zombieland alan kuralları: ihlaller oyun sırasında ekranın üst kısmında görünür</ZombieRiskAreaColumnHintLong>
+	<ZombieRiskAreaColumnHintMedium>Zombieland ihlalleri üstte görünür</ZombieRiskAreaColumnHintMedium>
 	<ColonistInside>Kolonist içeride</ColonistInside>
 	<ColonistOutside>Kolonist dışarıda</ColonistOutside>
 	<ZombieInside>Zombi içeride</ZombieInside>

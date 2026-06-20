@@ -335,6 +335,8 @@
 
 	<SnowAndSandClear>Очистка снега и песка</SnowAndSandClear>
 	<ShowZombieRisk>Показать зомби-риск</ShowZombieRisk>
+	<ZombieRiskAreaColumnHintLong>Правила зон Zombieland: нарушения отображаются вверху экрана во время игры</ZombieRiskAreaColumnHintLong>
+	<ZombieRiskAreaColumnHintMedium>Нарушения Zombieland отображаются вверху</ZombieRiskAreaColumnHintMedium>
 	<ColonistInside>Колонист внутри</ColonistInside>
 	<ColonistOutside>Колонист снаружи</ColonistOutside>
 	<ZombieInside>зомби внутри</ZombieInside>

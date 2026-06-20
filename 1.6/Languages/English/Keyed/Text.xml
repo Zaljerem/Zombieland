@@ -336,6 +336,8 @@
 
 	<SnowAndSandClear>Snow and sand clear</SnowAndSandClear>
 	<ShowZombieRisk>Show zombie risk</ShowZombieRisk>
+	<ZombieRiskAreaColumnHintLong>Zombieland area rules: violations appear at the top of the screen during play</ZombieRiskAreaColumnHintLong>
+	<ZombieRiskAreaColumnHintMedium>Zombieland violations appear at the top</ZombieRiskAreaColumnHintMedium>
 	<ColonistInside>Colonist inside</ColonistInside>
 	<ColonistOutside>Colonist outside</ColonistOutside>
 	<ZombieInside>Zombie inside</ZombieInside>

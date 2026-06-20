@@ -5,7 +5,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEngine;
 using Verse;
 
@@ -256,11 +255,18 @@ namespace ZombieLand
 	public static class AreaManager_Patches
 	{
 		[HarmonyPrefix]
-		[HarmonyPatch(nameof(AreaManager.CanMakeNewAllowed))]
-		public static bool CanMakeNewAllowed(ref bool __result)
+		[HarmonyPatch(nameof(AreaManager.Remove))]
+		public static void RemovePrefix(Area area, out bool __state)
 		{
-			__result = true;
-			return false;
+			__state = area?.Mutable == true;
+		}
+
+		[HarmonyPostfix]
+		[HarmonyPatch(nameof(AreaManager.Remove))]
+		public static void RemovePostfix(Area area, bool __state)
+		{
+			if (__state)
+				Dialog_ManageAreas_Patches.ClearZombieRisk(area);
 		}
 
 		[HarmonyPrefix]
@@ -271,222 +277,137 @@ namespace ZombieLand
 	[HarmonyPatch(typeof(Dialog_ManageAreas))]
 	public static class Dialog_ManageAreas_Patches
 	{
-		public static readonly Color listBackground = new(32 / 255f, 36 / 255f, 40 / 255f);
-		public static readonly Color highlightedBackground = new(74 / 255f, 74 / 255f, 74 / 255f, 0.5f);
-		public static readonly Color background = new(74 / 255f, 74 / 255f, 74 / 255f);
-		public static readonly Color inactiveTextColor = new(145 / 255f, 125 / 255f, 98 / 255f);
-		public static readonly Color areaNameColonistInside = new(1f, 0.2f, 0.2f);
-		public static readonly Color areaNameColonistOutside = new(0.2f, 1f, 0.2f);
-		public static readonly Color areaNameZombieInside = new(1f, 0.5f, 0f);
-		public static readonly Color areaNameZombieOutside = new(1f, 26f / 255f, 140f / 255f);
-		public static readonly GUIStyle textFieldStyle = new()
+		const float VanillaAreaRowHeight = 24f;
+		const float VanillaAreaRowGap = 6f;
+		public const float VanillaAreaRowPitch = VanillaAreaRowHeight + VanillaAreaRowGap;
+		public const float VanillaWidgetRowGap = 4f;
+		const float VanillaAreaColorIconWidth = 24f;
+		const float VanillaAreaColorLabelGap = 4f;
+		const float VanillaAreaLabelInternalGap = 4f;
+		const float VanillaAreaLabelWidth = 160f;
+		const float VanillaAreaTextButtonWidth = 76f;
+		const float VanillaAreaTextButtonCount = 3f;
+		const float VanillaAreaIconButtonWidth = 24f;
+		const float VanillaAreaIconButtonCount = 3f;
+		public const float VanillaAreaRowTrashRight = VanillaAreaColorIconWidth
+			+ VanillaWidgetRowGap
+			+ VanillaAreaColorLabelGap
+			+ VanillaAreaLabelInternalGap
+			+ VanillaAreaLabelWidth
+			+ VanillaAreaTextButtonCount * (VanillaAreaTextButtonWidth + VanillaWidgetRowGap)
+			+ VanillaAreaIconButtonCount * VanillaAreaIconButtonWidth;
+		public const float ZombieRiskButtonLabelWidth = 150f;
+		public const float ZombieRiskButtonHorizontalPadding = 32f;
+		public const float ZombieRiskButtonWidth = ZombieRiskButtonLabelWidth + ZombieRiskButtonHorizontalPadding;
+		public const float ZombieRiskButtonGap = VanillaWidgetRowGap * 2f;
+		public const float ZombieRiskButtonLeft = VanillaAreaRowTrashRight + ZombieRiskButtonGap;
+		public const float ZombieRiskFooterTextMaxWidth = ZombieRiskButtonLeft + ZombieRiskButtonWidth;
+		const float ZombieRiskFooterArrowSize = 12f;
+		const float ZombieRiskFooterTextHeight = 24f;
+		const float ZombieRiskFooterTopPadding = 4f;
+		const float ZombieRiskFooterHeight = ZombieRiskFooterTopPadding + ZombieRiskFooterArrowSize + ZombieRiskFooterTextHeight;
+		public const float ZombieRiskDialogExtraHeight = ZombieRiskFooterHeight + 8f;
+		static readonly string[] ZombieRiskFooterTextKeys =
 		{
-			alignment = TextAnchor.MiddleLeft,
-			clipping = TextClipping.Clip,
-			font = Text.fonts[1],
-			normal = new GUIStyleState() { textColor = Color.white },
-			padding = new RectOffset(7, 0, 0, 0)
+			"ZombieRiskAreaColumnHintLong",
+			"ZombieRiskAreaColumnHintMedium",
+			"ShowZombieRisk"
 		};
-		public static Area selected = null;
-		public static int selectedIndex = -1;
-		public static Vector2 scrollPosition = Vector2.zero;
-		public static AreaManager areaManager;
 
 		[HarmonyPostfix]
-		[HarmonyPatch(MethodType.Constructor, new[] { typeof(Map) })]
-		public static void Constructor()
+		[HarmonyPatch(nameof(Dialog_ManageAreas.InitialSize), MethodType.Getter)]
+		public static void InitialSizePostfix(ref Vector2 __result)
 		{
-			selected = null;
-			selectedIndex = -1;
-			scrollPosition = Vector2.zero;
+			__result.x += ZombieRiskButtonWidth + ZombieRiskButtonGap;
+			__result.y += ZombieRiskDialogExtraHeight;
 		}
 
-		[HarmonyPrefix]
-		[HarmonyPriority(Priority.High)]
+		[HarmonyPostfix]
 		[HarmonyPatch(nameof(Dialog_ManageAreas.DoWindowContents))]
-		public static bool Prefix(Dialog_ManageAreas __instance)
+		public static void DoWindowContentsPostfix(Dialog_ManageAreas __instance, Rect inRect)
 		{
-			Text.Font = GameFont.Small;
-
-			RenderList(__instance.map);
-			if (selected != null)
-			{
-				RenderSelectedRowContent(selected);
-				selected.MarkForDraw();
-			}
-			return false;
+			RenderZombieRiskFooter(__instance.map, inRect);
 		}
 
-		public static void RenderList(Map map)
+		[HarmonyPostfix]
+		[HarmonyPatch("DoAreaRow", new[] { typeof(Rect), typeof(Area), typeof(int) })]
+		public static void DoAreaRowPostfix(Rect rect, Area area)
 		{
-			areaManager = map.areaManager;
-			var allAreas = areaManager.AllAreas;
-			var rowHeight = 24;
+			var oldAnchor = Text.Anchor;
+			var oldFont = Text.Font;
+			var oldColor = GUI.color;
+			try
+			{
+				Text.Font = GameFont.Small;
+				Text.Anchor = TextAnchor.UpperLeft;
+				GUI.color = Color.white;
 
-			var rect = new Rect(0, 0, 198, 283);
-			Widgets.DrawBoxSolid(rect, listBackground);
-
-			var innerWidth = rect.width - (allAreas.Count > 11 ? 16 : 0);
-			var innerRect = new Rect(0f, 0f, innerWidth, allAreas.Count * rowHeight);
-			Widgets.BeginScrollView(rect, ref scrollPosition, innerRect, true);
-			var list = new Listing_Standard();
-			list.Begin(innerRect);
-
-			var y = 0f;
-			var i = 0;
-			foreach (var area in allAreas)
-			{
-				RenderListRow(new Rect(0, y, innerRect.width, rowHeight), area, i++);
-				y += rowHeight;
+				var buttonRect = new Rect(rect.x + ZombieRiskButtonLeft, rect.y + 1f, ZombieRiskButtonWidth, VanillaAreaRowHeight);
+				ZombieMode(buttonRect, area);
 			}
-
-			list.End();
-			Widgets.EndScrollView();
-
-			y = 283 + 8;
-			var bRect = new Rect(0, y, 24, 24);
-			if (Widgets.ButtonImage(bRect, Constants.ButtonAdd[1]))
+			finally
 			{
-				Event.current.Use();
-				if (areaManager.TryMakeNewAllowed(out Area_Allowed newArea))
-				{
-					selected = newArea;
-					selectedIndex = areaManager.AllAreas.IndexOf(selected);
-					GUI.FocusControl("area-name");
-				}
-			}
-			bRect.x += 32;
-			var deleteable = selected?.Mutable ?? false;
-			if (Widgets.ButtonImage(bRect, Constants.ButtonDel[deleteable ? 1 : 0]) && deleteable)
-			{
-				Event.current.Use();
-				areaManager.Remove(selected);
-				_ = ZombieAreaManager.pawnsInDanger.RemoveAll(pair => pair.Value == selected);
-				_ = ZombieSettings.Values.dangerousAreas.Remove(selected);
-				var newCount = areaManager.AllAreas.Count;
-				if (newCount == 0)
-				{
-					selectedIndex = -1;
-					selected = null;
-				}
-				else
-				{
-					while (newCount > 0 && selectedIndex >= newCount)
-						selectedIndex--;
-					selected = areaManager.AllAreas[selectedIndex];
-					GUI.FocusControl("area-name");
-				}
-			}
-			bRect.x += 32;
-			var dupable = selected != null;
-			if (Widgets.ButtonImage(bRect, Constants.ButtonDup[dupable ? 1 : 0]) && dupable)
-			{
-				Event.current.Use();
-				var labelPrefix = Regex.Replace(selected.Label, @" \d+$", "");
-				var existingLabels = areaManager.AllAreas.Select(a => a.Label).ToHashSet();
-				for (var n = 1; true; n++)
-				{
-					var newLabel = $"{labelPrefix} {n}";
-					if (existingLabels.Contains(newLabel) == false)
-					{
-						if (areaManager.TryMakeNewAllowed(out Area_Allowed newArea))
-						{
-							newArea.labelInt = newLabel;
-							foreach (IntVec3 cell in selected.ActiveCells)
-								newArea[cell] = true;
-							selected = newArea;
-							selectedIndex = areaManager.AllAreas.IndexOf(selected);
-							GUI.FocusControl("area-name");
-						}
-						break;
-					}
-				}
-			}
-			bRect.x += 78;
-			var upable = selectedIndex > 0;
-			if (Widgets.ButtonImage(bRect, Constants.ButtonUp[upable ? 1 : 0]) && upable)
-			{
-				Event.current.Use();
-				allAreas.Insert(selectedIndex - 1, selected);
-				allAreas.RemoveAt(selectedIndex + 1);
-				selectedIndex--;
-			}
-			bRect.x += 32;
-			var downable = selectedIndex >= 0 && selectedIndex < allAreas.Count - 1;
-			if (Widgets.ButtonImage(bRect, Constants.ButtonDown[downable ? 1 : 0]) && downable)
-			{
-				Event.current.Use();
-				allAreas.Insert(selectedIndex + 2, selected);
-				allAreas.RemoveAt(selectedIndex);
-				selectedIndex++;
-			}
-
-			var backgroundRect = innerRect;
-			backgroundRect.height = rect.height;
-			if (Widgets.ButtonInvisible(backgroundRect, false))
-			{
-				Event.current.Use();
-				selectedIndex = -1;
-				selected = null;
+				Text.Anchor = oldAnchor;
+				Text.Font = oldFont;
+				GUI.color = oldColor;
 			}
 		}
 
-		public static Color AreaLabelColor(Area area)
+		public static bool CanRenderZombieRiskFooter(Map map)
 		{
-			return GetMode(area) switch
-			{
-				AreaRiskMode.ColonistInside => areaNameColonistInside,
-				AreaRiskMode.ColonistOutside => areaNameColonistOutside,
-				AreaRiskMode.ZombieInside => areaNameZombieInside,
-				AreaRiskMode.ZombieOutside => areaNameZombieOutside,
-				_ => Color.white,
-			};
+			if (map?.areaManager?.AllAreas == null)
+				return false;
+			var mutableCount = map.areaManager.AllAreas.Count(area => area.Mutable);
+			if (mutableCount <= 0)
+				return false;
+			return mutableCount <= 10;
 		}
 
-		public static void RenderListRow(Rect rect, Area area, int idx)
+		static void RenderZombieRiskFooter(Map map, Rect inRect)
 		{
-			if (area == selected)
-				Widgets.DrawBoxSolid(rect, background);
-			else if (Mouse.IsOver(rect))
-				Widgets.DrawBoxSolid(rect, highlightedBackground);
+			if (CanRenderZombieRiskFooter(map) == false)
+				return;
 
-			var innerRect = rect.ExpandedBy(-3);
-			innerRect.xMax += 3;
-			var cRect = innerRect;
-			cRect.width = cRect.height;
-			Widgets.DrawBoxSolid(cRect, area.Color);
+			var mutableCount = map.areaManager.AllAreas.Count(area => area.Mutable);
+			var availableBeforeNewArea = (9 - mutableCount) * VanillaAreaRowPitch;
+			var drawAfterNewArea = map.areaManager.CanMakeNewAllowed() && availableBeforeNewArea < ZombieRiskFooterHeight;
+			var footerTop = drawAfterNewArea ? 10 * VanillaAreaRowPitch : mutableCount * VanillaAreaRowPitch;
+			var arrowY = inRect.y + footerTop + ZombieRiskFooterTopPadding;
+			var buttonCenterX = inRect.x + ZombieRiskButtonLeft + ZombieRiskButtonWidth / 2f;
+			var arrowRect = new Rect(buttonCenterX - ZombieRiskFooterArrowSize / 2f, arrowY, ZombieRiskFooterArrowSize, ZombieRiskFooterArrowSize);
+			var textWidth = Math.Min(inRect.width, ZombieRiskFooterTextMaxWidth);
+			var textRect = new Rect(inRect.x, arrowRect.yMax, textWidth, ZombieRiskFooterTextHeight);
 
-			var tRect = rect;
-			tRect.xMin += 24;
-			tRect.yMin += 1;
-			GUI.color = AreaLabelColor(area);
-			_ = Widgets.LabelFit(tRect, area.Label);
-			GUI.color = Color.white;
-
-			if (area.Mutable == false)
+			var oldAnchor = Text.Anchor;
+			var oldFont = Text.Font;
+			var oldColor = GUI.color;
+			try
 			{
-				var lRect = rect.RightPartPixels(13).LeftPartPixels(10);
-				lRect.yMin += 5;
-				lRect.height = 13;
-				GUI.DrawTexture(lRect, Constants.Lock);
+				GUI.color = new Color(1f, 1f, 1f, 0.65f);
+				GUI.DrawTexture(arrowRect, TexButton.ReorderUp);
+
+				Text.Font = GameFont.Tiny;
+				Text.Anchor = TextAnchor.UpperRight;
+				GUI.color = new Color(1f, 1f, 1f, 0.6f);
+				_ = Widgets.LabelFit(textRect, ZombieRiskFooterText(textRect.width));
 			}
-
-			if (Widgets.ButtonInvisible(rect))
+			finally
 			{
-				selected = area;
-				selectedIndex = idx;
-				GUI.FocusControl("area-name");
+				Text.Anchor = oldAnchor;
+				Text.Font = oldFont;
+				GUI.color = oldColor;
 			}
 		}
 
-		public static void Label(Rect rect, string key)
+		public static string ZombieRiskFooterText(float width)
 		{
-			var lRect = rect;
-			lRect.xMin -= 1;
-			lRect.yMin -= 5;
-			lRect.height += 5;
-			Text.Anchor = TextAnchor.UpperLeft;
-			_ = Widgets.LabelFit(lRect, GenText.CapitalizeAsTitle(key.Translate()));
+			for (var i = 0; i < ZombieRiskFooterTextKeys.Length; i++)
+			{
+				var text = ZombieRiskFooterTextKeys[i].Translate().ToString();
+				if (Text.CalcSize(text).x <= width)
+					return text;
+			}
+			return "ShowZombieRisk".Translate().ToString();
 		}
 
 		public static string ToStringHuman(this AreaRiskMode mode)
@@ -504,9 +425,11 @@ namespace ZombieLand
 
 		public static AreaRiskMode GetMode(Area area) => ZombieSettings.Values.dangerousAreas.TryGetValue(area, AreaRiskMode.Ignore);
 
-		public static void ZombieMode(Rect rect)
+		public static void ZombieMode(Rect rect, Area area)
 		{
-			var currentMode = GetMode(selected);
+			if (area == null)
+				return;
+			var currentMode = GetMode(area);
 			if (Widgets.ButtonText(rect, currentMode.ToStringHuman()))
 			{
 				var options = new List<FloatMenuOption>();
@@ -516,12 +439,7 @@ namespace ZombieLand
 					options.Add(new FloatMenuOption(newMode.ToStringHuman(), delegate ()
 					{
 						if (newMode != currentMode)
-						{
-							if (newMode == AreaRiskMode.Ignore)
-								_ = ZombieSettings.Values.dangerousAreas.Remove(selected);
-							else
-								ZombieSettings.Values.dangerousAreas[selected] = newMode;
-						}
+							SetMode(area, newMode);
 					},
 					MenuOptionPriority.Default, null, null, 0f, null, null, true, 0));
 				}
@@ -529,88 +447,22 @@ namespace ZombieLand
 			}
 		}
 
-		public static void RenderSelectedRowContent(Area area)
+		public static void SetMode(Area area, AreaRiskMode mode)
 		{
-			var left = 198 + 18;
-			var width = 197;
-
-			var lRect = new Rect(left, 0, width, 17);
-			Label(lRect, "Title");
-			var tRect = new Rect(left, 17, width, 27);
-			Widgets.DrawBoxSolid(tRect, background);
-
-			Text.Anchor = TextAnchor.MiddleLeft;
-			if (area.Mutable)
-			{
-				GUI.SetNextControlName("area-name");
-				var newLabel = GUI.TextField(tRect, area.Label, textFieldStyle);
-				if (newLabel.Length > 28)
-					newLabel = newLabel.Substring(0, 28);
-				if (newLabel != area.Label)
-					area.RenamableLabel = newLabel;
-			}
+			if (area == null)
+				return;
+			if (mode == AreaRiskMode.Ignore)
+				_ = ZombieSettings.Values.dangerousAreas.Remove(area);
 			else
-			{
-				lRect = tRect;
-				lRect.xMin += 7;
-				lRect.yMin += 1;
-				Widgets.Label(lRect, area.Label);
-			}
+				ZombieSettings.Values.dangerousAreas[area] = mode;
+		}
 
-			lRect = new Rect(left, 59, width, 17);
-			Label(lRect, "AreaLower");
-			var cRect = new Rect(left, 76, width, 27);
-			Widgets.DrawBoxSolid(cRect, area.Color);
-
-			cRect = new Rect(left, 109, 14, 14);
-			Widgets.DrawBoxSolid(cRect, Color.red);
-			cRect.xMin = 240;
-			cRect.xMax = 413;
-			var newRed = Tools.HorizontalSlider(cRect, area.Color.r, 0f, 1f);
-			if (area is Area_Allowed allowed1)
-			{
-				allowed1.colorInt.r = newRed;
-				allowed1.colorTextureInt = null;
-				area.Drawer.material = null;
-				area.Drawer.SetDirty();
-			}
-
-			cRect = new Rect(left, 129, 14, 14);
-			Widgets.DrawBoxSolid(cRect, Color.green);
-			cRect.xMin = 240;
-			cRect.xMax = 413;
-			var newGreen = Tools.HorizontalSlider(cRect, area.Color.g, 0f, 1f);
-			if (area is Area_Allowed allowed2)
-			{
-				allowed2.colorInt.g = newGreen;
-				allowed2.colorTextureInt = null;
-				area.Drawer.material = null;
-				area.Drawer.SetDirty();
-			}
-
-			cRect = new Rect(left, 149, 14, 14);
-			Widgets.DrawBoxSolid(cRect, Color.blue);
-			cRect.xMin = 240;
-			cRect.xMax = 413;
-			var newBlue = Tools.HorizontalSlider(cRect, area.Color.b, 0f, 1f);
-			if (area is Area_Allowed allowed3)
-			{
-				allowed3.colorInt.b = newBlue;
-				allowed3.colorTextureInt = null;
-				area.Drawer.material = null;
-				area.Drawer.SetDirty();
-			}
-
-			lRect = new Rect(left, 178, width, 17);
-			Label(lRect, "Contents");
-			var bRect = new Rect(left, 196, width, 27);
-			if (Tools.ButtonText(bRect, "InvertArea".Translate(), area.Mutable, Color.white, inactiveTextColor))
-				area.Invert();
-
-			lRect = new Rect(left, 238, width, 17);
-			Label(lRect, "ShowZombieRisk");
-			bRect = new Rect(left, 256, width, 27);
-			ZombieMode(bRect);
+		public static void ClearZombieRisk(Area area)
+		{
+			if (area == null)
+				return;
+			_ = ZombieAreaManager.pawnsInDanger.RemoveAll(pair => pair.Value == area);
+			_ = ZombieSettings.Values?.dangerousAreas?.Remove(area);
 		}
 	}
 }

@@ -335,6 +335,8 @@
 
 	<SnowAndSandClear>清除雪和沙</SnowAndSandClear>
 	<ShowZombieRisk>显示僵尸风险</ShowZombieRisk>
+	<ZombieRiskAreaColumnHintLong>Zombieland 区域规则：违规会在游玩时显示在屏幕顶部</ZombieRiskAreaColumnHintLong>
+	<ZombieRiskAreaColumnHintMedium>Zombieland 违规会显示在顶部</ZombieRiskAreaColumnHintMedium>
 	<ColonistInside>里面的殖民者</ColonistInside>
 	<ColonistOutside>外面的殖民者</ColonistOutside>
 	<ZombieInside>里面的僵尸</ZombieInside>

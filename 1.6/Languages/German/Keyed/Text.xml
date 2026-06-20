@@ -335,6 +335,8 @@
 
 	<SnowAndSandClear>Schnee- und Sandräumung</SnowAndSandClear>
 	<ShowZombieRisk>Zeige Zombierisko an</ShowZombieRisk>
+	<ZombieRiskAreaColumnHintLong>Zombieland-Bereichsregeln: Verstöße erscheinen während des Spiels oben auf dem Bildschirm</ZombieRiskAreaColumnHintLong>
+	<ZombieRiskAreaColumnHintMedium>Zombieland-Verstöße erscheinen oben</ZombieRiskAreaColumnHintMedium>
 	<ColonistInside>Kolonist innerhalb</ColonistInside>
 	<ColonistOutside>Kolonist außerhalb</ColonistOutside>
 	<ZombieInside>Zombie innerhalb</ZombieInside>

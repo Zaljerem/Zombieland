@@ -114,38 +114,59 @@ namespace ZombieLand
 
 			var canMakeNewAllowed = map.areaManager.CanMakeNewAllowed();
 			var tryMakeNewAllowed = map.areaManager.TryMakeNewAllowed(out Area_Allowed throwawayArea);
+			var tryMakeNewAllowedMatchesCanMakeNewAllowed = tryMakeNewAllowed == canMakeNewAllowed;
+			var throwawayCreatedWhenAllowed = canMakeNewAllowed == false;
+			var throwawayRiskBeforeRemove = canMakeNewAllowed == false;
+			var throwawayRiskCleaned = true;
 			if (throwawayArea != null && map.areaManager.AllAreas.Contains(throwawayArea))
+			{
+				throwawayCreatedWhenAllowed = true;
+				Dialog_ManageAreas_Patches.SetMode(throwawayArea, AreaRiskMode.ZombieInside);
+				throwawayRiskBeforeRemove = Dialog_ManageAreas_Patches.GetMode(throwawayArea) == AreaRiskMode.ZombieInside;
 				map.areaManager.Remove(throwawayArea);
+				throwawayRiskCleaned = ZombieSettings.Values.dangerousAreas.ContainsKey(throwawayArea) == false
+					&& ZombieAreaManager.pawnsInDanger.Values.Contains(throwawayArea) == false;
+			}
 
 			var sortBefore = map.areaManager.AllAreas.Select(area => area.Label).ToArray();
 			map.areaManager.SortAreas();
 			var sortAfter = map.areaManager.AllAreas.Select(area => area.Label).ToArray();
 			var sortPreserved = sortBefore.SequenceEqual(sortAfter);
 
-			Dialog_ManageAreas_Patches.selected = selectedArea;
-			Dialog_ManageAreas_Patches.selectedIndex = 999;
-			Dialog_ManageAreas_Patches.scrollPosition = new Vector2(11f, 17f);
-			_ = new Dialog_ManageAreas(map);
-			var constructorReset = Dialog_ManageAreas_Patches.selected == null
-				&& Dialog_ManageAreas_Patches.selectedIndex == -1
-				&& Dialog_ManageAreas_Patches.scrollPosition == Vector2.zero;
-
-			Dialog_ManageAreas_Patches.selected = selectedArea;
-			Dialog_ManageAreas_Patches.selectedIndex = map.areaManager.AllAreas.IndexOf(selectedArea);
-			Dialog_ManageAreas_Patches.scrollPosition = Vector2.zero;
+			var probeDialog = new Dialog_ManageAreas(map);
+			var initialSize = probeDialog.InitialSize;
+			var expectedMinWidth = 550f + Dialog_ManageAreas_Patches.ZombieRiskButtonWidth + Dialog_ManageAreas_Patches.ZombieRiskButtonGap;
+			var expectedMinHeight = 400f + Dialog_ManageAreas_Patches.ZombieRiskDialogExtraHeight;
+			var initialSizeExpanded = initialSize.x >= expectedMinWidth;
+			var initialHeightExpanded = initialSize.y >= expectedMinHeight;
+			var doAreaRowTargetExists = AccessTools.DeclaredMethod(typeof(Dialog_ManageAreas), "DoAreaRow", new[] { typeof(Rect), typeof(Area), typeof(int) }) != null;
 
 			var selectedMode = Dialog_ManageAreas_Patches.GetMode(selectedArea);
 			var selectedModeText = selectedMode.ToStringHuman();
-			var selectedLabelColor = Dialog_ManageAreas_Patches.AreaLabelColor(selectedArea);
-			var expectedSelectedColor = ExpectedAreaLabelColor(selectedMode);
-			var selectedColorMatchesMode = ColorsApproximatelyEqual(selectedLabelColor, expectedSelectedColor);
+			var allAreaCount = map.areaManager.AllAreas.Count;
+			var mutableAreaCount = map.areaManager.AllAreas.Count(area => area.Mutable);
+			var allowedAreaCount = map.areaManager.AllAreas.Count(area => area is Area_Allowed);
+			var canMakeNewAllowedMatchesVanillaLimit = canMakeNewAllowed == (allowedAreaCount < 10);
+			var riskButtonCoversVanillaRows = mutableAreaCount > 0
+				&& map.areaManager.AllAreas.Where(area => area.Mutable).All(area => Dialog_ManageAreas_Patches.GetMode(area).ToStringHuman() != null);
+			var footerFitsCurrentRows = Dialog_ManageAreas_Patches.CanRenderZombieRiskFooter(map);
+			var oldFont = Text.Font;
+			string footerTextForCurrentWidth;
+			try
+			{
+				Text.Font = GameFont.Tiny;
+				footerTextForCurrentWidth = Dialog_ManageAreas_Patches.ZombieRiskFooterText(Dialog_ManageAreas_Patches.ZombieRiskFooterTextMaxWidth);
+			}
+			finally
+			{
+				Text.Font = oldFont;
+			}
+			var footerTextUsesInformativeHint = footerTextForCurrentWidth != "ShowZombieRisk".Translate().ToString();
 
 			if (openManageDialog && Find.WindowStack != null)
 			{
 				_ = Find.WindowStack.TryRemove(typeof(Dialog_ManageAreas), false);
 				var dialog = new Dialog_ManageAreas(map);
-				Dialog_ManageAreas_Patches.selected = selectedArea;
-				Dialog_ManageAreas_Patches.selectedIndex = map.areaManager.AllAreas.IndexOf(selectedArea);
 				Find.WindowStack.Add(dialog);
 			}
 			var manageDialogOpened = Find.WindowStack?.IsOpen(typeof(Dialog_ManageAreas)) == true;
@@ -156,9 +177,6 @@ namespace ZombieLand
 					label = pair.area.Label,
 					mode = pair.mode.ToString(),
 					modeText = pair.mode.ToStringHuman(),
-					labelColor = DescribeColor(Dialog_ManageAreas_Patches.AreaLabelColor(pair.area)),
-					expectedLabelColor = DescribeColor(ExpectedAreaLabelColor(pair.mode)),
-					colorMatchesMode = ColorsApproximatelyEqual(Dialog_ManageAreas_Patches.AreaLabelColor(pair.area), ExpectedAreaLabelColor(pair.mode)),
 					activeCellCount = pair.area.ActiveCells.Count(),
 					index = map.areaManager.AllAreas.IndexOf(pair.area)
 				})
@@ -166,13 +184,18 @@ namespace ZombieLand
 
 			return new
 			{
-				success = canMakeNewAllowed
-					&& tryMakeNewAllowed
+				success = tryMakeNewAllowedMatchesCanMakeNewAllowed
+					&& throwawayCreatedWhenAllowed
 					&& sortPreserved
-					&& constructorReset
+					&& initialSizeExpanded
+					&& initialHeightExpanded
+					&& doAreaRowTargetExists
+					&& canMakeNewAllowedMatchesVanillaLimit
+					&& throwawayRiskBeforeRemove
+					&& throwawayRiskCleaned
+					&& riskButtonCoversVanillaRows
+					&& footerTextUsesInformativeHint
 					&& areas.Length >= 5
-					&& areas.All(area => area.colorMatchesMode)
-					&& selectedColorMatchesMode
 					&& (openManageDialog == false || manageDialogOpened)
 					&& actionSucceeded,
 				setupFixture,
@@ -187,15 +210,42 @@ namespace ZombieLand
 					label = selectedArea.Label,
 					mode = selectedMode.ToString(),
 					modeText = selectedModeText,
-					labelColor = DescribeColor(selectedLabelColor),
-					expectedLabelColor = DescribeColor(expectedSelectedColor),
-					selectedColorMatchesMode,
-					selectedIndex = Dialog_ManageAreas_Patches.selectedIndex
+					index = map.areaManager.AllAreas.IndexOf(selectedArea)
 				},
 				canMakeNewAllowed,
 				tryMakeNewAllowed,
+				tryMakeNewAllowedMatchesCanMakeNewAllowed,
+				throwawayCreatedWhenAllowed,
+				throwawayRiskBeforeRemove,
+				throwawayRiskCleaned,
 				sortPreserved,
-				constructorReset,
+				vanillaDialogRowPatch = new
+				{
+					initialSize = new { x = initialSize.x, y = initialSize.y },
+					expectedMinWidth,
+					expectedMinHeight,
+					initialSizeExpanded,
+					initialHeightExpanded,
+					doAreaRowTargetExists,
+					Dialog_ManageAreas_Patches.VanillaWidgetRowGap,
+					Dialog_ManageAreas_Patches.VanillaAreaRowTrashRight,
+					Dialog_ManageAreas_Patches.ZombieRiskButtonLeft,
+					Dialog_ManageAreas_Patches.ZombieRiskButtonLabelWidth,
+					Dialog_ManageAreas_Patches.ZombieRiskButtonHorizontalPadding,
+					Dialog_ManageAreas_Patches.ZombieRiskButtonWidth,
+					Dialog_ManageAreas_Patches.ZombieRiskButtonGap,
+					Dialog_ManageAreas_Patches.ZombieRiskDialogExtraHeight,
+					Dialog_ManageAreas_Patches.ZombieRiskFooterTextMaxWidth,
+					footerTextForCurrentWidth,
+					footerTextUsesInformativeHint,
+					allAreaCount,
+					mutableAreaCount,
+					allowedAreaCount,
+					vanillaAllowedAreaLimit = 10,
+					canMakeNewAllowedMatchesVanillaLimit,
+					riskButtonCoversVanillaRows,
+					footerFitsCurrentRows
+				},
 				areas
 			};
 		}
@@ -730,9 +780,6 @@ namespace ZombieLand
 			var zombieOutside = EnsureAreaWorkflowArea(map, "ZombieOutside", AreaRiskMode.ZombieOutside, new Color(1f, 0.1f, 0.55f), cells.Skip(16).Take(4));
 
 			var fixtureAreas = new[] { ignore, colonistInside, colonistOutside, zombieInside, zombieOutside };
-			Dialog_ManageAreas_Patches.selected = zombieInside;
-			Dialog_ManageAreas_Patches.selectedIndex = map.areaManager.AllAreas.IndexOf(zombieInside);
-			Dialog_ManageAreas_Patches.scrollPosition = Vector2.zero;
 
 			return new
 			{
@@ -9463,18 +9510,6 @@ namespace ZombieLand
 				.Select(area => (area, Dialog_ManageAreas_Patches.GetMode(area)))
 				.OrderBy(pair => pair.area.Label)
 				.ToArray();
-		}
-
-		static Color ExpectedAreaLabelColor(AreaRiskMode mode)
-		{
-			return mode switch
-			{
-				AreaRiskMode.ColonistInside => Dialog_ManageAreas_Patches.areaNameColonistInside,
-				AreaRiskMode.ColonistOutside => Dialog_ManageAreas_Patches.areaNameColonistOutside,
-				AreaRiskMode.ZombieInside => Dialog_ManageAreas_Patches.areaNameZombieInside,
-				AreaRiskMode.ZombieOutside => Dialog_ManageAreas_Patches.areaNameZombieOutside,
-				_ => Color.white,
-			};
 		}
 
 	}

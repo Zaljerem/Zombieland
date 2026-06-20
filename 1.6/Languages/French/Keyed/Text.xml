@@ -335,6 +335,8 @@
 
 	<SnowAndSandClear>Déneigement et désensablement</SnowAndSandClear>
 	<ShowZombieRisk>Afficher le risque zombie</ShowZombieRisk>
+	<ZombieRiskAreaColumnHintLong>Règles de zone Zombieland : les infractions s'affichent en haut de l'écran pendant la partie</ZombieRiskAreaColumnHintLong>
+	<ZombieRiskAreaColumnHintMedium>Infractions Zombieland affichées en haut de l'écran</ZombieRiskAreaColumnHintMedium>
 	<ColonistInside>Colon à l'intérieur</ColonistInside>
 	<ColonistOutside>Colon dehors</ColonistOutside>
 	<ZombieInside>Zombie à l'intérieur</ZombieInside>
