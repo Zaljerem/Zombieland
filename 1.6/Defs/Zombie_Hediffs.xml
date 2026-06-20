@@ -140,8 +140,10 @@
 				</capMods>
 				<statFactors>
 					<ToxicEnvironmentResistance MayRequire="Ludeon.RimWorld.Biotech">0.25</ToxicEnvironmentResistance>
-					<PsychicSensitivity>0</PsychicSensitivity>
 				</statFactors>
+				<statOffsets>
+					<PsychicSensitivity>-0.25</PsychicSensitivity>
+				</statOffsets>
 			</li>
 			<li>
 				<minSeverity>0.75</minSeverity>
@@ -171,7 +173,7 @@
 					<ToxicEnvironmentResistance MayRequire="Ludeon.RimWorld.Biotech">0.75</ToxicEnvironmentResistance>
 				</statFactors>
 				<statOffsets>
-					<PsychicSensitivity>0.5</PsychicSensitivity>
+					<PsychicSensitivity>-0.5</PsychicSensitivity>
 					<PainShockThreshold>-0.5</PainShockThreshold>
 				</statOffsets>
 			</li>
