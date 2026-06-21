@@ -171,11 +171,9 @@ Root binary/media payload also differed:
 
 ## Fix applied on this branch
 
-Root `Assemblies/`, `Defs/`, `Languages/`, `Libraries/`, `Patches/`,
-`Resources/`, `Sounds/`, and `Textures/` were restored from
-`4c996bf13708ebe746419666168250708eaf593d` (`v4.4.5.0`).
-
-The same official-release root payload was also staged under `1.4/` for:
+The official-release root payload from
+`4c996bf13708ebe746419666168250708eaf593d` (`v4.4.5.0`) was staged under
+`1.4/` for:
 
 - `1.4/Assemblies`
 - `1.4/Defs`
@@ -189,11 +187,22 @@ The same official-release root payload was also staged under `1.4/` for:
 The `1.4/` staging used the exact Git blobs from the official release commit to
 avoid line-ending normalization changing old XML files.
 
-Before restoring those root folders, the current 1.6-only binary/media payload
-was copied to versioned 1.6 folders so the 1.6 content keeps its own assets.
-After accounting for RimWorld's inheritance rules, all files that latest
-`origin/master` would have inherited from root for RimWorld 1.6 were also copied
-into `1.6/`. That makes the 1.6 payload complete without inheriting root.
+All files that latest `origin/master` would have inherited from root for
+RimWorld 1.6 were copied into `1.6/`. That makes the 1.6 payload complete
+without inheriting root.
+
+The final layout removes root runtime folders entirely:
+
+- `Assemblies`
+- `Defs`
+- `Languages`
+- `Libraries`
+- `Patches`
+- `Resources`
+- `Sounds`
+- `Textures`
+
+The only active runtime payload folders are now `1.4/` and `1.6/`.
 
 Examples of 1.6 files that were made explicit:
 
@@ -221,9 +230,8 @@ Examples of 1.6 files that were made explicit:
 Static checks were run against Git objects, ignoring unrelated unstaged
 `1.6/` and `Source/` worktree changes:
 
-- Root payload check: staged root `Assemblies`, `Defs`, `Languages`,
-  `Libraries`, `Patches`, `Resources`, `Sounds`, and `Textures` have no diff
-  from `4c996bf13708ebe746419666168250708eaf593d`.
+- Root layout check: root `Assemblies`, `Defs`, `Languages`, `Libraries`,
+  `Patches`, `Resources`, `Sounds`, and `Textures` do not exist.
 - Effective 1.4 check: applying this branch's `v1.4` load-folder rule to
   `Assemblies`, `Defs`, `Languages`, `Libraries`, `Patches`, `Resources`,
   `Sounds`, and `Textures` produces the exact same relative file set and blob

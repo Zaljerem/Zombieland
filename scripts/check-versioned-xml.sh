@@ -8,16 +8,26 @@ import xml.etree.ElementTree as ET
 
 repo = Path(".")
 load_folders = ET.parse(repo / "LoadFolders.xml").getroot()
-content_roots = ("Defs", "Patches", "Languages")
-
-root_xml = sorted(
-    path.relative_to(repo).as_posix()
-    for folder in content_roots
-    for path in (repo / folder).rglob("*.xml")
+runtime_roots = (
+    "Assemblies",
+    "Defs",
+    "Languages",
+    "Libraries",
+    "Patches",
+    "Resources",
+    "Sounds",
+    "Textures",
 )
+xml_roots = ("Defs", "Patches", "Languages")
 
 errors = []
 checked_versions = []
+
+for folder in runtime_roots:
+    if (repo / folder).exists():
+        errors.append(
+            f"{folder}: root runtime folder is forbidden; put active content under a version folder"
+        )
 
 for node in list(load_folders):
     tag = node.tag
@@ -41,25 +51,12 @@ for node in list(load_folders):
 
     checked_versions.append(version)
 
-    if "/" in entries and version in entries and entries.index("/") > entries.index(version):
+    if entries != [version]:
         errors.append(
-            f"{version}: LoadFolders should list / before {version}; RimWorld reverses the list and later entries win"
+            f"{version}: LoadFolders must be isolated and list only {version}; got {entries}"
         )
 
-    if "/" in entries:
-        missing = [
-            rel
-            for rel in root_xml
-            if not (version_dir / rel).exists()
-        ]
-        if missing:
-            sample = ", ".join(missing[:8])
-            more = "" if len(missing) <= 8 else f", ... +{len(missing) - 8} more"
-            errors.append(
-                f"{version}: missing version shadows for root XML: {sample}{more}"
-            )
-
-    for folder in content_roots:
+    for folder in xml_roots:
         for xml_path in (version_dir / folder).rglob("*.xml"):
             try:
                 ET.parse(xml_path)
@@ -76,8 +73,8 @@ if errors:
     sys.exit(1)
 
 print(
-    "Versioned XML layout OK: "
+    "Versioned runtime layout OK: "
     + ", ".join(checked_versions)
-    + f" shadow {len(root_xml)} root XML files"
+    + " are isolated and no root runtime folders exist"
 )
 PY

@@ -27,7 +27,7 @@ public class CreateAssetBundles
 		if (string.IsNullOrEmpty(env) == false)
 			return env;
 
-		return Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", "Resources"));
+		return Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", "1.6", "Resources"));
 	}
 
 	[MenuItem("Assets/Export Zombieland")]

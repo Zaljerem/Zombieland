@@ -7,9 +7,9 @@ Use `build-assetbundles.sh` to compile the Unity project in `Originals/Effects` 
 The mod consumes these files:
 
 ```text
-Resources/Win64/zombieland
-Resources/Linux/zombieland
-Resources/MacOS/zombieland
+1.6/Resources/Win64/zombieland
+1.6/Resources/Linux/zombieland
+1.6/Resources/MacOS/zombieland
 ```
 
 Unity may also create intermediates under:
@@ -42,7 +42,7 @@ Quick local iteration, for shader/material changes where only the current machin
 On macOS, `--current` and `--quick` rebuild only:
 
 ```text
-Resources/MacOS/zombieland
+1.6/Resources/MacOS/zombieland
 ```
 
 Single explicit target rebuild:
@@ -70,7 +70,7 @@ The default editor path is:
 
 ### What The Script Does
 
-The script runs Unity batch mode against `Originals/Effects`, sets `ZOMBIELAND_RESOURCES_DIR` to the repo's `Resources` directory, and calls one of these Unity static methods:
+The script runs Unity batch mode against `Originals/Effects`, sets `ZOMBIELAND_RESOURCES_DIR` to the repo's `1.6/Resources` directory, and calls one of these Unity static methods:
 
 ```text
 CreateAssetBundles.BuildStandaloneAssetBundles
@@ -80,7 +80,7 @@ CreateAssetBundles.BuildLinuxAssetBundle
 CreateAssetBundles.BuildMacOSAssetBundle
 ```
 
-`BuildStandaloneAssetBundles` builds all three platforms. The other methods build one platform only. All methods generate the source assets, run Unity's asset bundle build, copy the produced `zombieland` bundle to `Resources/{OS}/zombieland`, then validate that the deployed bundle loads the expected assets:
+`BuildStandaloneAssetBundles` builds all three platforms. The other methods build one platform only. All methods generate the source assets, run Unity's asset bundle build, copy the produced `zombieland` bundle to `1.6/Resources/{OS}/zombieland`, then validate that the deployed bundle loads the expected assets:
 
 ```text
 assets/_zombieland/dust.prefab
@@ -100,12 +100,12 @@ A successful quick macOS build prints lines similar to:
 
 ```text
 Building Zombieland asset bundle(s): MacOS
-Zombieland bundle validated MacOS: Dust=Dust, Metaballs=Custom/Metaballs, ZombieSymbiant=Custom/ZombieSymbiant, assets=7, Unity=2022.3.62f3, path=/Users/ap/Projects/ZombieLand/Resources/MacOS/zombieland
-<sha256>  /Users/ap/Projects/ZombieLand/Resources/MacOS/zombieland
+Zombieland bundle validated MacOS: Dust=Dust, Metaballs=Custom/Metaballs, ZombieSymbiant=Custom/ZombieSymbiant, assets=7, Unity=2022.3.62f3, path=/Users/ap/Projects/ZombieLand/1.6/Resources/MacOS/zombieland
+<sha256>  /Users/ap/Projects/ZombieLand/1.6/Resources/MacOS/zombieland
 Exiting batchmode successfully now!
 ```
 
-The exact SHA-256 changes whenever Unity output changes. The important checks are the correct `Resources/{OS}/zombieland` path, `assets=7`, and `Exiting batchmode successfully now!`.
+The exact SHA-256 changes whenever Unity output changes. The important checks are the correct `1.6/Resources/{OS}/zombieland` path, `assets=7`, and `Exiting batchmode successfully now!`.
 
 ### Iteration Speed
 
@@ -140,7 +140,7 @@ git restore -- Originals/Effects/Library ':(exclude)Originals/Effects/Library/Li
 git clean -fd -- Originals/Effects/Library Originals/Effects/Assets/AssetBundles Originals/Effects/Assets/_Zombieland Originals/Effects/UserSettings Originals/Effects/ProjectSettings/MemorySettings.asset Originals/Effects/ProjectSettings/VersionControlSettings.asset
 ```
 
-Do not remove or restore the deployed files under `Resources/{OS}/zombieland` unless you intentionally want to discard the rebuilt bundles.
+Do not remove or restore the deployed files under `1.6/Resources/{OS}/zombieland` unless you intentionally want to discard the rebuilt bundles.
 
 ### Choosing A Mode
 
@@ -150,4 +150,4 @@ Use `--os <OS>` when testing one non-current target or when verifying a specific
 
 Use `--full` before claiming the asset bundle set is ready for cross-platform use or before preparing a release-like commit.
 
-Do not manually copy files from Unity's intermediate `Assets/AssetBundles` output into the mod. The Unity export method already deploys the correct files to `Resources/{OS}/zombieland`, and the script verifies those deployed paths.
+Do not manually copy files from Unity's intermediate `Assets/AssetBundles` output into the mod. The Unity export method already deploys the correct files to `1.6/Resources/{OS}/zombieland`, and the script verifies those deployed paths.

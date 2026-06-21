@@ -41,14 +41,14 @@
 		<Content Include="..\Directory.Build.props">
 			<Link>%(Filename)%(Extension)</Link>
 		</Content>
-		<Content Include="..\Defs\**\*.xml">
-			<Link>Defs\%(RecursiveDir)%(Filename)%(Extension)</Link>
+		<Content Include="..\1.6\Defs\**\*.xml">
+			<Link>1.6\Defs\%(RecursiveDir)%(Filename)%(Extension)</Link>
 		</Content>
-		<Content Include="..\Languages\**\Keyed\*.xml">
-			<Link>Languages\%(RecursiveDir)%(FileName)%(Extension)</Link>
+		<Content Include="..\1.6\Languages\**\Keyed\*.xml">
+			<Link>1.6\Languages\%(RecursiveDir)%(FileName)%(Extension)</Link>
 		</Content>
-		<Content Include="..\Languages\**\DefInjected\**\*.xml">
-			<Link>Languages\%(RecursiveDir)%(FileName)%(Extension)</Link>
+		<Content Include="..\1.6\Languages\**\DefInjected\**\*.xml">
+			<Link>1.6\Languages\%(RecursiveDir)%(FileName)%(Extension)</Link>
 		</Content>
 	</ItemGroup>
 
@@ -67,7 +67,7 @@
 
 	<ItemGroup>
 		<Reference Include="Newtonsoft.Json">
-			<HintPath>..\Libraries\Newtonsoft.Json.dll</HintPath>
+			<HintPath>..\1.6\Libraries\Newtonsoft.Json.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 
@@ -109,12 +109,6 @@
 			<Copy_14 Include="..\1.4\**" />
 			<Copy_16 Include="..\1.6\**" />
 			<CopyAbout Include="..\About\**" />
-			<CopyDefs Include="..\Defs\**" />
-			<CopyLanguages Include="..\Languages\**" />
-			<CopyPatches Include="..\Patches\**" />
-			<CopyResources Include="..\Resources\**" />
-			<CopySounds Include="..\Sounds\**" />
-			<CopyTextures Include="..\Textures\**" />
 			<CopyLicense Include="..\LICENSE" />
 			<CopyLoadFolders Include="..\LoadFolders.xml" />
 			<CopyReadme Include="..\README.md" />
@@ -122,12 +116,6 @@
 		<Copy SourceFiles="@(Copy_14)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\1.4\%(RecursiveDir)" />
 		<Copy SourceFiles="@(Copy_16)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\1.6\%(RecursiveDir)" />
 		<Copy SourceFiles="@(CopyAbout)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\About\%(RecursiveDir)" />
-		<Copy SourceFiles="@(CopyDefs)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\Defs\%(RecursiveDir)" />
-		<Copy SourceFiles="@(CopyLanguages)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\Languages\%(RecursiveDir)" />
-		<Copy SourceFiles="@(CopyPatches)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\Patches\%(RecursiveDir)" />
-		<Copy SourceFiles="@(CopyResources)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\Resources\%(RecursiveDir)" />
-		<Copy SourceFiles="@(CopySounds)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\Sounds\%(RecursiveDir)" />
-		<Copy SourceFiles="@(CopyTextures)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)\Textures\%(RecursiveDir)" />
 		<Copy SourceFiles="@(CopyLicense)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)" />
 		<Copy SourceFiles="@(CopyLoadFolders)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)" />
 		<Copy SourceFiles="@(CopyReadme)" DestinationFolder="$(RIMWORLD_MOD_DIR)\$(ModFileName)" />
