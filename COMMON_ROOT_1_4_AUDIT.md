@@ -26,8 +26,6 @@ Report-only, not reset by this branch:
 - `About/About.xml`, `About/Manifest.xml`, and `Directory.Build.props`: these are
   release metadata/version files and were intentionally changed by release
   commits.
-- `LoadFolders.xml`: this is the version-routing file that makes the split
-  `1.4/` and `1.6/` layout work.
 
 ## Load-folder inheritance
 
@@ -35,19 +33,21 @@ RimWorld 1.6 loader behavior was checked against the live `Assembly-CSharp.dll`
 with DecompilerServer:
 
 - `Verse.ModContentPack.InitLoadFolders` reverses the folders listed for a
-  version. For this repo's `<v1.4><li>/</li><li>1.4</li></v1.4>`, the internal
-  search order is `1.4` first, root second.
+  version before probing files.
 - `Verse.DirectXmlLoader.XmlAssetsInModFolder` keeps the first XML file seen for
-  each relative path, so a file in `1.4/Defs/Foo.xml` shadows
-  `Defs/Foo.xml`.
+  each relative path.
 - `Verse.ModContentPack.GetAllFilesForMod` does the same first-path-wins lookup
   for general content files.
 - `Verse.ModContentPack.GetAllFilesForModPreserveOrder`, used where order
   matters, still removes duplicate relative paths so the versioned file wins.
 
-That means same-path files in `1.4/` shadow root files, while files missing from
-`1.4/` are inherited from root. The fix therefore has to make the effective
-`1.4` payload match the official release, not merely copy a few changed files.
+That means same-path files in version folders shadow root files, while missing
+versioned files would be inherited from root. To avoid accidental old-root leaks
+into 1.6, and to keep 1.4 stable against future root changes, this branch makes
+the active `v1.4` and `v1.6` load-folder entries complete and isolated:
+
+- `v1.4` loads only `1.4`.
+- `v1.6` loads only `1.6`.
 
 ## Current violations found
 
@@ -190,11 +190,17 @@ The `1.4/` staging used the exact Git blobs from the official release commit to
 avoid line-ending normalization changing old XML files.
 
 Before restoring those root folders, the current 1.6-only binary/media payload
-was copied to versioned 1.6 folders so the 1.6 content keeps its own assets:
+was copied to versioned 1.6 folders so the 1.6 content keeps its own assets.
+After accounting for RimWorld's inheritance rules, all files that latest
+`origin/master` would have inherited from root for RimWorld 1.6 were also copied
+into `1.6/`. That makes the 1.6 payload complete without inheriting root.
+
+Examples of 1.6 files that were made explicit:
 
 - `1.6/Resources/Linux/zombieland`
 - `1.6/Resources/MacOS/zombieland`
 - `1.6/Resources/Win64/zombieland`
+- `1.6/Libraries/Newtonsoft.Json.dll`
 - `1.6/Sounds/smash/smash1.wav`
 - `1.6/Sounds/smash/smash2.wav`
 - `1.6/Sounds/smash/smash3.wav`
@@ -212,11 +218,19 @@ was copied to versioned 1.6 folders so the 1.6 content keeps its own assets:
 
 ## Verification
 
-Two static checks were run against the staged index:
+Static checks were run against Git objects, ignoring unrelated unstaged
+`1.6/` and `Source/` worktree changes:
 
 - Root payload check: staged root `Assemblies`, `Defs`, `Languages`,
   `Libraries`, `Patches`, `Resources`, `Sounds`, and `Textures` have no diff
   from `4c996bf13708ebe746419666168250708eaf593d`.
-- Effective 1.4 inheritance check: applying RimWorld's first-path-wins
-  `1.4`-then-root lookup to those same content folders produces the exact same
-  relative file set and blob IDs as the official release root payload.
+- Effective 1.4 check: applying this branch's `v1.4` load-folder rule to
+  `Assemblies`, `Defs`, `Languages`, `Libraries`, `Patches`, `Resources`,
+  `Sounds`, and `Textures` produces the exact same relative file set and blob
+  IDs as the official release root payload.
+- RimWorld 1.5 compatibility check: `About/About.xml` and `About/Manifest.xml`
+  list RimWorld 1.4 and 1.6, not 1.5. A forced 1.5 run would fall back to the
+  highest older load-folder key, but the mod metadata shows it as incompatible.
+- Effective 1.6 check: applying this branch's `v1.6` load-folder rule to the
+  same content folders produces the exact same relative file set and blob IDs as
+  latest `origin/master` under RimWorld 1.6.

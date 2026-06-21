@@ -1,19 +1,18 @@
 <loadFolders>
   <!--
-    RimWorld reverses each list before content lookup. Keep "/" first and the
-    version folder second so root assets stay common while versioned XML and
-    assemblies shadow root files with the same relative path.
+    RimWorld reverses each list before content lookup and keeps the first file
+    it sees for each relative path. Keep active versions isolated so old root
+    payload files cannot leak into the 1.6 port and future root changes cannot
+    alter the preserved 1.4 payload.
 
     When starting the 1.7 port, add an explicit v1.7 entry and create matching
-    1.7/Defs, 1.7/Patches, 1.7/Languages, and 1.7/Assemblies content. Without
-    an explicit v1.7 entry, RimWorld will fall back to the highest older key.
+    1.7 content. Without an explicit v1.7 entry, RimWorld will fall back to the
+    highest older key.
   -->
   <v1.4>
-    <li>/</li>
     <li>1.4</li>
   </v1.4>
   <v1.6>
-    <li>/</li>
     <li>1.6</li>
   </v1.6>
 </loadFolders>
