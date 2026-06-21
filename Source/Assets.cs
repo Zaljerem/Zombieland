@@ -29,8 +29,7 @@ namespace ZombieLand
 			if (platform == RuntimePlatform.OSXEditor || platform == RuntimePlatform.OSXPlayer)
 				arch = "MacOS";
 
-			var me = LoadedModManager.GetMod<ZombielandMod>();
-			var path = Path.Combine(me.Content.RootDir, "Resources", arch, "zombieland");
+			var path = Tools.GetModContentPath("Resources", arch, "zombieland");
 			var assets = AssetBundle.LoadFromFile(path);
 
 			dust = assets.LoadAsset<GameObject>("Dust");

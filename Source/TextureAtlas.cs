@@ -43,7 +43,7 @@ namespace ZombieLand
 	// uses https://github.com/witnessmonolith/atlased_documentation
 	public static class TextureAtlas
 	{
-		public static readonly string textureRoot = Tools.GetModRootDirectory() + Path.DirectorySeparatorChar + "Textures" + Path.DirectorySeparatorChar;
+		public static readonly string textureRoot = Tools.GetModContentDirectory("Textures") + Path.DirectorySeparatorChar;
 
 		public static List<AtlasImage> AllImages { get; } = new List<AtlasImage>();
 

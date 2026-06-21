@@ -185,6 +185,36 @@ namespace ZombieLand
 			return me.Content.RootDir;
 		}
 
+		public static string GetModRuntimeDirectory()
+		{
+			var assemblyDir = Path.GetDirectoryName(typeof(Tools).Assembly.Location);
+			if (string.IsNullOrEmpty(assemblyDir) == false && Path.GetFileName(assemblyDir).Equals("Assemblies", StringComparison.OrdinalIgnoreCase))
+			{
+				var runtimeDir = Directory.GetParent(assemblyDir)?.FullName;
+				if (string.IsNullOrEmpty(runtimeDir) == false && Directory.Exists(runtimeDir))
+					return runtimeDir;
+			}
+
+			var root = GetModRootDirectory();
+			var rimworld16Root = Path.Combine(root, "1.6");
+			if (Directory.Exists(rimworld16Root))
+				return rimworld16Root;
+			return root;
+		}
+
+		public static string GetModContentDirectory(string folderName)
+		{
+			return Path.Combine(GetModRuntimeDirectory(), folderName);
+		}
+
+		public static string GetModContentPath(params string[] parts)
+		{
+			var path = GetModRuntimeDirectory();
+			foreach (var part in parts)
+				path = Path.Combine(path, part);
+			return path;
+		}
+
 		static readonly Dictionary<string, float> nextExecutions = new();
 		public static bool RunThrottled(this string key, float cooldown)
 		{
@@ -197,7 +227,7 @@ namespace ZombieLand
 
 		public static Texture2D LoadTexture(string path, bool makeReadonly = true)
 		{
-			var fullPath = Path.Combine(GetModRootDirectory(), "Textures", $"{path}.png");
+			var fullPath = Path.Combine(GetModContentDirectory("Textures"), $"{path}.png");
 			var data = File.ReadAllBytes(fullPath);
 			if (data == null || data.Length == 0)
 				throw new Exception($"Cannot read texture {fullPath}");

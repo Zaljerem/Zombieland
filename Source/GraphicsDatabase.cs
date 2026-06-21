@@ -13,7 +13,7 @@ namespace ZombieLand
 	[StaticConstructorOnStartup]
 	public static class GraphicsDatabase
 	{
-		static readonly string textureRoot = Tools.GetModRootDirectory() + Path.DirectorySeparatorChar + "Textures" + Path.DirectorySeparatorChar;
+		static readonly string textureRoot = Tools.GetModContentDirectory("Textures") + Path.DirectorySeparatorChar;
 		public static List<string> zombieRGBSkinColors = new();
 		public static Graphic twinkieGraphic;
 		static readonly Dictionary<string, ColorData> colorDataDatabase = new();
