@@ -2272,6 +2272,392 @@ namespace ZombieLand
 			};
 		}
 
+		[Tool("zombieland/former_zombie_hidden_conduit_track_contract", Description = "Put former-pawn zombies on pheromone trails through hidden conduits and inert spot/grave buildings, verifying they do not loop AttackStatic while a normal wall is still smashed.")]
+		public static object FormerZombieHiddenConduitTrackContract(
+			[ToolParameter(Description = "Root x coordinate. Use -1 with z -1 to search near map center.", Required = false, DefaultValue = -1)] int x = -1,
+			[ToolParameter(Description = "Root z coordinate. Use -1 with x -1 to search near map center.", Required = false, DefaultValue = -1)] int z = -1,
+			[ToolParameter(Description = "Number of ticks to sample each case. Clamped to 10..240.", Required = false, DefaultValue = 80)] int sampleTicks = 80,
+			[ToolParameter(Description = "Deterministic Rand seed for melee attack samples.", Required = false, DefaultValue = 777331)] int seed = 777331)
+		{
+			var map = CurrentMap;
+			if (map == null)
+			{
+				return new
+				{
+					success = false,
+					error = "No current map is loaded."
+				};
+			}
+
+			var root = x >= 0 && z >= 0 ? new IntVec3(x, 0, z) : new IntVec3(map.Size.x / 2, 0, map.Size.z / 2);
+			if (root.InBounds(map) == false)
+			{
+				return new
+				{
+					success = false,
+					error = $"Cell ({root.x}, {root.z}) is outside the current map."
+				};
+			}
+
+			var noAttackDefs = ExpectedNoAttackBuildingDefNames()
+				.Select(defName => DefDatabase<ThingDef>.GetNamed(defName, false))
+				.Where(def => def != null)
+				.ToArray();
+			if (TryFindFormerConduitFixtureCells(map, root, noAttackDefs.Length, out var noAttackCells, out var wallCells, out var cellError) == false)
+				return cellError;
+
+			var settingsSnapshot = SnapshotZombieSettings();
+			var spawnedThings = new List<Thing>();
+			var pheromoneSnapshot = SnapshotPheromones(map, root, 24f);
+			var sampleCount = Math.Max(10, Math.Min(sampleTicks, 240));
+			try
+			{
+				ApplyZombieSettingsOverride(settings =>
+				{
+					settings.smashMode = SmashMode.AnyBuilding;
+					settings.smashOnlyWhenAgitated = true;
+					settings.zombiesEatCorpses = false;
+					settings.zombiesEatDowned = false;
+					settings.ragingZombies = false;
+				});
+
+				ClearPheromones(map, root, 24f);
+				var noAttackCases = noAttackDefs
+					.Select((def, index) =>
+						RunFormerZombieConduitSmashCase(
+							map,
+							$"no-attack-{def.defName}",
+							noAttackCells[index].ZombieCell,
+							noAttackCells[index].BuildingCell,
+							noAttackCells[index].TrailCell,
+							def.defName,
+							expectedAttack: false,
+							spawnedThings,
+							sampleCount,
+							seed + index))
+					.ToArray();
+				var wallCase = RunFormerZombieConduitSmashCase(
+					map,
+					"wall-control",
+					wallCells.ZombieCell,
+					wallCells.BuildingCell,
+					wallCells.TrailCell,
+					"Wall",
+					expectedAttack: true,
+					spawnedThings,
+					sampleCount,
+					seed + noAttackDefs.Length);
+
+				return new
+				{
+					success = noAttackCases.All(FormerConduitCaseSucceeded) && FormerConduitCaseSucceeded(wallCase),
+					root = ZombieRuntimeActions.DescribeCell(root),
+					settingsOverride = new
+					{
+						smashMode = SmashMode.AnyBuilding.ToString(),
+						zombiesEatCorpses = false,
+						zombiesEatDowned = false,
+						ragingZombies = false
+					},
+					noAttackDefNames = noAttackDefs.Select(def => def.defName).ToArray(),
+					missingNoAttackDefNames = ExpectedNoAttackBuildingDefNames().Except(noAttackDefs.Select(def => def.defName)).ToArray(),
+					noAttackCases,
+					wallCase
+				};
+			}
+			finally
+			{
+				RestoreZombieSettings(settingsSnapshot);
+				RestorePheromones(map, pheromoneSnapshot);
+				foreach (var thing in spawnedThings.Where(thing => thing != null).Distinct().Reverse().ToArray())
+				{
+					if (thing.Destroyed || thing.Spawned == false)
+						continue;
+					thing.Destroy(DestroyMode.Vanish);
+				}
+			}
+		}
+
+		static object RunFormerZombieConduitSmashCase(Map map, string label, IntVec3 zombieCell, IntVec3 buildingCell, IntVec3 trailCell, string buildingDefName, bool expectedAttack, List<Thing> spawnedThings, int sampleTicks, int seed)
+		{
+			var zombie = SpawnFormerPawnZombie(map, zombieCell, $"ZL_Conduit_{label}", spawnedThings, out var spawnError);
+			if (zombie == null)
+			{
+				return new
+				{
+					success = false,
+					label,
+					expectedAttack,
+					error = spawnError,
+					zombieCell = ZombieRuntimeActions.DescribeCell(zombieCell)
+				};
+			}
+
+			var building = SpawnConduitContractBuilding(map, buildingCell, buildingDefName, spawnedThings, out var buildingError);
+			if (building == null)
+			{
+				return new
+				{
+					success = false,
+					label,
+					expectedAttack,
+					error = buildingError,
+					zombie = DescribeZombie(zombie),
+					buildingCell = ZombieRuntimeActions.DescribeCell(buildingCell)
+				};
+			}
+
+			zombie.pather?.StopDead();
+			zombie.jobs?.EndCurrentJob(JobCondition.InterruptForced);
+			zombie.state = ZombieState.Wandering;
+			zombie.raging = 0;
+			zombie.checkSmashable = true;
+			zombie.wasMapPawnBefore = true;
+
+			var grid = map.GetGrid();
+			var now = Tools.Ticks();
+			grid.SetTimestamp(buildingCell, now);
+			grid.SetTimestamp(trailCell, now + 1);
+
+			var hitPointsBefore = building.HitPoints;
+			var before = DescribeZombie(zombie);
+			var samples = new List<object>();
+			var sawAttackStaticJob = false;
+			var sawStumbleMovementIntent = false;
+
+			zombie.jobs.StartJob(JobMaker.MakeJob(CustomDefs.Stumble), JobCondition.InterruptForced, null, true, false, null, null);
+			if (zombie.jobs.curDriver is JobDriver_Stumble initialStumbleDriver)
+				initialStumbleDriver.destination = IntVec3.Invalid;
+
+			Rand.PushState(seed);
+			try
+			{
+				for (var i = 0; i < sampleTicks; i++)
+				{
+					AdvanceGameTicks(1);
+					var currentJob = zombie.CurJobDef?.defName;
+					var stumbleDestination = zombie.jobs.curDriver is JobDriver_Stumble currentStumbleDriver
+						? currentStumbleDriver.destination
+						: IntVec3.Invalid;
+					if (currentJob == JobDefOf.AttackStatic.defName)
+						sawAttackStaticJob = true;
+					if (currentJob == CustomDefs.Stumble.defName && (zombie.pather?.Moving == true || stumbleDestination.IsValid))
+						sawStumbleMovementIntent = true;
+
+					if (i < 12 || i % 10 == 9 || i == sampleTicks - 1)
+						samples.Add(new
+						{
+							tick = i + 1,
+							currentJob,
+							stumbleDestination = ZombieRuntimeActions.DescribeCell(stumbleDestination),
+							zombiePosition = ZombieRuntimeActions.DescribeCell(zombie.Position),
+							patherMoving = zombie.pather?.Moving ?? false,
+							patherDestination = zombie.pather?.Moving == true ? ZombieRuntimeActions.DescribeCell(zombie.pather.Destination.Cell) : null,
+							fullBodyBusy = zombie.stances?.FullBodyBusy ?? false,
+							buildingDestroyed = building.Destroyed,
+							buildingHitPoints = building.Destroyed ? 0 : building.HitPoints
+						});
+
+					if (building.Destroyed || building.HitPoints < hitPointsBefore)
+						break;
+					if (expectedAttack == false && sawStumbleMovementIntent && sawAttackStaticJob == false)
+						break;
+				}
+			}
+			finally
+			{
+				Rand.PopState();
+			}
+
+			var buildingDestroyed = building.Destroyed;
+			var hitPointsAfter = buildingDestroyed ? 0 : building.HitPoints;
+			var movedFromStart = zombie.Position != zombieCell;
+
+			return new
+			{
+				success = expectedAttack == false
+					? sawAttackStaticJob == false && hitPointsAfter == hitPointsBefore && (sawStumbleMovementIntent || movedFromStart)
+					: sawAttackStaticJob && (buildingDestroyed || hitPointsAfter < hitPointsBefore),
+				label,
+				expectedAttack,
+				seed,
+				zombieCell = ZombieRuntimeActions.DescribeCell(zombieCell),
+				buildingCell = ZombieRuntimeActions.DescribeCell(buildingCell),
+				trailCell = ZombieRuntimeActions.DescribeCell(trailCell),
+				buildingDefName,
+				buildingId = ZombieRuntimeActions.StableThingId(building),
+				buildingDestroyed,
+				hitPointsBefore,
+				hitPointsAfter,
+				hitPointDelta = hitPointsAfter - hitPointsBefore,
+				buildingProperties = DescribeBuildingSmashProperties(building),
+				sawAttackStaticJob,
+				sawStumbleMovementIntent,
+				movedFromStart,
+				before,
+				after = DescribeZombie(zombie),
+				samples
+			};
+		}
+
+		static string[] ExpectedNoAttackBuildingDefNames()
+		{
+			return new[]
+			{
+				"HiddenConduit",
+				"Grave",
+				"SleepingSpot",
+				"DoubleSleepingSpot",
+				"AnimalSleepingSpot",
+				"BabySleepingSpot",
+				"MarriageSpot",
+				"PartySpot",
+				"CaravanPackingSpot",
+				"CraftingSpot",
+				"ButcherSpot",
+				"MeditationSpot",
+				"RitualSpot",
+				"PsychicRitualSpot",
+				"HoldingSpot"
+			};
+		}
+
+		static bool FormerConduitCaseSucceeded(object result)
+		{
+			var property = result?.GetType().GetProperty("success");
+			return property?.GetValue(result) is bool success && success;
+		}
+
+		static Zombie SpawnFormerPawnZombie(Map map, IntVec3 cell, string name, List<Thing> spawnedThings, out string error)
+		{
+			error = null;
+			var beforeIds = CurrentZombies(map).Select(ZombieRuntimeActions.StableThingId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+			var request = new PawnGenerationRequest(PawnKindDefOf.Colonist, Faction.OfPlayer, forceGenerateNewPawn: true, canGeneratePawnRelations: false, allowAddictions: false);
+			var pawn = PawnGenerator.GeneratePawn(request);
+			pawn.Name = new NameSingle(name);
+			GenSpawn.Spawn(pawn, cell, map, Rot4.East);
+			DisablePawnWork(pawn);
+			pawn.apparel?.DestroyAll();
+			pawn.equipment?.DestroyAllEquipment(DestroyMode.Vanish);
+			pawn.inventory?.DestroyAll();
+			spawnedThings.Add(pawn);
+			if (ZombieRuntimeActions.KillPawnToCorpse(pawn, out var corpse, out error) == false)
+				return null;
+			if (corpse != null)
+				spawnedThings.Add(corpse);
+
+			Tools.ConvertToZombie(corpse, map, true);
+			var zombie = CurrentZombies(map)
+				.OfType<Zombie>()
+				.Where(candidate => beforeIds.Contains(ZombieRuntimeActions.StableThingId(candidate)) == false)
+				.OrderBy(candidate => candidate.Position.DistanceToSquared(cell))
+				.FirstOrDefault();
+			if (zombie == null)
+			{
+				error = "Corpse conversion did not create a new former-pawn zombie.";
+				return null;
+			}
+			spawnedThings.Add(zombie);
+			return zombie;
+		}
+
+		static Building SpawnConduitContractBuilding(Map map, IntVec3 cell, string defName, List<Thing> spawnedThings, out string error)
+		{
+			error = null;
+			var def = DefDatabase<ThingDef>.GetNamed(defName, false);
+			if (def == null)
+			{
+				error = $"ThingDef {defName} was not found.";
+				return null;
+			}
+
+			var stuffDef = def.MadeFromStuff ? ThingDefOf.WoodLog : null;
+			var building = ThingMaker.MakeThing(def, stuffDef) as Building;
+			if (building == null)
+			{
+				error = $"ThingDef {defName} did not create a Building.";
+				return null;
+			}
+
+			GenSpawn.Spawn(building, cell, map, WipeMode.Vanish);
+			building.SetFaction(Faction.OfPlayer);
+			spawnedThings.Add(building);
+			return building;
+		}
+
+		static object DescribeBuildingSmashProperties(Building building)
+		{
+			var props = building?.def?.building;
+			return new
+			{
+				defName = building?.def?.defName,
+				useHitPoints = building?.def?.useHitPoints,
+				isNaturalRock = props?.isNaturalRock,
+				isTargetable = props?.isTargetable,
+				canBeDamagedByAttacks = props?.canBeDamagedByAttacks,
+				isPowerConduit = props?.isPowerConduit,
+				passability = building?.def?.passability.ToString(),
+				edifice = building?.Position.GetEdifice(building.Map)?.def?.defName
+			};
+		}
+
+		static bool TryFindFormerConduitFixtureCells(Map map, IntVec3 root, int noAttackCaseCount, out FormerConduitFixtureCells[] noAttackCells, out FormerConduitFixtureCells wallCells, out object error)
+		{
+			noAttackCells = Array.Empty<FormerConduitFixtureCells>();
+			wallCells = null;
+			error = null;
+
+			foreach (var candidate in GenRadial.RadialCellsAround(root, 24f, true))
+			{
+				var cells = Enumerable.Range(0, noAttackCaseCount + 1)
+					.Select(index => new FormerConduitFixtureCells
+					{
+						ZombieCell = candidate + new IntVec3(0, 0, index * 5),
+						BuildingCell = candidate + new IntVec3(1, 0, index * 5),
+						TrailCell = candidate + new IntVec3(2, 0, index * 5)
+					})
+					.ToArray();
+				if (cells
+					.SelectMany(cellSet => new[] { cellSet.ZombieCell, cellSet.BuildingCell, cellSet.TrailCell })
+					.All(cell => IsClearFormerConduitFixtureCell(map, cell)) == false)
+					continue;
+
+				noAttackCells = cells.Take(noAttackCaseCount).ToArray();
+				wallCells = cells[noAttackCaseCount];
+				return true;
+			}
+
+			error = new
+			{
+				success = false,
+				requested = ZombieRuntimeActions.DescribeCell(root),
+				error = "No clear former-zombie conduit fixture area was found."
+			};
+			return false;
+		}
+
+		sealed class FormerConduitFixtureCells
+		{
+			public IntVec3 ZombieCell { get; set; }
+			public IntVec3 BuildingCell { get; set; }
+			public IntVec3 TrailCell { get; set; }
+		}
+
+		static bool IsClearFormerConduitFixtureCell(Map map, IntVec3 cell)
+		{
+			return cell.InBounds(map)
+				&& cell.Standable(map)
+				&& cell.Fogged(map) == false
+				&& cell.GetThingList(map).Any(thing => thing is Pawn || thing is Building || thing is Corpse) == false;
+		}
+
+		static void RestorePheromones(Map map, Dictionary<IntVec3, long> snapshot)
+		{
+			var grid = map.GetGrid();
+			foreach (var pair in snapshot)
+				grid.SetTimestamp(pair.Key, pair.Value);
+		}
+
 		sealed class SkinColorCase
 		{
 			public string name { get; set; }
