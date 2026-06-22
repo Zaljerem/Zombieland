@@ -324,13 +324,9 @@ namespace ZombieLand
 		{
 			get
 			{
-				if (Name is NameTriple nameTriple)
-				{
-					var last = nameTriple.Last;
-					if (last.StartsWith("#"))
-						return $"{ZombieType} {last.Substring(1)}";
-					return $"{ZombieType} {last}";
-				}
+				var name = Name?.ToStringShort;
+				if (name.NullOrEmpty() == false)
+					return $"{ZombieType} {name}";
 				return ZombieType;
 			}
 		}
