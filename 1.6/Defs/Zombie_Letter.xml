@@ -35,4 +35,11 @@
 		<arriveSound>SymbiantConnected</arriveSound>
 	</LetterDef>
 
+	<LetterDef Name="SymbiantEvent">
+		<defName>SymbiantEvent</defName>
+		<color>(65, 190, 95)</color>
+		<flashColor>(85, 255, 85)</flashColor>
+		<flashInterval>16</flashInterval>
+	</LetterDef>
+
 </Defs>

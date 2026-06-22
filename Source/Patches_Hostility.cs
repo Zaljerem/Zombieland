@@ -36,7 +36,8 @@ namespace ZombieLand
 			var isEnemy = isAnimal == false && attackerFactionDef != null && attackerFaction.HostileTo(Faction.OfPlayer);
 			var isFriendly = isAnimal == false && isEnemy == false && isPlayer == false;
 
-			rawTargets.RemoveAll(thing => thing.Thing is ZombieSymbiant);
+			if (isEnemy == false)
+				rawTargets.RemoveAll(thing => thing.Thing is ZombieSymbiant);
 
 			// remove spitter for everyone except player
 			if (isPlayer == false)
@@ -358,7 +359,9 @@ namespace ZombieLand
 			// attacker is enemy
 			validator = (Thing t) =>
 			{
-				if (t is ZombieSymbiant || t is ZombieSpitter)
+				if (t is ZombieSymbiant)
+					return oldValidator(t);
+				if (t is ZombieSpitter)
 					return false;
 
 				if (t is Zombie zombie)
@@ -536,12 +539,18 @@ namespace ZombieLand
 	[HarmonyPatch(new Type[] { typeof(Thing), typeof(Thing) })]
 	static class GenHostility_HostileTo_Thing_Thing_Patch
 	{
+		static bool IsHostileToSymbiant(Thing thing)
+		{
+			var faction = thing?.Faction;
+			return faction != null && faction.HostileTo(Faction.OfPlayer);
+		}
+
 		[HarmonyPriority(Priority.First)]
 		static bool Prefix(Thing a, Thing b, ref bool __result)
 		{
 			if (a is ZombieSymbiant || b is ZombieSymbiant)
 			{
-				__result = false;
+				__result = a is ZombieSymbiant ? IsHostileToSymbiant(b) : IsHostileToSymbiant(a);
 				return false;
 			}
 			return true;
@@ -568,7 +577,7 @@ namespace ZombieLand
 		{
 			if (t is ZombieSymbiant)
 			{
-				__result = false;
+				__result = fac != null && fac != Faction.OfPlayer && fac.HostileTo(Faction.OfPlayer);
 				return false;
 			}
 			if (t is ZombieSpitter && (fac?.def?.isPlayer ?? false) == false)
@@ -613,7 +622,7 @@ namespace ZombieLand
 		{
 			if (target is ZombieSymbiant)
 			{
-				__result = false;
+				__result = faction != null && faction != Faction.OfPlayer && faction.HostileTo(Faction.OfPlayer);
 				return false;
 			}
 			if (IsZombielandPawnTarget(target) == false) // must skip non zombies bc next patch requires it
@@ -668,7 +677,7 @@ namespace ZombieLand
 			if (target is Zombie zombie)
 				return zombie.IsRopedOrConfused == false;
 			if (target is ZombieSymbiant)
-				return false;
+				return faction != null && faction != Faction.OfPlayer && faction.HostileTo(Faction.OfPlayer);
 			if (target is ZombieSpitter)
 				return faction?.def?.isPlayer ?? false;
 			return GenHostility.IsActiveThreatTo(target, faction, ignoreHives, canBeFogged); // ok to call patched method bc we filtered out zombies
@@ -732,11 +741,6 @@ namespace ZombieLand
 		[HarmonyPatch(nameof(AttackTargetsCache.RegisterTarget))]
 		static class AttackTargetsCache_RegisterTarget_Patch
 		{
-			static bool Prefix(IAttackTarget target)
-			{
-				return target?.Thing is not ZombieSymbiant;
-			}
-
 			static void Postfix(IAttackTarget target)
 			{
 				var thing = target.Thing;
@@ -758,8 +762,6 @@ namespace ZombieLand
 			static bool Prefix(IAttackTarget target)
 			{
 				var thing = target?.Thing;
-				if (thing is ZombieSymbiant)
-					return false;
 				if (thing == null || IsZombielandTarget(target))
 					return true;
 				var map = thing.MapHeld;

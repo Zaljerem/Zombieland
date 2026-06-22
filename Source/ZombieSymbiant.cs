@@ -3,6 +3,7 @@ using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using Verse;
 using Verse.AI;
@@ -50,11 +51,29 @@ namespace ZombieLand
 		const float SymbiantNormalTicksPerSecond = 60f;
 		const float SymbiantRenderAltitudeOffset = -0.25f;
 		const int SymbiosisMetricRefreshInterval = 250;
+		const float HostAuraMinimumFactor = 0.22f;
+		const float FullBenefitRoomCoverage = 0.20f;
 		static int UprootedRelocationGraceTicks => GenDate.TicksPerHour * 4;
 		const float UprootedIntegratedCellThreshold = 0.01f;
-		const float DamageAbsorptionBufferUninitialized = -1f;
-		const float DamageAbsorptionBufferBase = 300f;
-		const float DamageAbsorptionBufferMaxLimit = 12000f;
+		const int AutoHealIntervalTicks = GenDate.TicksPerDay / 4;
+		const int AmbientMovementRecentCellCapacity = 16;
+		const int AmbientMovementCandidateLimit = 12;
+		const int AmbientMovementSourceLimit = 8;
+		const float AmbientMovementMinBenefitFactor = 0.55f;
+		const float AmbientMovementHighBenefitFactor = 0.85f;
+		const float AmbientMovementTargetBestScoreFraction = 0.65f;
+		const float AmbientMovementIntegrationFloorFactor = 0.55f;
+		const float AmbientMovementMaxIntegrationLoss = 1f;
+		const float AmbientMovementCenterSlack = 2f;
+		const float AmbientMovementHighBenefitCenterSlack = 5f;
+		const float SymbiantCellSlowMin = 0.10f;
+		const float SymbiantCellSlowMax = 0.50f;
+		internal const float SymbiantContaminationStepReduction = 0.05f;
+			const int SeveranceExtractCostMin = 10;
+			const int SeveranceExtractCostMax = 50;
+			const int CellMotionDurationTicks = 60;
+			const int SymbiantRetreatSpeedFactor = 4;
+			const float SymbiantSharedDamageLeakMin = 0.08f;
 		static readonly int SymbiantOpacityMinId = Shader.PropertyToID("_SymbiantOpacityMin");
 		static readonly int SymbiantOpacityMaxId = Shader.PropertyToID("_SymbiantOpacityMax");
 		static readonly int SymbiantNoiseScaleId = Shader.PropertyToID("_SymbiantNoiseScale");
@@ -62,12 +81,44 @@ namespace ZombieLand
 		static readonly int SymbiantWaveShadeStrengthId = Shader.PropertyToID("_SymbiantWaveShadeStrength");
 		static readonly int SymbiantEdgeContrastId = Shader.PropertyToID("_SymbiantEdgeContrast");
 		static readonly int SymbiantNoiseTimeId = Shader.PropertyToID("_SymbiantNoiseTime");
+		static readonly int MetaballBufferId = Shader.PropertyToID("_MetaballBuffer");
+		static readonly int MetaballCountId = Shader.PropertyToID("_MetaballCount");
+		static readonly int MetaballWorldSizeId = Shader.PropertyToID("_MetaballWorldSize");
 		// static readonly float[] elementSizes = [1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f];
+
+		enum HostBenefit
+		{
+			MoodFixed,
+			NoFoodOrRest,
+			SkillBonus,
+			MoveSpeed,
+			ZombieIgnore,
+			AutoHeal
+		}
+
+		static readonly HostBenefit[] hostBenefitPool =
+		[
+			HostBenefit.MoodFixed,
+			HostBenefit.NoFoodOrRest,
+			HostBenefit.SkillBonus,
+			HostBenefit.MoveSpeed,
+			HostBenefit.ZombieIgnore,
+			HostBenefit.AutoHeal
+		];
 
 		HashSet<IntVec3> cells = [];
 		List<IntVec3> orderedCells = [];
 		readonly Dictionary<IntVec3, float> metaballRadiusByCell = [];
-		Texture2D metaballTexture;
+		readonly List<MetaballRenderElement> metaballRenderElements = [];
+		readonly Dictionary<IntVec3, CellMotion> incomingCellMotions = [];
+		readonly Dictionary<IntVec3, float> cellMotionWeights = [];
+		readonly Queue<IntVec3> recentMovementCells = new();
+		List<CellMotion> cellMotions = [];
+		RenderTexture metaballTexture;
+		Material metaballMaskMaterial;
+		ComputeBuffer metaballBuffer;
+		MetaballBufferData[] metaballBufferData = [];
+		int metaballBufferCapacity;
 
 		Mesh mesh = null;
 		Material metaballMaterial;
@@ -75,6 +126,10 @@ namespace ZombieLand
 		float radius, power, centerX, centerZ, renderMinX, renderMinZ, renderWidth = 1f, renderHeight = 1f;
 		Vector2 drawCullSize = Vector2.one;
 		int nextExpansionTick;
+		int nextMovementTick;
+		int nextAutoHealTick;
+		int nextBenefitCellThreshold;
+		int benefitStepCells;
 		int feedPausedUntilTick;
 		int lastSymbiantTick = -1;
 		int lastRecessionPulseCells;
@@ -85,33 +140,32 @@ namespace ZombieLand
 		bool feedRequested;
 		Pawn host;
 		string hostThingId;
-		float decouplingReserve;
-		int decouplingFeedDay = -1;
-		int decouplingFeedPulsesToday;
-		int peakVisibleCells;
-		float peakIntegratedVisibleCells;
-		float peakBenefitFactor;
-		bool maturedForSeverance;
 		bool safeSeveranceInProgress;
+		bool symbiosisSevered;
 		bool hostCollapseInProgress;
-		bool violentDamageCollapseInProgress;
 		bool uncontrolledDestroyHandled;
+		bool sharedDamageInProgress;
+		bool sharedHealthFailureInProgress;
+		float sharedHealth = -1f;
 		int lastSymbiosisMetricTick = int.MinValue;
 		int lastRejectedDamageMessageTick = int.MinValue;
-		float damageAbsorptionBuffer = DamageAbsorptionBufferUninitialized;
-		int lastDamageAbsorptionRegenTick = -1;
+		int lastSharedDamageAbsorbMoteTick = int.MinValue;
 		int cachedEligibleColonyRoomCells;
 		int cachedFullBenefitCells = 20;
 		float cachedIntegratedVisibleCells;
 		float cachedBenefitFactor;
-		int cachedSeveranceMaturityCells = 10;
-		int cachedSeveranceReserveRequired = 12;
 		CellRect relativeCellBounds;
 		bool hasCellBounds;
+		List<HostBenefit> hostBenefits = [];
+		int lastCellMotionRenderTick = -1;
+		bool destroyWhenCellMotionsFinish;
 
-		public int CellCount => cells?.Count ?? 0;
-		public int NextExpansionTick => nextExpansionTick;
-		public int FeedPausedUntilTick => feedPausedUntilTick;
+			public int CellCount => cells?.Count ?? 0;
+			public int NextExpansionTick => nextExpansionTick;
+			public int CurrentExpansionIntervalTicks => AutomaticExpansionIntervalTicks();
+			public int CurrentRetreatIntervalTicks => RetreatIntervalTicks();
+			public static int RetreatSpeedFactor => SymbiantRetreatSpeedFactor;
+			public int FeedPausedUntilTick => feedPausedUntilTick;
 		public int LastRecessionPulseCells => lastRecessionPulseCells;
 		public int RelocationCellDebt => relocationCellDebt;
 		public int NextRelocationPulseTick => nextRelocationPulseTick;
@@ -121,11 +175,15 @@ namespace ZombieLand
 		public IEnumerable<IntVec3> AbsoluteCells => orderedCells.Select(cell => Position + cell);
 		CellRect AbsoluteCellBounds => relativeCellBounds.MovedBy(Position);
 		public override Vector2 DrawSize => hasCellBounds ? drawCullSize : base.DrawSize;
+		public override CellRect? CustomRectForSelector => hasCellBounds ? AbsoluteCellBounds : base.CustomRectForSelector;
 		public int RenderTextureWidth => metaballTexture?.width ?? 0;
 		public int RenderTextureHeight => metaballTexture?.height ?? 0;
 		public Vector2 RenderWorldSize => new(renderWidth, renderHeight);
 		public string RenderShaderName => metaballMaterial?.shader?.name;
 		public bool RenderUsesSymbiantShader => Assets.ZombieSymbiantShader != null && metaballMaterial?.shader == Assets.ZombieSymbiantShader;
+		public bool RenderUsesGpuMetaballMask => Assets.MetaballShader != null && metaballMaskMaterial?.shader == Assets.MetaballShader && metaballTexture != null;
+		public int RenderMetaballElementCount => metaballRenderElements?.Count ?? 0;
+		public int ActiveCellMotionCount => CountActiveCellMotions();
 		public bool RegisteredInMapPawnLists => (MapHeld?.mapPawns?.AllPawnsSpawned?.Contains(this) ?? false);
 		public static float RenderOpacityMin => SymbiantOpacityMin;
 		public static float RenderOpacityMax => SymbiantOpacityMax;
@@ -138,30 +196,18 @@ namespace ZombieLand
 		Map SymbiantMap => Spawned ? Map : host?.MapHeld ?? MapHeld;
 		public Pawn LinkedHost => ResolveHost();
 		public string HostThingId => hostThingId;
-		public int DamageAbsorptionBuffer => Mathf.CeilToInt(CurrentDamageAbsorptionBuffer);
-		public int DamageAbsorptionBufferMax => Mathf.CeilToInt(CalculateDamageAbsorptionBufferMax());
-		float CurrentDamageAbsorptionBuffer
-		{
-			get
-			{
-				EnsureDamageAbsorptionBuffer();
-				return damageAbsorptionBuffer;
-			}
-		}
+		public int DamageAbsorptionBuffer => Mathf.RoundToInt(SharedHealthCurrent);
+		public int DamageAbsorptionBufferMax => Mathf.RoundToInt(SharedHealthMax);
+		public float HealthScaleCellMultiplier => HealthScaleMultiplierForCells(CellCount);
+		public int SharedHealthCurrentDisplay => DamageAbsorptionBuffer;
+		public int SharedHealthMaxDisplay => DamageAbsorptionBufferMax;
+		public int SharedDamageLeakPercentDisplay => Mathf.RoundToInt(SharedDamageLeakFactor * 100f);
+		public int SharedDamageAbsorbPercentDisplay => Mathf.Clamp(100 - SharedDamageLeakPercentDisplay, 0, 100);
+		public string SharedHealthSummary => "SymbiantSharedHealthSummary".Translate(ColoredSharedHealthPercent(), FormatSharedHealthCapacity(SharedHealthMaxDisplay)).ToString();
 		public int EligibleColonyRoomCells { get { RefreshSymbiosisMetrics(); return cachedEligibleColonyRoomCells; } }
 		public int FullBenefitCells { get { RefreshSymbiosisMetrics(); return cachedFullBenefitCells; } }
 		public float IntegratedVisibleCells { get { RefreshSymbiosisMetrics(); return cachedIntegratedVisibleCells; } }
-		public int PeakVisibleCells => peakVisibleCells;
-		public float PeakIntegratedVisibleCells => peakIntegratedVisibleCells;
-		public float PeakBenefitFactor => peakBenefitFactor;
-		public int SeveranceMaturityCells { get { RefreshSymbiosisMetrics(); return cachedSeveranceMaturityCells; } }
-		public bool HasMaturedForSeverance => maturedForSeverance || PeakMeetsSeveranceMaturity();
-		public int SeveranceReserveRequired { get { RefreshSymbiosisMetrics(); return cachedSeveranceReserveRequired; } }
-		public float ReserveMaturityFactor => HasMaturedForSeverance ? 1f : Mathf.Clamp01(peakIntegratedVisibleCells / Mathf.Max(1f, SeveranceMaturityCells));
-		public float EffectiveDecouplingReserve => Mathf.Min(decouplingReserve, DecouplingReserveMax * ReserveMaturityFactor);
 		public float BenefitFactor { get { RefreshSymbiosisMetrics(); return cachedBenefitFactor; } }
-		public float DecouplingReserve => decouplingReserve;
-		public int DecouplingReserveMax => SeveranceReserveRequired;
 		public string GrowthState
 		{
 			get
@@ -188,82 +234,147 @@ namespace ZombieLand
 				return FindExpansionTarget(false) == null ? "contained" : "growing";
 			}
 		}
-		public int SafeVisibleMinimum
-		{
-			get
-			{
-				var requiredReserve = Mathf.Max(1, DecouplingReserveMax);
-				var maturityCells = Mathf.Max(1, SeveranceMaturityCells);
-				var minimum = Mathf.CeilToInt(maturityCells * (1f - EffectiveDecouplingReserve / requiredReserve));
-				return Mathf.Clamp(minimum, 1, maturityCells);
-			}
-		}
-		public int DecouplingFeedPulsesToday
-		{
-			get
-			{
-				ResetDailyFeedCounter();
-				return decouplingFeedPulsesToday;
-			}
-		}
-		public int DecouplingFeedPulsesPerDay => Mathf.Max(1, ZombieSettings.Values?.symbiantDecouplingFeedPulsesPerDay ?? 2);
-		public int FeedPulsesRemaining => Mathf.Max(0, DecouplingFeedPulsesPerDay - DecouplingFeedPulsesToday);
-		public bool CanSafelySever => LinkedHost != null && HasMaturedForSeverance && decouplingReserve >= DecouplingReserveMax - 0.01f && CellCount <= 3;
-		public static float ZombieIgnoreMinBenefit => Mathf.Clamp(ZombieSettings.Values?.symbiantZombieIgnoreMinBenefit ?? 0.5f, 0f, 1f);
+		public bool CanSafelySever => LinkedHost != null && symbiosisSevered == false;
 		public static float HostHediffSeverity(float benefitFactor) => Mathf.Max(0.001f, Mathf.Clamp01(benefitFactor));
-
-		float CalculateDamageAbsorptionBufferMax()
+		public int NextBenefitCellSize
 		{
-			RefreshSymbiosisMetrics();
-			var size = Mathf.Max(1, CellCount);
-			var integratedCells = Mathf.Max(0f, cachedIntegratedVisibleCells);
-			var benefit = Mathf.Clamp01(cachedBenefitFactor);
-			var max = DamageAbsorptionBufferBase
-				+ Mathf.Sqrt(size) * 55f
-				+ integratedCells * 12f
-				+ benefit * 900f;
-			return Mathf.Clamp(max, DamageAbsorptionBufferBase, DamageAbsorptionBufferMaxLimit);
-		}
-
-		void EnsureDamageAbsorptionBuffer(bool fillIfMissing = false)
-		{
-			var max = CalculateDamageAbsorptionBufferMax();
-			if (fillIfMissing || damageAbsorptionBuffer < 0f || float.IsNaN(damageAbsorptionBuffer) || float.IsInfinity(damageAbsorptionBuffer))
-				damageAbsorptionBuffer = max;
-			else
-				damageAbsorptionBuffer = Mathf.Clamp(damageAbsorptionBuffer, 0f, max);
-		}
-
-		void RestoreDamageAbsorptionBuffer(float amount)
-		{
-			if (amount <= 0f)
-				return;
-			var max = CalculateDamageAbsorptionBufferMax();
-			EnsureDamageAbsorptionBuffer();
-			damageAbsorptionBuffer = Mathf.Min(max, damageAbsorptionBuffer + amount);
-		}
-
-		void RegenerateDamageAbsorptionBuffer(int ticks)
-		{
-			if (lastDamageAbsorptionRegenTick < 0)
+			get
 			{
-				lastDamageAbsorptionRegenTick = ticks;
-				EnsureDamageAbsorptionBuffer(true);
+				EnsureBenefitDefaults();
+				return nextBenefitCellThreshold;
+			}
+		}
+		public int HostBenefitCount => hostBenefits?.Count ?? 0;
+		public bool SymbiosisSevered => symbiosisSevered;
+		public int SharedHealthPercentDisplay => Mathf.RoundToInt(SharedHealthPercent * 100f);
+		public string EffectSummary
+		{
+			get
+			{
+				var labels = new[]
+				{
+					"SymbiantEffectCells".Translate(CellCount, MaxCells).ToString(),
+					MovementSlowdownDescription,
+					WorkSlowdownDescription
+				};
+				return string.Join("\n", labels.Select(label => "- " + label));
+			}
+		}
+
+		string DownsideSummary
+		{
+			get
+			{
+				var labels = new[] { MovementSlowdownDescription, WorkSlowdownDescription };
+				return string.Join("\n", labels.Select(label => "- " + label));
+			}
+		}
+
+		string MovementSlowdownDescription => "SymbiantEffectPathCost".Translate(SymbiantCellSlowPercent()).ToString();
+		string WorkSlowdownDescription => "SymbiantEffectWorkSpeed".Translate(SymbiantCellSlowPercent()).ToString();
+
+		public string BenefitSummary
+		{
+			get
+			{
+				EnsureBenefitDefaults();
+				var labels = new List<string> { "SymbiantBenefitZombieInfectionImmunity".Translate().ToString() };
+				if (hostBenefits.Count > 0)
+					labels.AddRange(hostBenefits.Select(benefit => BenefitLabel(benefit).ToString()));
+				return string.Join("\n", labels.Select(label => "- " + label));
+			}
+		}
+
+		float SharedHealthPercent
+		{
+			get
+			{
+				var max = SharedHealthMax;
+				if (max <= 0f)
+					return 0f;
+				return Mathf.Clamp01(SharedHealthCurrent / max);
+			}
+		}
+
+		float SharedHealthCurrent
+		{
+			get
+			{
+				if (Dead || Destroyed)
+					return 0f;
+				EnsureSharedHealth();
+				return sharedHealth;
+			}
+		}
+
+		float SharedHealthMax
+		{
+			get
+			{
+				var core = RaceProps?.body?.corePart;
+				if (core == null)
+					return 0f;
+				var lifeStageScale = ageTracker?.CurLifeStage?.healthScaleFactor ?? 1f;
+				var raceScale = RaceProps?.baseHealthScale ?? 1f;
+				return Mathf.CeilToInt(core.def.hitPoints * lifeStageScale * raceScale * HealthScaleCellMultiplier);
+			}
+		}
+
+		void EnsureSharedHealth()
+		{
+			var max = SharedHealthMax;
+			if (max <= 0f)
+			{
+				sharedHealth = 0f;
 				return;
 			}
-			var elapsed = ticks - lastDamageAbsorptionRegenTick;
-			if (elapsed <= 0)
-				return;
-			lastDamageAbsorptionRegenTick = ticks;
-			EnsureDamageAbsorptionBuffer();
-			var max = CalculateDamageAbsorptionBufferMax();
-			if (damageAbsorptionBuffer >= max)
-				return;
-			var benefit = Mathf.Clamp01(cachedBenefitFactor);
-			var reserve = Mathf.Clamp01(EffectiveDecouplingReserve / Mathf.Max(1f, DecouplingReserveMax));
-			var stableFactor = cachedIntegratedVisibleCells > UprootedIntegratedCellThreshold ? 1f : 0.25f;
-			var dailyRegen = max * Mathf.Lerp(0.08f, 0.26f, benefit) * Mathf.Lerp(0.85f, 1.25f, reserve) * stableFactor;
-			RestoreDamageAbsorptionBuffer(dailyRegen * elapsed / GenDate.TicksPerDay);
+			if (sharedHealth < 0f || float.IsNaN(sharedHealth) || float.IsInfinity(sharedHealth))
+				sharedHealth = max;
+			else if (sharedHealth > max)
+				sharedHealth = max;
+		}
+
+		float SharedDamageLeakFactor => Mathf.Clamp(1f / Mathf.Max(1f, HealthScaleCellMultiplier), SymbiantSharedDamageLeakMin, 1f);
+
+		static string FormatSharedHealthCapacity(int amount)
+		{
+			if (amount >= 1_000_000)
+			{
+				var millions = amount / 1_000_000f;
+				return millions >= 10f ? Mathf.RoundToInt(millions) + "m" : millions.ToString("0.#") + "m";
+			}
+			if (amount >= 10_000)
+				return Mathf.RoundToInt(amount / 1000f) + "k";
+			return amount.ToString();
+		}
+
+		string ColoredSharedHealthPercent()
+		{
+			var percent = SharedHealthPercentDisplay;
+			var color = percent >= 75 ? "#72d672" : percent >= 35 ? "#ffb35c" : percent > 0 ? "#ff6b5f" : "#ff4a4a";
+			return "<color=" + color + ">" + percent + "%</color>";
+		}
+
+		float SharedDamageLeakAmount(float amount)
+		{
+			return Mathf.Max(0f, amount) * SharedDamageLeakFactor;
+		}
+
+		float DrainSharedHealth(float amount)
+		{
+			EnsureSharedHealth();
+			if (amount <= 0f || sharedHealth <= 0f)
+				return 0f;
+			var drained = Mathf.Min(sharedHealth, amount);
+			sharedHealth = Mathf.Max(0f, sharedHealth - drained);
+			if (sharedHealth <= 0.01f)
+				CollapseFromSharedHealthFailure();
+			return drained;
+		}
+
+		public static float HealthScaleMultiplierForCells(int cellCount)
+		{
+			return Mathf.Sqrt(Mathf.Max(1, cellCount));
 		}
 
 		internal static float NaturalSpawnPressure(Map map, bool ignoreActive = false)
@@ -412,7 +523,6 @@ namespace ZombieLand
 			symbiant.jobs.StartJob(JobMaker.MakeJob(CustomDefs.Symbiant));
 			_ = symbiant.TryAssignRandomHost();
 			symbiant.UpdateSymbiosisState();
-			symbiant.EnsureDamageAbsorptionBuffer(true);
 
 			var sentLetter = false;
 			var linkedHost = symbiant.LinkedHost;
@@ -429,6 +539,35 @@ namespace ZombieLand
 				CustomDefs.SymbiantConnected?.PlayOneShotOnCamera(null);
 		}
 
+		internal static ZombieSymbiant DebugSpawnForRendering(Map map, IntVec3 root, IEnumerable<IntVec3> absoluteCells)
+		{
+			if (map == null || root.InBounds(map) == false)
+				return null;
+			var cells = absoluteCells?
+				.Where(cell => cell.InBounds(map))
+				.Distinct()
+				.Take(MaxCells)
+				.ToList() ?? [];
+			if (cells.Contains(root) == false)
+				cells.Insert(0, root);
+
+			var symbiant = PawnGenerator.GeneratePawn(ZombieDefOf.ZombieSymbiant, null) as ZombieSymbiant;
+			symbiant.Position = root;
+			symbiant.SetFactionDirect(Find.FactionManager.FirstFactionOfDef(ZombieDefOf.Zombies));
+			foreach (var cell in cells)
+				symbiant.AddRelativeCell(cell - root);
+			symbiant.ResetExpansionClock();
+			symbiant.EnsureRenderResources();
+			symbiant.UpdateAll();
+
+			GenSpawn.Spawn(symbiant, root, map, Rot4.Random, WipeMode.Vanish, false);
+			RegisterActiveSymbiant(symbiant, map);
+			symbiant.EnsureVisibleToPawnSystems(map);
+			symbiant.jobs.StartJob(JobMaker.MakeJob(CustomDefs.Symbiant));
+			symbiant.UpdateSymbiosisState();
+			return symbiant;
+		}
+
 		static TaggedString SpawnRoomLabel(Map map, IntVec3 cell)
 		{
 			var role = cell.GetRoom(map)?.Role;
@@ -443,7 +582,7 @@ namespace ZombieLand
 			return new LookTargets(targets);
 		}
 
-		public static bool TrySpawnInBestRoom(Map map)
+		public static bool TrySpawnInBestRoom(Map map, bool requireNaturalPressure = true)
 		{
 			if (map == null || ZombieSettings.Values.symbiantEnabled == false)
 				return false;
@@ -451,7 +590,7 @@ namespace ZombieLand
 				return false;
 			if (EligibleHosts(map, null).Any() == false)
 				return false;
-			if (NaturalSpawnPressure(map) <= 0f)
+			if (requireNaturalPressure && NaturalSpawnPressure(map) <= 0f)
 				return false;
 
 			var room = BestSpawnRoom(map);
@@ -549,7 +688,10 @@ namespace ZombieLand
 		{
 			if (map == null || room == null)
 				return 0f;
-			return room.Cells.Take(120).Sum(cell => ScoreTraffic(map, cell)) + room.ContainedAndAdjacentThings.Sum(ScoreRoomThing);
+			var traffic = room.Cells.Take(240).Sum(cell => ScoreTraffic(map, cell));
+			if (traffic > 0f)
+				return traffic;
+			return room.Cells.Take(240).Sum(cell => ScoreColonyCenterFallback(map, cell));
 		}
 
 		static bool TryFindBestSpawnCell(Map map, Room room, out IntVec3 cell, out float score)
@@ -561,7 +703,13 @@ namespace ZombieLand
 
 			var best = room.Cells
 				.Where(candidate => CanOccupyInitialSpawnCell(map, candidate))
-				.Select(candidate => new { cell = candidate, score = ScoreTraffic(map, candidate) + ScoreColonyUse(map, candidate) })
+				.Select(candidate => new { cell = candidate, score = ScoreTraffic(map, candidate), fallback = ScoreColonyCenterFallback(map, candidate) })
+				.Where(candidate => candidate.score > 0f)
+				.OrderByDescending(candidate => candidate.score)
+				.FirstOrDefault();
+			best ??= room.Cells
+				.Where(candidate => CanOccupyInitialSpawnCell(map, candidate))
+				.Select(candidate => new { cell = candidate, score = ScoreColonyCenterFallback(map, candidate), fallback = 0f })
 				.OrderByDescending(candidate => candidate.score)
 				.FirstOrDefault();
 			if (best == null)
@@ -581,11 +729,11 @@ namespace ZombieLand
 
 		static IEnumerable<Room> CandidateRooms(Map map)
 		{
-			var home = map.areaManager.Home;
-			var hasHomeArea = home.TrueCount > 0;
+			if (map?.regionGrid?.allRooms == null)
+				return Enumerable.Empty<Room>();
 			return map.regionGrid.allRooms.Where(room =>
 				IsEligibleIndoorRoom(room)
-				&& (hasHomeArea == false || RoomHasHomeAreaCell(home, room) || RoomHasColonyUseSignal(map, room)));
+				&& RoomHasColonyUseSignal(map, room));
 		}
 
 		static bool RoomHasHomeAreaCell(Area home, Room room)
@@ -597,9 +745,11 @@ namespace ZombieLand
 		{
 			if (map == null || room == null)
 				return false;
+			if (RoomHasHomeAreaCell(map.areaManager?.Home, room))
+				return true;
 			if (room.ContainedAndAdjacentThings.Any(thing => ScoreRoomThing(thing) > 0f))
 				return true;
-			return room.Cells.Take(120).Any(cell => ScoreTraffic(map, cell) > 0f || ScoreColonyUse(map, cell) > 0f);
+			return room.Cells.Take(120).Any(cell => ScoreTraffic(map, cell) > 0f);
 		}
 
 		static object DescribeDebugCell(IntVec3 cell)
@@ -712,6 +862,14 @@ namespace ZombieLand
 				activeSymbiantByMap.Remove(map);
 		}
 
+		internal static void ForgetMap(Map map)
+		{
+			if (map == null)
+				return;
+			activeSymbiantByMap.Remove(map);
+			mapsWithoutActiveSymbiant.Remove(map);
+		}
+
 		public static ZombieSymbiant ActiveSymbiant(Map map)
 		{
 			if (map == null)
@@ -729,7 +887,7 @@ namespace ZombieLand
 			{
 				if (IsActiveSymbiantOnMap(symbiant, map))
 				{
-					symbiant.EnsureHiddenFromPawnSystems(map);
+					symbiant.EnsureVisibleToPawnSystems(map);
 					RegisterActiveSymbiant(symbiant, map);
 					return symbiant;
 				}
@@ -789,18 +947,37 @@ namespace ZombieLand
 			return LinkedSymbiantFor(pawn, false);
 		}
 
-		static ZombieSymbiant LinkedSymbiantFor(Pawn pawn, bool allowDead)
-		{
-			if (CanBeLinkedHostIdentityFast(pawn, allowDead) == false)
-				return null;
-			if (pawn.Spawned && pawn.Map != null)
+			static ZombieSymbiant LinkedSymbiantFor(Pawn pawn, bool allowDead)
 			{
-				var mapSymbiant = ActiveSymbiant(pawn.Map);
-				if (mapSymbiant != null && mapSymbiant.IsLinkedTo(pawn))
-					return mapSymbiant;
+				if (CanBeLinkedHostIdentityFast(pawn, allowDead) == false)
+					return null;
+				if (pawn.Spawned && pawn.Map != null)
+				{
+					if (allowDead)
+					{
+						var mapSymbiant = SpawnedSymbiantThings(pawn.Map).FirstOrDefault(symbiant => symbiant.IsLinkedTo(pawn));
+						if (mapSymbiant != null)
+							return mapSymbiant;
+					}
+					else
+					{
+						var mapSymbiant = ActiveSymbiant(pawn.Map);
+						if (mapSymbiant != null && mapSymbiant.IsLinkedTo(pawn))
+							return mapSymbiant;
+					}
+				}
+				if (allowDead && Find.Maps != null)
+				{
+					foreach (var map in Find.Maps)
+					{
+						var symbiant = SpawnedSymbiantThings(map).FirstOrDefault(candidate => candidate.IsLinkedTo(pawn) || candidate.ResolveHost() == pawn);
+						if (symbiant != null)
+							return symbiant;
+					}
+					return null;
+				}
+				return ActiveSymbiants().FirstOrDefault(symbiant => symbiant.IsLinkedTo(pawn) || symbiant.ResolveHost() == pawn);
 			}
-			return ActiveSymbiants().FirstOrDefault(symbiant => symbiant.IsLinkedTo(pawn) || symbiant.ResolveHost() == pawn);
-		}
 
 		static bool TryGetSameMapLinkedSymbiant(Pawn pawn, out ZombieSymbiant symbiant)
 		{
@@ -821,7 +998,7 @@ namespace ZombieLand
 		{
 			if (DebugDisableSymbiosisBenefits)
 				return false;
-			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) && symbiant.BenefitFactor >= ZombieIgnoreMinBenefit;
+			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) && symbiant.HasBenefit(HostBenefit.ZombieIgnore);
 		}
 
 		public static float SymbiantBenefitFactor(Pawn pawn)
@@ -829,6 +1006,76 @@ namespace ZombieLand
 			if (DebugDisableSymbiosisBenefits)
 				return 0f;
 			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) ? symbiant.BenefitFactor : 0f;
+		}
+
+		public static bool HasZombieInfectionImmunity(Pawn pawn)
+		{
+			if (DebugDisableSymbiosisBenefits)
+				return false;
+			return TryGetSameMapLinkedSymbiant(pawn, out _);
+		}
+
+		public static bool HasMoodFixedBenefit(Pawn pawn)
+		{
+			if (DebugDisableSymbiosisBenefits)
+				return false;
+			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) && symbiant.HasBenefit(HostBenefit.MoodFixed);
+		}
+
+		public static bool HasNoFoodOrRestBenefit(Pawn pawn)
+		{
+			if (DebugDisableSymbiosisBenefits)
+				return false;
+			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) && symbiant.HasBenefit(HostBenefit.NoFoodOrRest);
+		}
+
+		public static int MoveSpeedBenefitCount(Pawn pawn)
+		{
+			if (DebugDisableSymbiosisBenefits)
+				return 0;
+			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) ? symbiant.BenefitCount(HostBenefit.MoveSpeed) : 0;
+		}
+
+		public static int SkillBonusBenefitCount(Pawn pawn)
+		{
+			if (DebugDisableSymbiosisBenefits)
+				return 0;
+			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) ? symbiant.BenefitCount(HostBenefit.SkillBonus) : 0;
+		}
+
+		public static float SymbiantCellEfficiencyFactor(Pawn pawn)
+		{
+			if (DebugDisableCellStatEffects)
+				return 1f;
+			if (pawn == null || IsSymbiantCellForAffectedPawn(pawn, pawn.Position, out _) == false)
+				return 1f;
+			return 1f - SymbiantCellSlowFactor();
+		}
+
+		public static int SymbiantMoveCost(Pawn pawn, float baseCost)
+		{
+			var roundedBaseCost = Mathf.RoundToInt(baseCost);
+			if (DebugDisablePathCost || pawn == null || pawn.Spawned == false || pawn.Map == null)
+				return roundedBaseCost;
+			if (baseCost <= 0f)
+				return roundedBaseCost;
+			var slowedCost = Mathf.CeilToInt(baseCost * (1f + SymbiantCellSlowFactor()));
+			return Mathf.Max(roundedBaseCost, slowedCost);
+		}
+
+		public static float SymbiantCellSlowFactor()
+		{
+			return DifficultyScaled(SymbiantCellSlowMin, SymbiantCellSlowMax);
+		}
+
+		public static int SymbiantCellSlowPercent()
+		{
+			return Mathf.RoundToInt(SymbiantCellSlowFactor() * 100f);
+		}
+
+		public static int SeveranceExtractCost()
+		{
+			return Mathf.RoundToInt(DifficultyScaled(SeveranceExtractCostMin, SeveranceExtractCostMax));
 		}
 
 		public static bool TryGetHostAuraFactor(Pawn pawn, out float factor)
@@ -841,19 +1088,19 @@ namespace ZombieLand
 			var symbiant = ActiveSymbiant(pawn.Map);
 			if (symbiant == null || symbiant.IsLinkedTo(pawn) == false)
 				return false;
-			factor = symbiant.BenefitFactor;
-			return factor > 0.01f;
+			factor = Mathf.Max(HostAuraMinimumFactor, symbiant.BenefitFactor);
+			return true;
 		}
 
 		public static void ApplySymbiantSkillBonus(SkillRecord skill, ref int level)
 		{
 			var pawn = skill?.Pawn;
-			var factor = SymbiantBenefitFactor(pawn);
-			if (factor <= 0f)
+			var bonus = 0;
+			if (DebugDisableSymbiosisBenefits == false && TryGetSameMapLinkedSymbiant(pawn, out var symbiant))
+				bonus = symbiant.BenefitCount(HostBenefit.SkillBonus);
+			if (bonus <= 0)
 				return;
-			var bonus = Mathf.RoundToInt(Mathf.Max(0, ZombieSettings.Values.symbiantMaxSkillBonus) * factor);
-			if (bonus > 0)
-				level = Mathf.Clamp(level + bonus, 0, SkillRecord.MaxLevel);
+			level = Mathf.Clamp(level + bonus, 0, SkillRecord.MaxLevel);
 		}
 
 		public static bool CanSeverSymbiosis(Pawn pawn)
@@ -861,14 +1108,78 @@ namespace ZombieLand
 			return TryGetSameMapLinkedSymbiant(pawn, out var symbiant) && symbiant.CanSafelySever;
 		}
 
-		public static void NotifyHostKilled(Pawn pawn)
+			public static void NotifyHostKilled(Pawn pawn)
+			{
+				if (CanBeLinkedHostIdentityFast(pawn, true) == false)
+					return;
+				var symbiant = LinkedSymbiantFor(pawn, true);
+				if (symbiant == null)
+				{
+					_ = TryDestroyDeadLinkedSymbiantCorpse(pawn);
+					return;
+				}
+				if (symbiant.Dead)
+				{
+					_ = TryDestroyDeadLinkedSymbiantCorpse(pawn);
+					symbiant.Destroy(DestroyMode.Vanish);
+					return;
+				}
+				symbiant.CollapseFromHostDeath();
+			}
+
+			static bool TryDestroyDeadLinkedSymbiantCorpse(Pawn pawn)
+			{
+				if (pawn == null || Find.Maps == null)
+					return false;
+				foreach (var map in Find.Maps)
+				{
+					var corpses = map?.listerThings?.ThingsInGroup(ThingRequestGroup.Corpse);
+					if (corpses == null)
+						continue;
+					for (var i = 0; i < corpses.Count; i++)
+					{
+						if (corpses[i] is Corpse corpse && corpse.InnerPawn is ZombieSymbiant symbiant && symbiant.IsLinkedTo(pawn))
+						{
+							corpse.Destroy(DestroyMode.Vanish);
+							return true;
+						}
+					}
+				}
+				return false;
+			}
+
+			public static void PreApplyHostLinkedDamage(Pawn pawn, ref DamageInfo dinfo, ref bool absorbed)
 		{
-			if (CanBeLinkedHostIdentityFast(pawn, true) == false)
+			if (dinfo.Amount <= 0f)
 				return;
-			var symbiant = LinkedSymbiantFor(pawn, true);
-			if (symbiant == null)
+			if (TryGetSameMapLinkedSymbiant(pawn, out var symbiant) == false)
 				return;
-			symbiant.CollapseFromHostDeath();
+			symbiant.PreApplyLinkedHostDamage(pawn, ref dinfo, ref absorbed);
+		}
+
+		void PreApplyLinkedHostDamage(Pawn pawn, ref DamageInfo dinfo, ref bool absorbed)
+		{
+			if (sharedDamageInProgress)
+				return;
+			if (safeSeveranceInProgress || hostCollapseInProgress)
+				return;
+			if (pawn == null || pawn.Dead || pawn.Destroyed || dinfo.Amount <= 0f)
+				return;
+
+			var originalAmount = dinfo.Amount;
+			var drained = DrainSharedHealth(originalAmount);
+			if (pawn.Dead || Destroyed || Dead || drained >= originalAmount && SharedHealthCurrent <= 0f)
+			{
+				dinfo.SetAmount(0f);
+				absorbed = true;
+				return;
+			}
+
+			var hostAmount = SharedDamageLeakAmount(drained);
+			NotifySharedDamageAbsorbed(drained, hostAmount, pawn);
+			dinfo.SetAmount(hostAmount);
+			if (hostAmount <= 0.01f)
+				absorbed = true;
 		}
 
 		public static bool IsSymbiantCell(Map map, IntVec3 cell, out ZombieSymbiant symbiant)
@@ -878,6 +1189,19 @@ namespace ZombieLand
 				return false;
 			symbiant = ActiveSymbiant(map);
 			return symbiant != null && symbiant.ContainsCell(cell);
+		}
+
+		internal static bool TryReduceContaminationOnLeavingSymbiantCell(Pawn pawn)
+		{
+			if (Constants.CONTAMINATION == false || CanBeAffectedBySymbiantCellCandidateFast(pawn) == false)
+				return false;
+			if (IsSymbiantCell(pawn.Map, pawn.Position, out _) == false)
+				return false;
+			var contamination = pawn.GetContamination(false);
+			if (contamination <= 0f)
+				return false;
+			pawn.SetContamination(Mathf.Max(0f, contamination * (1f - SymbiantContaminationStepReduction)));
+			return true;
 		}
 
 		public static bool IsSymbiantCellForAffectedPawn(Pawn pawn, IntVec3 cell, out ZombieSymbiant symbiant)
@@ -945,6 +1269,113 @@ namespace ZombieLand
 			return CandidateRooms(map).ToArray().Sum(room => room.CellCount);
 		}
 
+		static float SymbiantDifficulty()
+		{
+			return Mathf.Clamp(ZombieLand.Tools.Difficulty(), 1f, 5f);
+		}
+
+		static float DifficultyScaled(float minAtOne, float maxAtFive)
+		{
+			return GenMath.LerpDoubleClamped(1f, 5f, minAtOne, maxAtFive, SymbiantDifficulty());
+		}
+
+		static int BenefitStepCells()
+		{
+			return Mathf.RoundToInt(DifficultyScaled(10f, 50f));
+		}
+
+		bool HasBenefit(HostBenefit benefit)
+		{
+			return hostBenefits?.Contains(benefit) == true;
+		}
+
+		int BenefitCount(HostBenefit benefit)
+		{
+			return hostBenefits?.Count(item => item == benefit) ?? 0;
+		}
+
+		static bool BenefitCanStack(HostBenefit benefit)
+		{
+			return benefit == HostBenefit.SkillBonus || benefit == HostBenefit.MoveSpeed || benefit == HostBenefit.AutoHeal;
+		}
+
+		void EnsureBenefitDefaults()
+		{
+			hostBenefits ??= [];
+			if (benefitStepCells <= 0)
+				benefitStepCells = MigratedBenefitStepCells();
+			if (nextBenefitCellThreshold <= 0)
+				nextBenefitCellThreshold = benefitStepCells;
+		}
+
+		int MigratedBenefitStepCells()
+		{
+			if (nextBenefitCellThreshold > 0)
+			{
+				var awardedCount = hostBenefits?.Count ?? 0;
+				return Mathf.Max(1, Mathf.RoundToInt(nextBenefitCellThreshold / Mathf.Max(1f, awardedCount + 1f)));
+			}
+			return Mathf.Max(1, BenefitStepCells());
+		}
+
+		void AwardBenefitsForCurrentSize()
+		{
+			if (symbiosisSevered || LinkedHost == null || DebugDisableSymbiosisBenefits)
+				return;
+			EnsureBenefitDefaults();
+			var step = Mathf.Max(1, benefitStepCells);
+			while (CellCount >= nextBenefitCellThreshold)
+			{
+				AwardRandomBenefit();
+				nextBenefitCellThreshold += step;
+			}
+		}
+
+		void AwardRandomBenefit()
+		{
+			EnsureBenefitDefaults();
+			var available = hostBenefitPool
+				.Where(benefit => BenefitCanStack(benefit) || HasBenefit(benefit) == false)
+				.ToArray();
+			if (available.Length == 0)
+				available = hostBenefitPool.Where(BenefitCanStack).ToArray();
+			if (available.Length == 0)
+				return;
+			var benefit = available.RandomElement();
+			hostBenefits.Add(benefit);
+			EnsureHostHediff();
+			NotifyBenefitAwarded(benefit);
+		}
+
+			void NotifyBenefitAwarded(HostBenefit benefit)
+			{
+				var linkedHost = LinkedHost;
+				if (Spawned == false || linkedHost == null)
+					return;
+				var label = BenefitLabel(benefit);
+				var targets = new LookTargets(this, linkedHost);
+				Messages.Message("SymbiantBenefitGainedMessage".Translate(linkedHost.LabelShortCap, label), targets, MessageTypeDefOf.PositiveEvent, false);
+				SendSymbiantEventLetter(
+					"LetterLabelSymbiantBenefitGained".Translate(),
+					"SymbiantBenefitGainedLetter".Translate(linkedHost.LabelShortCap, label, BenefitSummary),
+					targets
+				);
+			}
+
+		static TaggedString BenefitLabel(HostBenefit benefit)
+		{
+			return benefit switch
+			{
+				HostBenefit.MoodFixed => "SymbiantBenefitMoodFixed".Translate(),
+				HostBenefit.NoFoodOrRest => "SymbiantBenefitNoFoodOrRest".Translate(),
+				HostBenefit.SkillBonus => "SymbiantBenefitSkillBonus".Translate(),
+				HostBenefit.MoveSpeed => "SymbiantBenefitMoveSpeed".Translate(),
+				HostBenefit.ZombieIgnore => "SymbiantBenefitZombieIgnore".Translate(),
+				HostBenefit.AutoHeal => "SymbiantBenefitAutoHeal".Translate(),
+				_ => benefit.ToString()
+			};
+		}
+
 		static int CalculateFullBenefitCells(Map map)
 		{
 			return CalculateFullBenefitCells(EligibleColonyRoomCellCount(map));
@@ -953,61 +1384,23 @@ namespace ZombieLand
 		static int CalculateFullBenefitCells(int eligibleCells)
 		{
 			var maxCells = Mathf.Max(1, MaxCells);
-			var coverage = Mathf.Clamp(ZombieSettings.Values?.symbiantFullBenefitRoomCoverage ?? 0.20f, 0.01f, 1f);
-			var target = Mathf.Max(20, Mathf.CeilToInt(eligibleCells * coverage));
+			var target = Mathf.Max(20, Mathf.CeilToInt(eligibleCells * FullBenefitRoomCoverage));
 			return Mathf.Clamp(target, 1, maxCells);
 		}
 
 		static int MinimumNaturalSpawnEligibleCells()
 		{
-			var maturityMin = Mathf.Max(1, ZombieSettings.Values?.symbiantSeveranceMaturityMinCells ?? 10);
-			return Mathf.Min(maturityMin, MaxCells);
-		}
-
-		int CalculateSeveranceMaturityCells(Map map)
-		{
-			return CalculateSeveranceMaturityCells(CalculateFullBenefitCells(map));
-		}
-
-		int CalculateSeveranceMaturityCells(int fullBenefitCells)
-		{
-			var settings = ZombieSettings.Values;
-			var coverage = Mathf.Clamp(settings?.symbiantSeveranceMaturityCoverage ?? 0.50f, 0.01f, 1f);
-			var min = Mathf.Max(1, settings?.symbiantSeveranceMaturityMinCells ?? 10);
-			var max = Mathf.Max(min, settings?.symbiantSeveranceMaturityMaxCells ?? 80);
-			var target = Mathf.CeilToInt(fullBenefitCells * coverage);
-			var upper = Mathf.Max(1, Mathf.Min(max, MaxCells));
-			var lower = Mathf.Min(min, upper);
-			return Mathf.Clamp(target, lower, upper);
-		}
-
-		int CalculateSeveranceReserveRequired(Map map)
-		{
-			return CalculateSeveranceReserveRequired(CalculateFullBenefitCells(map));
-		}
-
-		int CalculateSeveranceReserveRequired(int fullBenefitCells)
-		{
-			var settings = ZombieSettings.Values;
-			var coverage = Mathf.Clamp(settings?.symbiantSeveranceReserveCoverage ?? 0.25f, 0.01f, 1f);
-			var min = Mathf.Max(1, settings?.symbiantSeveranceReserveMin ?? 12);
-			var max = Mathf.Max(min, settings?.symbiantSeveranceReserveMax ?? 60);
-			var target = Mathf.CeilToInt(fullBenefitCells * coverage);
-			var upper = Mathf.Max(1, Mathf.Min(max, MaxCells));
-			var lower = Mathf.Min(min, upper);
-			return Mathf.Clamp(target, lower, upper);
-		}
-
-		float CalculateBenefitFactor(Map map)
-		{
-			return Mathf.Clamp01(CalculateIntegratedVisibleCells(map) / Mathf.Max(1f, CalculateFullBenefitCells(map)));
+			return 1;
 		}
 
 		float CalculateIntegratedVisibleCells(Map map)
 		{
-			if (map == null)
+			if (map == null || orderedCells == null)
 				return 0f;
-			return AbsoluteCells.Sum(cell => IntegratedCellWeight(map, cell));
+			var total = 0f;
+			foreach (var cell in orderedCells)
+				total += IntegratedCellWeight(map, Position + cell);
+			return total;
 		}
 
 		static bool IsEligibleIndoorRoom(Room room)
@@ -1022,26 +1415,24 @@ namespace ZombieLand
 
 		static float IntegratedCellWeight(Map map, IntVec3 cell)
 		{
-			if (map == null || cell.InBounds(map) == false || cell.Fogged(map) || cell.Roofed(map) == false)
+			if (map == null || cell.InBounds(map) == false || cell.Fogged(map))
 				return 0f;
-			var room = cell.GetRoom(map);
-			if (IsEligibleIndoorRoom(room) == false)
-				return 0f;
-
-			var home = map.areaManager.Home;
-			var inHome = home.TrueCount == 0 || home[cell];
-			var traffic = ScoreTraffic(map, cell) > 0f;
-			var colonyUse = ScoreColonyUse(map, cell) > (inHome ? 40f : 0f);
-			if (inHome && (traffic || colonyUse))
-				return 1f;
-			if (inHome || traffic || colonyUse)
-				return 0.5f;
-			return 0.10f;
+			if (IsDoorCell(map, cell) == false)
+			{
+				if (cell.Roofed(map) == false)
+					return 0f;
+				var room = cell.GetRoom(map);
+				if (IsEligibleIndoorRoom(room) == false)
+					return 0f;
+			}
+			return ScoreTraffic(map, cell) > 0f ? 1f : 0.5f;
 		}
 
-		bool PeakMeetsSeveranceMaturity()
+		static bool IsValidSymbiantCell(Map map, IntVec3 cell)
 		{
-			return peakIntegratedVisibleCells >= SeveranceMaturityCells || peakBenefitFactor >= ZombieIgnoreMinBenefit;
+			if (map == null || cell.InBounds(map) == false)
+				return false;
+			return CanOccupyOpenCell(map, cell) || IsDoorCell(map, cell);
 		}
 
 		void RefreshSymbiosisMetrics(bool force = false)
@@ -1054,8 +1445,6 @@ namespace ZombieLand
 			cachedFullBenefitCells = CalculateFullBenefitCells(cachedEligibleColonyRoomCells);
 			cachedIntegratedVisibleCells = CalculateIntegratedVisibleCells(map);
 			cachedBenefitFactor = Mathf.Clamp01(cachedIntegratedVisibleCells / Mathf.Max(1f, cachedFullBenefitCells));
-			cachedSeveranceMaturityCells = CalculateSeveranceMaturityCells(cachedFullBenefitCells);
-			cachedSeveranceReserveRequired = CalculateSeveranceReserveRequired(cachedFullBenefitCells);
 			lastSymbiosisMetricTick = ticks;
 		}
 
@@ -1066,13 +1455,7 @@ namespace ZombieLand
 			RefreshSymbiosisMetrics(forceMetricRefresh);
 			if (cachedIntegratedVisibleCells > UprootedIntegratedCellThreshold)
 				uprootedSinceTick = -1;
-			peakVisibleCells = Mathf.Max(peakVisibleCells, CellCount);
-			var integratedVisibleCells = cachedIntegratedVisibleCells;
-			peakIntegratedVisibleCells = Mathf.Max(peakIntegratedVisibleCells, integratedVisibleCells);
-			peakBenefitFactor = Mathf.Max(peakBenefitFactor, cachedBenefitFactor);
-			if (PeakMeetsSeveranceMaturity())
-				maturedForSeverance = true;
-			decouplingReserve = Mathf.Min(decouplingReserve, cachedSeveranceReserveRequired);
+			AwardBenefitsForCurrentSize();
 		}
 
 		static Pawn ResolvePawnByThingId(string thingId)
@@ -1219,6 +1602,17 @@ namespace ZombieLand
 			renderResourceOwners.Clear();
 		}
 
+		internal static void ReleaseRenderResourcesForMap(Map map)
+		{
+			if (map == null)
+				return;
+			foreach (var symbiant in renderResourceOwners.ToArray())
+			{
+				if (symbiant != null && (symbiant.MapHeld == map || symbiant.Map == map))
+					symbiant.ReleaseRenderResources();
+			}
+		}
+
 		internal static void ClearActiveSymbiantCaches()
 		{
 			activeSymbiantByMap.Clear();
@@ -1250,6 +1644,18 @@ namespace ZombieLand
 				UnityEngine.Object.Destroy(metaballMaterial);
 				metaballMaterial = null;
 			}
+			if (metaballMaskMaterial != null)
+			{
+				UnityEngine.Object.Destroy(metaballMaskMaterial);
+				metaballMaskMaterial = null;
+			}
+			if (metaballBuffer != null)
+			{
+				metaballBuffer.Release();
+				metaballBuffer = null;
+				metaballBufferCapacity = 0;
+			}
+			metaballBufferData = [];
 			if (metaballTexture != null)
 			{
 				UnityEngine.Object.Destroy(metaballTexture);
@@ -1269,13 +1675,16 @@ namespace ZombieLand
 			base.SpawnSetup(map, respawningAfterLoad);
 			EnsureSymbiantDefaults();
 			RegisterActiveSymbiant(this, map);
-			EnsureHiddenFromPawnSystems(map);
+			EnsureVisibleToPawnSystems(map);
 		}
 
-		void EnsureHiddenFromPawnSystems(Map map = null)
+		void EnsureVisibleToPawnSystems(Map map = null)
 		{
 			map ??= MapHeld;
-			map?.mapPawns?.DeRegisterPawn(this);
+			if (map?.mapPawns == null || Spawned == false)
+				return;
+			if (map.mapPawns.AllPawnsSpawned.Contains(this) == false)
+				map.mapPawns.RegisterPawn(this);
 		}
 
 		public override void DeSpawn(DestroyMode mode = DestroyMode.Vanish)
@@ -1288,7 +1697,7 @@ namespace ZombieLand
 		public override void Destroy(DestroyMode mode = DestroyMode.Vanish)
 		{
 			ForgetActiveSymbiant(this);
-			if (safeSeveranceInProgress == false && hostCollapseInProgress == false)
+			if (safeSeveranceInProgress == false && hostCollapseInProgress == false && sharedHealthFailureInProgress == false)
 				HandleUncontrolledDestroy();
 			ReleaseRenderResources();
 			base.Destroy(mode);
@@ -1316,11 +1725,138 @@ namespace ZombieLand
 
 		bool AddRelativeCell(IntVec3 relative)
 		{
+			EnsureSharedHealth();
+			var wasFullHealth = sharedHealth >= SharedHealthMax - 0.01f;
 			if (cells.Add(relative) == false)
 				return false;
+			destroyWhenCellMotionsFinish = false;
+			StartIncomingCellMotion(relative);
 			orderedCells.Add(relative);
 			ExpandCellBounds(relative);
+			if (wasFullHealth)
+				sharedHealth = SharedHealthMax;
 			return true;
+		}
+
+		bool RemoveRelativeCell(IntVec3 relative, bool animate)
+		{
+			if (cells?.Contains(relative) != true)
+				return false;
+			if (animate)
+				StartOutgoingCellMotion(relative);
+			orderedCells.Remove(relative);
+			var removed = cells.Remove(relative);
+			if (removed)
+				EnsureSharedHealth();
+			return removed;
+		}
+
+		bool WouldCellsStayConnectedAfterRemoval(IntVec3 removedRelative)
+		{
+			if (cells == null || cells.Count <= 1)
+				return true;
+			var testCells = new HashSet<IntVec3>(cells);
+			testCells.Remove(removedRelative);
+			return CellsAreConnectedToRoot(testCells);
+		}
+
+		bool WouldCellsStayConnectedAfterMove(IntVec3 removedRelative, IntVec3 addedRelative)
+		{
+			if (cells == null || cells.Count <= 1)
+				return true;
+			var testCells = new HashSet<IntVec3>(cells);
+			testCells.Remove(removedRelative);
+			testCells.Add(addedRelative);
+			return CellsAreConnectedToRoot(testCells);
+		}
+
+		static bool CellsAreConnectedToRoot(HashSet<IntVec3> testCells)
+		{
+			if (testCells == null || testCells.Count <= 1)
+				return true;
+			if (testCells.Contains(IntVec3.Zero) == false)
+				return false;
+			return ConnectedCells(testCells, IntVec3.Zero).Count == testCells.Count;
+		}
+
+		static HashSet<IntVec3> ConnectedCells(HashSet<IntVec3> source, IntVec3 root)
+		{
+			var connected = new HashSet<IntVec3>();
+			if (source == null || source.Contains(root) == false)
+				return connected;
+
+			var open = new Queue<IntVec3>();
+			connected.Add(root);
+			open.Enqueue(root);
+			while (open.Count > 0)
+			{
+				var cell = open.Dequeue();
+				for (var i = 0; i < GenAdj.CardinalDirections.Length; i++)
+				{
+					var neighbor = cell + GenAdj.CardinalDirections[i];
+					if (source.Contains(neighbor) && connected.Add(neighbor))
+						open.Enqueue(neighbor);
+				}
+			}
+			return connected;
+		}
+
+		int PruneDisconnectedCells()
+		{
+			if (cells == null || cells.Count <= 1 || cells.Contains(IntVec3.Zero) == false)
+				return 0;
+
+			var connected = ConnectedCells(cells, IntVec3.Zero);
+			if (connected.Count == cells.Count)
+				return 0;
+
+			var removed = cells.Where(cell => connected.Contains(cell) == false).ToArray();
+			foreach (var cell in removed)
+				cells.Remove(cell);
+			orderedCells?.RemoveAll(cell => connected.Contains(cell) == false);
+			cellMotions?.RemoveAll(motion => connected.Contains(motion.cell) == false);
+			return removed.Length;
+		}
+
+		void StartIncomingCellMotion(IntVec3 relative)
+		{
+			var existingCells = cells.Where(cell => cell != relative).ToArray();
+			var to = CellCenter(relative);
+			var from = existingCells.Length == 0 ? to : NearestCellCenter(relative, existingCells);
+			StartCellMotion(relative, from, to, false, GetSize(relative));
+		}
+
+		void StartOutgoingCellMotion(IntVec3 relative)
+		{
+			var remainingCells = cells.Where(cell => cell != relative).ToArray();
+			var from = CellCenter(relative);
+			var to = remainingCells.Length == 0 ? from : NearestCellCenter(relative, remainingCells);
+			StartCellMotion(relative, from, to, true, GetSize(relative));
+		}
+
+		void StartCellMotion(IntVec3 relative, Vector2 from, Vector2 to, bool outgoing, float radius)
+		{
+			cellMotions ??= [];
+			var ticks = GenTicks.TicksGame;
+			if (outgoing)
+				cellMotions.RemoveAll(motion => motion.cell == relative);
+			else
+				cellMotions.RemoveAll(motion => motion.outgoing == false && motion.cell == relative);
+			cellMotions.Add(new CellMotion(relative, from, to, ticks, ticks + CellMotionDurationTicks, Mathf.Clamp(radius, MetaballCellRadiusMin, MetaballCellRadiusMax), outgoing));
+			lastCellMotionRenderTick = -1;
+		}
+
+		static Vector2 CellCenter(IntVec3 relative)
+		{
+			return new Vector2(relative.x, relative.z);
+		}
+
+		static Vector2 NearestCellCenter(IntVec3 target, IEnumerable<IntVec3> candidates)
+		{
+			var nearest = candidates
+				.OrderBy(cell => cell.DistanceToSquared(target))
+				.FirstOrDefault();
+			return CellCenter(nearest.IsValid ? nearest : target);
 		}
 
 		void ExpandCellBounds(IntVec3 relative)
@@ -1341,10 +1877,15 @@ namespace ZombieLand
 				return;
 			foreach (var cell in cells)
 				ExpandCellBounds(cell);
-			UpdateDrawCullSize();
+			UpdateDrawCullSize(relativeCellBounds);
 		}
 
 		void UpdateDrawCullSize()
+		{
+			UpdateDrawCullSize(relativeCellBounds);
+		}
+
+		void UpdateDrawCullSize(CellRect bounds)
 		{
 			if (hasCellBounds == false)
 			{
@@ -1352,10 +1893,10 @@ namespace ZombieLand
 				return;
 			}
 
-			var minX = relativeCellBounds.minX - 1f;
-			var maxX = relativeCellBounds.maxX + 1f;
-			var minZ = relativeCellBounds.minZ - 1f;
-			var maxZ = relativeCellBounds.maxZ + 1f;
+			var minX = bounds.minX - 1f;
+			var maxX = bounds.maxX + 1f;
+			var minZ = bounds.minZ - 1f;
+			var maxZ = bounds.maxZ + 1f;
 			var width = Mathf.Max(Mathf.Abs(minX), Mathf.Abs(maxX)) * 2f + 1f;
 			var height = Mathf.Max(Mathf.Abs(minZ), Mathf.Abs(maxZ)) * 2f + 1f;
 			drawCullSize = new Vector2(Mathf.Max(1f, width), Mathf.Max(1f, height));
@@ -1528,7 +2069,7 @@ namespace ZombieLand
 
 			GenSpawn.Spawn(this, anchor, map, Rot4.Random, WipeMode.Vanish, false);
 			RegisterActiveSymbiant(this, map);
-			EnsureHiddenFromPawnSystems(map);
+			EnsureVisibleToPawnSystems(map);
 			jobs.StartJob(JobMaker.MakeJob(CustomDefs.Symbiant));
 			ResetExpansionClock();
 			UpdateAll();
@@ -1548,7 +2089,34 @@ namespace ZombieLand
 			var pawn = ResolveHost();
 			if (pawn == null || pawn.Destroyed || pawn.Dead)
 				return;
-			ReleaseHostLink(pawn);
+			PlayDisconnectedSound();
+			RemoveHostHediff(pawn);
+			host = null;
+			hostThingId = null;
+			pawn.Kill(null);
+		}
+
+		void CollapseFromSharedHealthFailure()
+		{
+			if (Destroyed || sharedHealthFailureInProgress || safeSeveranceInProgress || hostCollapseInProgress)
+				return;
+			sharedHealthFailureInProgress = true;
+			try
+			{
+				var pawn = ResolveHost();
+				PlayDisconnectedSound();
+				RemoveHostHediff(pawn);
+				host = null;
+				hostThingId = null;
+				symbiosisSevered = true;
+				if (pawn != null && pawn.Destroyed == false && pawn.Dead == false)
+					pawn.Kill(null);
+				Destroy(DestroyMode.Vanish);
+			}
+			finally
+			{
+				sharedHealthFailureInProgress = false;
+			}
 		}
 
 		void ReleaseHostLink(Pawn pawn, string messageKey = null)
@@ -1561,27 +2129,28 @@ namespace ZombieLand
 				Messages.Message(messageKey.Translate(pawn.LabelShortCap), pawn, MessageTypeDefOf.NeutralEvent, false);
 		}
 
-		void CollapseFromHostDeath()
-		{
-			if (Destroyed || hostCollapseInProgress || safeSeveranceInProgress)
-				return;
-			if (uncontrolledDestroyHandled)
+			void CollapseFromHostDeath()
 			{
-				var currentHost = ResolveHost();
-				RemoveHostHediff(currentHost);
-				host = null;
-				hostThingId = null;
-				return;
+				if (Destroyed || hostCollapseInProgress || safeSeveranceInProgress)
+					return;
+				hostCollapseInProgress = true;
+				try
+				{
+					var pawn = ResolveHost();
+					if (uncontrolledDestroyHandled == false)
+						PlayDisconnectedSound();
+						RemoveHostHediff(pawn);
+						host = null;
+						hostThingId = null;
+						symbiosisSevered = true;
+						nextExpansionTick = GenTicks.TicksGame + RetreatIntervalTicks();
+						UpdateSymbiosisState();
+					}
+					finally
+				{
+					hostCollapseInProgress = false;
+				}
 			}
-			hostCollapseInProgress = true;
-			var pawn = ResolveHost();
-			PlayDisconnectedSound();
-			RemoveHostHediff(pawn);
-			host = null;
-			hostThingId = null;
-			Destroy(DestroyMode.Vanish);
-			hostCollapseInProgress = false;
-		}
 
 		void PlayConnectedSound()
 		{
@@ -1589,16 +2158,23 @@ namespace ZombieLand
 				CustomDefs.SymbiantConnected?.PlayOneShotOnCamera(null);
 		}
 
-		void PlayDisconnectedSound()
-		{
-			if (ZombieAwarenessCues.ShouldPlaySpecialZombieAmbientSound())
-				CustomDefs.SymbiantDisconnected?.PlayOneShotOnCamera(null);
-		}
+			void PlayDisconnectedSound()
+			{
+				if (ZombieAwarenessCues.ShouldPlaySpecialZombieAmbientSound())
+					CustomDefs.SymbiantDisconnected?.PlayOneShotOnCamera(null);
+			}
+
+			static LetterDef SymbiantEventLetterDef => CustomDefs.SymbiantEvent ?? CustomDefs.SymbiantConnection ?? LetterDefOf.PositiveEvent;
+
+			void SendSymbiantEventLetter(TaggedString headline, TaggedString text, LookTargets targets)
+			{
+				if (Spawned == false || ZombieAwarenessCues.ShouldShowZombieEventLetter() == false)
+					return;
+				Find.LetterStack?.ReceiveLetter(headline, text, SymbiantEventLetterDef, targets);
+			}
 
 		void NotifyDamageAbsorbed()
 		{
-			if (ZombieSettings.Values?.symbiantDamageAbsorptionFeedback != true)
-				return;
 			if (Spawned == false || Map == null)
 				return;
 			var ticks = GenTicks.TicksGame;
@@ -1609,32 +2185,25 @@ namespace ZombieLand
 			MoteMaker.ThrowText(DrawPos, Map, "SymbiantWeaponRejectedMote".Translate(), 3.65f);
 		}
 
-		void CollapseFromGuardFailure()
+		void NotifySharedDamageAbsorbed(float drained, float leaked, Thing target)
 		{
-			if (Destroyed || violentDamageCollapseInProgress || safeSeveranceInProgress || hostCollapseInProgress)
+			if (Spawned == false || Map == null || drained <= 0f)
 				return;
-			violentDamageCollapseInProgress = true;
-			var pawn = ResolveHost();
-			if (Spawned && Map != null)
-			{
-				var targets = pawn == null ? new LookTargets(this) : new LookTargets(this, pawn);
-				var hostLabel = pawn == null ? "SymbiantHostUnknown".Translate().ToString() : pawn.LabelShortCap.ToString();
-				Messages.Message("SymbiantDamageGuardBrokenMessage".Translate(hostLabel), targets, MessageTypeDefOf.NegativeEvent, false);
-			}
-			PlayDisconnectedSound();
-			RemoveHostHediff(pawn);
-			host = null;
-			hostThingId = null;
-			if (pawn != null && pawn.Destroyed == false && pawn.Dead == false)
-				pawn.Kill(null);
-			damageAbsorptionBuffer = 0f;
-			Destroy(DestroyMode.Vanish);
-			violentDamageCollapseInProgress = false;
+			var ticks = GenTicks.TicksGame;
+			if (ticks - lastSharedDamageAbsorbMoteTick < 60)
+				return;
+			var absorbedPercent = Mathf.Clamp(Mathf.RoundToInt((1f - Mathf.Clamp01(leaked / Mathf.Max(0.001f, drained))) * 100f), 0, 100);
+			if (absorbedPercent <= 0)
+				return;
+			lastSharedDamageAbsorbMoteTick = ticks;
+			MoteMaker.ThrowText(target == null ? DrawPos : target.DrawPos, Map, "SymbiantDamageAbsorbedMote".Translate(absorbedPercent), 3.65f);
 		}
 
 		public void PreApplyLinkedDamage(ref DamageInfo dinfo, ref bool absorbed)
 		{
-			if (safeSeveranceInProgress || hostCollapseInProgress || violentDamageCollapseInProgress)
+			if (sharedDamageInProgress)
+				return;
+			if (safeSeveranceInProgress || hostCollapseInProgress)
 				return;
 			if (dinfo.Amount <= 0f)
 				return;
@@ -1644,25 +2213,58 @@ namespace ZombieLand
 				absorbed = true;
 				return;
 			}
-
-			EnsureDamageAbsorptionBuffer();
-			var incoming = dinfo.Amount;
-			if (damageAbsorptionBuffer <= 0f)
+			if (IsPlayerCausedDamage(dinfo))
 			{
-				CollapseFromGuardFailure();
+				dinfo.SetAmount(0f);
+				absorbed = true;
+				NotifyDamageAbsorbed();
+				return;
+			}
+
+			var drained = DrainSharedHealth(dinfo.Amount);
+			if (Destroyed || Dead)
+			{
 				dinfo.SetAmount(0f);
 				absorbed = true;
 				return;
 			}
 
-			var absorbedAmount = Mathf.Min(incoming, damageAbsorptionBuffer);
-			damageAbsorptionBuffer = Mathf.Max(0f, damageAbsorptionBuffer - absorbedAmount);
-			if (incoming > absorbedAmount + 0.01f)
-				CollapseFromGuardFailure();
-			else
-				NotifyDamageAbsorbed();
+			var linkedHost = LinkedHost;
+			var hostAmount = 0f;
+			if (linkedHost != null && linkedHost.Destroyed == false && linkedHost.Dead == false)
+			{
+				hostAmount = SharedDamageLeakAmount(drained);
+				if (hostAmount > 0.01f)
+				{
+					var hostDamage = dinfo;
+					hostDamage.SetAmount(hostAmount);
+					sharedDamageInProgress = true;
+					try
+					{
+						_ = linkedHost.TakeDamage(hostDamage);
+					}
+					finally
+					{
+						sharedDamageInProgress = false;
+					}
+				}
+			}
+			NotifySharedDamageAbsorbed(drained, hostAmount, this);
 			dinfo.SetAmount(0f);
 			absorbed = true;
+
+		}
+
+		static bool IsPlayerCausedDamage(DamageInfo dinfo)
+		{
+			var instigator = dinfo.Instigator;
+			if (instigator == null)
+				return false;
+			if (instigator.Faction == Faction.OfPlayer)
+				return true;
+			if (instigator is Pawn pawn && pawn.Faction?.IsPlayer == true)
+				return true;
+			return false;
 		}
 
 		public bool TrySeverSymbiosis(Pawn pawn, Pawn doctor)
@@ -1670,22 +2272,28 @@ namespace ZombieLand
 			if (pawn == null || pawn != LinkedHost || CanSafelySever == false)
 				return false;
 
-			var medicine = doctor?.skills?.GetSkill(SkillDefOf.Medicine);
-			var chance = Mathf.Clamp(0.55f + (medicine?.Level ?? 0) * 0.03f, 0.55f, 0.95f);
-			if (Rand.Chance(chance) == false)
-			{
-				decouplingReserve = Mathf.Max(0f, decouplingReserve - Mathf.Max(1f, DecouplingReserveMax * 0.25f));
-				return false;
-			}
-
 			safeSeveranceInProgress = true;
-			PlayDisconnectedSound();
-			Messages.Message("SymbiantSeveredMessage".Translate(pawn.LabelShortCap), pawn, MessageTypeDefOf.PositiveEvent, false);
-			RemoveHostHediff(pawn);
-			host = null;
-			hostThingId = null;
-			Destroy(DestroyMode.Vanish);
-			return true;
+				try
+				{
+					PlayDisconnectedSound();
+					var targets = new LookTargets(this, pawn);
+					Messages.Message("SymbiantSeveredMessage".Translate(pawn.LabelShortCap), pawn, MessageTypeDefOf.PositiveEvent, false);
+					SendSymbiantEventLetter(
+						"LetterLabelSymbiantBondRemoved".Translate(),
+						"SymbiantBondRemovedLetter".Translate(pawn.LabelShortCap),
+						targets
+					);
+					RemoveHostHediff(pawn);
+					host = null;
+					hostThingId = null;
+					symbiosisSevered = true;
+					nextExpansionTick = GenTicks.TicksGame + RetreatIntervalTicks();
+					return true;
+				}
+			finally
+			{
+				safeSeveranceInProgress = false;
+			}
 		}
 
 		public void SymbiantTick()
@@ -1696,6 +2304,11 @@ namespace ZombieLand
 			if (lastSymbiantTick == ticks)
 				return;
 			lastSymbiantTick = ticks;
+			if (destroyWhenCellMotionsFinish && HasActiveCellMotions() == false)
+			{
+				Destroy(DestroyMode.Vanish);
+				return;
+			}
 			if (ticks % SymbiosisMetricRefreshInterval == Mathf.Abs(thingIDNumber % SymbiosisMetricRefreshInterval))
 			{
 				EnsureHostLink();
@@ -1704,47 +2317,106 @@ namespace ZombieLand
 				if (uprootedSinceTick < 0)
 				{
 					UpdateSymbiosisState(false);
-					RegenerateDamageAbsorptionBuffer(ticks);
 					if (relocationCellDebt <= 0 && nextRelocationPulseTick <= 0 && HasMovableUnintegratedCells())
 						nextRelocationPulseTick = ticks;
 				}
 			}
 			if (uprootedSinceTick >= 0)
 				return;
+			if (ticks >= nextAutoHealTick)
+			{
+				TryAutoHealHost();
+				nextAutoHealTick = ticks + AutoHealIntervalTicks;
+			}
+			if (symbiosisSevered || LinkedHost == null)
+			{
+						if (ticks >= nextExpansionTick)
+						{
+							_ = ShrinkCells(1, 0);
+							nextExpansionTick = ticks + RetreatIntervalTicks();
+						}
+						return;
+					}
 			if (relocationCellDebt > 0 || (nextRelocationPulseTick > 0 && ticks >= nextRelocationPulseTick))
 			{
 				_ = TryRelocationPulse();
 				return;
 			}
-			if (CanExpand() == false)
-				return;
-			if (ticks < nextExpansionTick || ticks < feedPausedUntilTick)
-				return;
-			_ = TryExpansionPulse();
-			ResetExpansionClock();
+			if (ticks >= nextMovementTick)
+			{
+				_ = TryMovePulse(false);
+				ResetMovementClock();
+			}
+			if (CanExpand() && ticks >= nextExpansionTick)
+			{
+				_ = TryExpansionPulse();
+				ResetExpansionClock();
+			}
 		}
+
+		void TryAutoHealHost()
+		{
+			var healCount = BenefitCount(HostBenefit.AutoHeal);
+			if (healCount <= 0)
+				return;
+			var linkedHost = LinkedHost;
+			if (linkedHost == null
+				|| Spawned == false
+				|| linkedHost.Spawned == false
+				|| linkedHost.Map != Map
+				|| linkedHost.health?.hediffSet == null
+				|| linkedHost.Dead)
+				return;
+			var injuries = linkedHost.health.hediffSet.hediffs
+				.Where(IsAutoHealableHediff)
+				.Cast<Hediff_Injury>()
+				.OrderByDescending(injury => injury.Severity)
+				.Take(healCount)
+				.ToArray();
+			foreach (var injury in injuries)
+				injury.Heal(injury.Severity + 1f);
+		}
+
+		static bool IsAutoHealableHediff(Hediff hediff)
+		{
+			return hediff is Hediff_Injury injury
+				&& injury.def != CustomDefs.ContaminationEffect
+				&& injury.Severity > 0f
+				&& injury.Part != null;
+		}
+
+		internal static bool IsAutoHealableHediffForDebug(Hediff hediff) => IsAutoHealableHediff(hediff);
 
 		void ResetExpansionClock()
 		{
 			nextExpansionTick = GenTicks.TicksGame + AutomaticExpansionIntervalTicks();
 		}
 
-		int AutomaticExpansionIntervalTicks()
+		void ResetMovementClock()
 		{
-			var difficulty = Mathf.Clamp(ZombieLand.Tools.Difficulty(), 0f, 5f);
-			var maxCells = Mathf.Max(1, MaxCells);
-			var growthFactor = Mathf.Clamp01(CellCount / (float)maxCells);
-			var baseHours = GenMath.LerpDoubleClamped(0f, 5f, 22f, 7f, difficulty);
-			var sizeFactor = Mathf.Lerp(0.85f, 1.35f, growthFactor);
-			var benefitFactor = Mathf.Lerp(0.95f, 1.20f, Mathf.Clamp01(cachedBenefitFactor));
-			var randomFactor = Rand.Range(0.85f, 1.20f);
-			var hours = baseHours * sizeFactor * benefitFactor * randomFactor;
-			return Mathf.Max(GenDate.TicksPerHour, Mathf.RoundToInt(hours * GenDate.TicksPerHour));
+			nextMovementTick = GenTicks.TicksGame + MovementIntervalTicks();
+		}
+
+			int AutomaticExpansionIntervalTicks()
+			{
+				var days = DifficultyScaled(0.5f, 2f);
+				return Mathf.Max(GenDate.TicksPerHour, Mathf.RoundToInt(days * GenDate.TicksPerDay));
+			}
+
+			int RetreatIntervalTicks()
+			{
+				return Mathf.Max(GenDate.TicksPerHour, AutomaticExpansionIntervalTicks() / SymbiantRetreatSpeedFactor);
+			}
+
+		int MovementIntervalTicks()
+		{
+			var hours = DifficultyScaled(1.25f, 0.35f);
+			return Mathf.Max(CellMotionDurationTicks * 4, Mathf.RoundToInt(hours * GenDate.TicksPerHour));
 		}
 
 		int RelocationPulseIntervalTicks()
 		{
-			return Mathf.Max(GenDate.TicksPerHour / 2, AutomaticExpansionIntervalTicks() / 2);
+			return Mathf.Max(GenDate.TicksPerHour / 2, MovementIntervalTicks() / 2);
 		}
 
 		public bool TryExpansionPulse()
@@ -1752,7 +2424,7 @@ namespace ZombieLand
 			if (CanExpand() == false)
 				return false;
 
-			var target = FindExpansionTarget(true);
+			var target = FindExpansionTarget(true, true);
 			if (target == null)
 				return false;
 
@@ -1761,6 +2433,246 @@ namespace ZombieLand
 
 			AddCell(target.cell);
 			return true;
+		}
+
+		public bool CanAcceptFeed(Thing feed)
+		{
+			return IsValidFeed(feed) && CanApplyFeedGrowth(FeedGrowthCells(feed));
+		}
+
+		bool CanApplyFeedGrowth(int pulseSize)
+		{
+			if (pulseSize <= 0 || CanExpand() == false)
+				return false;
+			if (HasExpansionTarget(true, true))
+				return true;
+			return cancelNextBreach && pulseSize > 1 && HasExpansionTarget(true, false);
+		}
+
+		bool HasExpansionTarget(bool allowWallBreak, bool respectCancelNextBreach)
+		{
+			var map = Map;
+			if (map == null)
+				return false;
+			var hasWallTarget = false;
+			foreach (var cell in orderedCells.Select(relative => Position + relative).ToArray())
+			{
+				for (var i = 0; i < 4; i++)
+				{
+					var direction = GenAdj.CardinalDirections[i];
+					var candidate = cell + direction;
+					if (candidate.InBounds(map) == false || ContainsCell(candidate))
+						continue;
+					if (IsValidSymbiantCell(map, candidate))
+						return true;
+					if (allowWallBreak == false)
+						continue;
+					var wall = BreakableConstructedWall(map, candidate);
+					if (wall == null)
+						continue;
+					var beyond = candidate + direction;
+					if (beyond.InBounds(map) && ContainsCell(beyond) == false && IsValidSymbiantCell(map, beyond))
+						hasWallTarget = true;
+				}
+			}
+			return hasWallTarget && (respectCancelNextBreach == false || cancelNextBreach == false);
+		}
+
+		internal bool DebugExpansionPulse()
+		{
+			var expanded = TryExpansionPulse();
+			if (expanded)
+				ResetExpansionClock();
+			return expanded;
+		}
+
+		internal bool DebugShrinkPulse()
+		{
+			var removed = ShrinkCells(1) > 0;
+			if (removed && Destroyed == false)
+				UpdateSymbiosisState();
+			return removed;
+		}
+
+		public bool TryMovePulse(bool allowWallBreak)
+		{
+			var map = Map;
+			if (map == null || CellCount <= 1)
+				return false;
+
+			RefreshSymbiosisMetrics(false);
+			var targets = MovementTargetCandidates(map);
+			if (targets.Count == 0)
+				return false;
+
+			if (ShouldUseAmbientMovement() && TryAmbientMovePulse(map, targets))
+				return true;
+			return TryCorrectiveMovePulse(map, targets);
+		}
+
+		bool ShouldUseAmbientMovement()
+		{
+			return CellCount >= 4
+				&& cachedBenefitFactor >= AmbientMovementMinBenefitFactor
+				&& relocationCellDebt <= 0
+				&& HasMovableUnintegratedCells() == false;
+		}
+
+		bool TryCorrectiveMovePulse(Map map, List<MovementTarget> targets)
+		{
+			var target = targets
+				.OrderByDescending(candidate => candidate.score)
+				.FirstOrDefault();
+			if (target == null)
+				return false;
+			var source = MovementSourceCandidates(map, target.cell - Position)
+				.OrderBy(candidate => candidate.score)
+				.ThenBy(candidate => IsRecentMovementCell(candidate.absolute))
+				.FirstOrDefault();
+			return source != null && TryCommitMove(map, source, target);
+		}
+
+		bool TryAmbientMovePulse(Map map, List<MovementTarget> targets)
+		{
+			var currentIntegrated = CalculateIntegratedVisibleCells(map);
+			var bestScore = targets.Select(target => target.score).DefaultIfEmpty(0f).Max();
+			var scoreFloor = Mathf.Max(0.01f, bestScore * AmbientMovementTargetBestScoreFraction);
+			var targetPool = targets
+				.Where(target => target.score >= scoreFloor)
+				.OrderByDescending(target => AmbientTargetWeight(target))
+				.Take(AmbientMovementCandidateLimit)
+				.ToArray();
+			foreach (var target in targetPool)
+			{
+				var targetRelative = target.cell - Position;
+				var source = MovementSourceCandidates(map, targetRelative)
+					.Where(candidate => IsAmbientMoveAllowed(map, currentIntegrated, candidate, target))
+					.OrderByDescending(candidate => AmbientSourceWeight(candidate))
+					.Take(AmbientMovementSourceLimit)
+					.FirstOrDefault();
+				if (source != null && TryCommitMove(map, source, target))
+					return true;
+			}
+			return false;
+		}
+
+		List<MovementTarget> MovementTargetCandidates(Map map)
+		{
+			var targets = new List<MovementTarget>();
+			var seen = new HashSet<IntVec3>();
+			foreach (var cell in orderedCells.Select(relative => Position + relative).ToArray())
+			{
+				for (var i = 0; i < 4; i++)
+				{
+					var candidate = cell + GenAdj.CardinalDirections[i];
+					if (candidate.InBounds(map) == false || ContainsCell(candidate) || seen.Add(candidate) == false)
+						continue;
+					if (IsValidSymbiantCell(map, candidate) == false)
+						continue;
+					targets.Add(new MovementTarget(candidate, ScoreMovementCell(map, candidate), IntegratedCellWeight(map, candidate)));
+				}
+			}
+			return targets;
+		}
+
+		IEnumerable<MovementSource> MovementSourceCandidates(Map map, IntVec3 targetRelative)
+		{
+			return orderedCells
+				.Where(relative => relative != IntVec3.Zero)
+				.Where(relative => WouldCellsStayConnectedAfterMove(relative, targetRelative))
+				.Select(relative =>
+				{
+					var absolute = Position + relative;
+					return new MovementSource(relative, absolute, ScoreMovementCell(map, absolute), IntegratedCellWeight(map, absolute));
+				});
+		}
+
+		bool IsAmbientMoveAllowed(Map map, float currentIntegrated, MovementSource source, MovementTarget target)
+		{
+			if (source == null || target == null)
+				return false;
+			var projectedIntegrated = currentIntegrated - source.integratedWeight + target.integratedWeight;
+			var integrationFloor = Mathf.Min(
+				currentIntegrated,
+				Mathf.Max(cachedFullBenefitCells * AmbientMovementIntegrationFloorFactor, currentIntegrated - AmbientMovementMaxIntegrationLoss)
+			);
+			if (projectedIntegrated + 0.001f < integrationFloor)
+				return false;
+			return BreaksAmbientCenterLeash(map, source, target) == false;
+		}
+
+		bool BreaksAmbientCenterLeash(Map map, MovementSource source, MovementTarget target)
+		{
+			var center = ColonyCenterFallbackCell(map);
+			if (center.IsValid == false)
+				return false;
+			var sourceDistance = Mathf.Sqrt(source.absolute.DistanceToSquared(center));
+			var targetDistance = Mathf.Sqrt(target.cell.DistanceToSquared(center));
+			if (targetDistance <= sourceDistance + AmbientMovementCenterSlack)
+				return false;
+			if (cachedBenefitFactor >= AmbientMovementHighBenefitFactor
+				&& targetDistance <= sourceDistance + AmbientMovementHighBenefitCenterSlack
+				&& target.score >= source.score * 0.75f)
+				return false;
+			return target.score < source.score + 10f;
+		}
+
+		float AmbientTargetWeight(MovementTarget target)
+		{
+			var weight = Mathf.Max(1f, target.score);
+			if (IsRecentMovementCell(target.cell))
+				weight *= 0.25f;
+			return weight * Rand.Range(0.65f, 1.35f);
+		}
+
+		float AmbientSourceWeight(MovementSource source)
+		{
+			var weight = 100f / Mathf.Max(1f, source.score + 1f);
+			if (source.integratedWeight <= 0.5f)
+				weight *= 1.5f;
+			if (IsRecentMovementCell(source.absolute))
+				weight *= 0.25f;
+			return weight * Rand.Range(0.65f, 1.35f);
+		}
+
+		bool TryCommitMove(Map map, MovementSource source, MovementTarget target)
+		{
+			if (map == null || source == null || target == null || IsValidSymbiantCell(map, target.cell) == false)
+				return false;
+			var targetRelative = target.cell - Position;
+			if (ContainsCell(target.cell) || WouldCellsStayConnectedAfterMove(source.relative, targetRelative) == false)
+				return false;
+			if (RemoveRelativeCell(source.relative, true) == false)
+				return false;
+			if (AddRelativeCell(targetRelative) == false)
+			{
+				_ = AddRelativeCell(source.relative);
+				return false;
+			}
+			RebuildCellBounds();
+			UpdateAll();
+			UpdateSymbiosisState();
+			RememberMovement(source.absolute, target.cell);
+			return true;
+		}
+
+		void RememberMovement(IntVec3 source, IntVec3 target)
+		{
+			RememberMovementCell(source);
+			RememberMovementCell(target);
+			while (recentMovementCells.Count > AmbientMovementRecentCellCapacity)
+				recentMovementCells.Dequeue();
+		}
+
+		void RememberMovementCell(IntVec3 cell)
+		{
+			if (cell.IsValid)
+				recentMovementCells.Enqueue(cell);
+		}
+
+		bool IsRecentMovementCell(IntVec3 cell)
+		{
+			return cell.IsValid && recentMovementCells.Contains(cell);
 		}
 
 		bool HasMovableUnintegratedCells()
@@ -1776,16 +2688,20 @@ namespace ZombieLand
 			if (map == null || target == null || CellCount <= 1)
 				return false;
 
+			var targetRelative = target.cell - Position;
 			var relative = orderedCells
-				.LastOrDefault(cell => cell != IntVec3.Zero && IntegratedCellWeight(map, Position + cell) <= UprootedIntegratedCellThreshold);
+				.AsEnumerable()
+				.Reverse()
+				.FirstOrDefault(cell => cell != IntVec3.Zero
+					&& IntegratedCellWeight(map, Position + cell) <= UprootedIntegratedCellThreshold
+					&& WouldCellsStayConnectedAfterMove(cell, targetRelative));
 			if (relative == IntVec3.Zero || relative.IsValid == false || cells.Contains(relative) == false)
 				return false;
 
 			if (target.wall != null && target.wall.Destroyed == false)
 				target.wall.Destroy(DestroyMode.KillFinalize);
 
-			orderedCells.Remove(relative);
-			cells.Remove(relative);
+			RemoveRelativeCell(relative, true);
 			AddRelativeCell(target.cell - Position);
 			RebuildCellBounds();
 			UpdateAll();
@@ -1800,7 +2716,7 @@ namespace ZombieLand
 				return false;
 
 			var map = Map;
-			var target = FindExpansionTarget(true);
+			var target = FindExpansionTarget(true, false);
 			if (target == null)
 			{
 				nextRelocationPulseTick = ticks + RelocationPulseIntervalTicks();
@@ -1830,7 +2746,7 @@ namespace ZombieLand
 			return true;
 		}
 
-		ExpansionTarget FindExpansionTarget(bool consumeCancelNextBreach)
+		ExpansionTarget FindExpansionTarget(bool consumeCancelNextBreach, bool allowWallBreak = true)
 		{
 			var map = Map;
 			var targets = new List<ExpansionTarget>();
@@ -1843,13 +2759,13 @@ namespace ZombieLand
 					if (candidate.InBounds(map) == false || ContainsCell(candidate))
 						continue;
 
-					if (CanOccupyOpenCell(map, candidate) || IsDoorCell(map, candidate))
+					if (IsValidSymbiantCell(map, candidate))
 					{
 						targets.Add(new ExpansionTarget(candidate, null, ScoreExpansionCell(map, candidate)));
 						continue;
 					}
 
-					if (ZombieSettings.Values.symbiantCanBreakConstructedWalls == false)
+					if (allowWallBreak == false)
 						continue;
 
 					var wall = BreakableConstructedWall(map, candidate);
@@ -1857,7 +2773,7 @@ namespace ZombieLand
 						continue;
 
 					var beyond = candidate + direction;
-					if (beyond.InBounds(map) && ContainsCell(beyond) == false && (CanOccupyOpenCell(map, beyond) || IsDoorCell(map, beyond)))
+					if (beyond.InBounds(map) && ContainsCell(beyond) == false && IsValidSymbiantCell(map, beyond))
 						targets.Add(new ExpansionTarget(candidate, wall, ScoreExpansionCell(map, beyond) + 150f));
 				}
 			}
@@ -1919,11 +2835,18 @@ namespace ZombieLand
 
 		static float ScoreExpansionCell(Map map, IntVec3 cell)
 		{
-			if (cell.InBounds(map) == false)
+			if (IsValidSymbiantCell(map, cell) == false)
 				return 0f;
-			var room = cell.GetRoom(map);
-			var roomScore = room == null ? 0f : room.ContainedAndAdjacentThings.Sum(ScoreRoomThing) + Mathf.Min(100f, room.CellCount / 4f);
-			return ScoreTraffic(map, cell) + ScoreColonyUse(map, cell) + roomScore;
+			var traffic = ScoreTraffic(map, cell);
+			return traffic > 0f ? traffic + 1f : ScoreColonyCenterFallback(map, cell) + Rand.Value;
+		}
+
+		static float ScoreMovementCell(Map map, IntVec3 cell)
+		{
+			if (IsValidSymbiantCell(map, cell) == false)
+				return 0f;
+			var traffic = ScoreTraffic(map, cell);
+			return traffic > 0f ? traffic + 1f : ScoreColonyCenterFallback(map, cell);
 		}
 
 		static float ScoreTraffic(Map map, IntVec3 cell)
@@ -1941,6 +2864,35 @@ namespace ZombieLand
 			var score = home.TrueCount == 0 || home[cell] ? 40f : 0f;
 			score += cell.GetThingList(map).Sum(ScoreRoomThing);
 			return score;
+		}
+
+		static float ScoreColonyCenterFallback(Map map, IntVec3 cell)
+		{
+			if (map == null || cell.InBounds(map) == false)
+				return 0f;
+			var score = ScoreColonyUse(map, cell);
+			var colonyCenter = ColonyCenterFallbackCell(map);
+			if (colonyCenter.IsValid)
+			{
+				var distance = Mathf.Sqrt(cell.DistanceToSquared(colonyCenter));
+				score += Mathf.Max(0f, 120f - distance * 2f);
+			}
+			return score + 0.01f;
+		}
+
+		static IntVec3 ColonyCenterFallbackCell(Map map)
+		{
+			var colonists = map?.mapPawns?.FreeColonistsSpawned;
+			if (colonists == null || colonists.Count == 0)
+				return map?.Center ?? IntVec3.Invalid;
+			var x = 0;
+			var z = 0;
+			for (var i = 0; i < colonists.Count; i++)
+			{
+				x += colonists[i].Position.x;
+				z += colonists[i].Position.z;
+			}
+			return new IntVec3(Mathf.RoundToInt(x / (float)colonists.Count), 0, Mathf.RoundToInt(z / (float)colonists.Count));
 		}
 
 		static float ScoreRoomThing(Thing thing)
@@ -1963,71 +2915,50 @@ namespace ZombieLand
 			feedRequested = requested;
 		}
 
-		void ResetDailyFeedCounter()
-		{
-			var day = GenTicks.TicksGame / GenDate.TicksPerDay;
-			if (decouplingFeedDay == day)
-				return;
-			decouplingFeedDay = day;
-			decouplingFeedPulsesToday = 0;
-		}
-
 		public bool TryFeed(Thing feed)
 		{
-			if (IsValidFeed(feed) == false)
+			if (CanAcceptFeed(feed) == false)
 				return false;
-			ResetDailyFeedCounter();
-			if (decouplingFeedPulsesToday >= DecouplingFeedPulsesPerDay)
-			{
-				lastRecessionPulseCells = 0;
-				return false;
-			}
 
 			UpdateSymbiosisState();
-			var pulseSize = RecessionPulseSize(feed);
+			var pulseSize = FeedGrowthCells(feed);
+			var added = 0;
+			for (var i = 0; i < pulseSize; i++)
+			{
+				if (TryExpansionPulse())
+					added++;
+			}
+			if (added <= 0)
+				return false;
 			var consumed = feed.stackCount > 1 ? feed.SplitOff(1) : feed;
 			consumed.Destroy(DestroyMode.Vanish);
-			decouplingFeedPulsesToday++;
-			decouplingReserve = Mathf.Min(DecouplingReserveMax, decouplingReserve + pulseSize);
-			RestoreDamageAbsorptionBuffer(CalculateDamageAbsorptionBufferMax() * 0.18f + pulseSize * 55f);
-			var minRemainingCells = LinkedHost == null && hostThingId.NullOrEmpty() ? 0 : SafeVisibleMinimum;
-			lastRecessionPulseCells = ShrinkCells(pulseSize, minRemainingCells);
+			lastRecessionPulseCells = added;
 			UpdateSymbiosisState();
-			cancelNextBreach = true;
-			feedPausedUntilTick = GenTicks.TicksGame + Mathf.Max(0, ZombieSettings.Values.symbiantPostFeedPauseHours) * GenDate.TicksPerHour;
 			if (Spawned)
 			{
 				CustomDefs.ZombieEating.PlayOneShot(SoundInfo.InMap(this));
-				MoteMaker.ThrowText(DrawPos, Map, "SymbiantFedMote".Translate(pulseSize, lastRecessionPulseCells), 3.65f);
+				MoteMaker.ThrowText(DrawPos, Map, "SymbiantFedMote".Translate(pulseSize, added), 3.65f);
 			}
 			return true;
 		}
 
-		int RecessionPulseSize(Thing feed)
+		static int FeedGrowthCells(Thing feed)
 		{
-			var baseSize = 1;
-			if (feed.def == CustomDefs.SymbiantCoagulantPack)
-			{
-				baseSize = ZombieSettings.Values.symbiantCoagulantPotency switch
-				{
-					SymbiantCoagulantPotency.Cheap => 2,
-					SymbiantCoagulantPotency.Expensive => 5,
-					_ => 3
-				};
-			}
-			else if (feed is Corpse corpse)
+			if (feed is Corpse corpse)
 			{
 				var pawn = corpse.InnerPawn;
-				var fresh = corpse.GetRotStage() == RotStage.Fresh;
-				if (fresh)
-					baseSize = Mathf.Max(baseSize, 2);
-				if (pawn?.BodySize >= 1.5f)
-					baseSize = Mathf.Max(baseSize, 2);
-				if (pawn?.BodySize >= 2.5f)
-					baseSize = Mathf.Max(baseSize, 3);
+				var cells = pawn?.RaceProps?.Humanlike == true ? 2 : 1;
+				if (corpse.GetRotStage() == RotStage.Fresh)
+					cells++;
+				return cells;
 			}
 
-			return baseSize + RecessionSizeBonus();
+			return 0;
+		}
+
+		public static int FeedGrowthCellCount(Thing feed)
+		{
+			return IsValidFeed(feed) ? FeedGrowthCells(feed) : 0;
 		}
 
 		int RecessionSizeBonus()
@@ -2045,12 +2976,10 @@ namespace ZombieLand
 		{
 			if (feed == null || feed.Destroyed)
 				return false;
-			if (feed.def == CustomDefs.SymbiantCoagulantPack)
-				return true;
 			if (feed is Corpse corpse)
 			{
 				var pawn = corpse.InnerPawn;
-				if (pawn == null || pawn.RaceProps?.Humanlike != true)
+				if (pawn == null)
 					return false;
 				return pawn is not Zombie && pawn is not ZombieSymbiant && pawn is not ZombieSpitter;
 			}
@@ -2059,7 +2988,28 @@ namespace ZombieLand
 
 		public bool ShrinkOneCell()
 		{
-			return ShrinkCells(1, SafeVisibleMinimum) > 0;
+			return ShrinkCells(1, 0) > 0;
+		}
+
+		bool TrySelectShrinkCell(int minRemainingCells, out IntVec3 relative)
+		{
+			relative = IntVec3.Invalid;
+			if (orderedCells == null || orderedCells.Count <= minRemainingCells)
+				return false;
+			if (orderedCells.Count == 1)
+			{
+				relative = orderedCells[0];
+				return true;
+			}
+			foreach (var cell in orderedCells.AsEnumerable().Reverse())
+			{
+				if (WouldCellsStayConnectedAfterRemoval(cell))
+				{
+					relative = cell;
+					return true;
+				}
+			}
+			return false;
 		}
 
 		public int ShrinkCells(int count)
@@ -2067,20 +3017,48 @@ namespace ZombieLand
 			return ShrinkCells(count, 0);
 		}
 
+		void ClearContaminationOnRemovedCell(IntVec3 relative)
+		{
+			if (Constants.CONTAMINATION == false)
+				return;
+			var map = Map;
+			if (map == null)
+				return;
+			var cell = Position + relative;
+			if (cell.InBounds(map) == false)
+				return;
+			foreach (var thing in cell.GetThingList(map).ToArray())
+				thing.ClearContamination(map);
+			map.SetContamination(cell, 0f, true);
+			map.ContaminationGridUpdate();
+		}
+
 		int ShrinkCells(int count, int minRemainingCells)
 		{
+			if (destroyWhenCellMotionsFinish)
+				return 0;
 			EnsureSymbiantDefaults();
+			destroyWhenCellMotionsFinish = false;
 			var removed = 0;
 			var minRemaining = Mathf.Clamp(minRemainingCells, 0, Mathf.Max(0, orderedCells.Count));
 			while (removed < count && orderedCells.Count > minRemaining)
 			{
-				var cell = orderedCells.Count > 1 ? orderedCells[^1] : orderedCells[0];
-				orderedCells.Remove(cell);
-				if (cells.Remove(cell))
+				if (TrySelectShrinkCell(minRemaining, out var cell) == false)
+					break;
+				if (RemoveRelativeCell(cell, true))
+				{
+					ClearContaminationOnRemovedCell(cell);
 					removed++;
+				}
 			}
 			if (cells.Count == 0)
 			{
+				if (removed > 0 && HasActiveCellMotions())
+				{
+					destroyWhenCellMotionsFinish = true;
+					UpdateAll();
+					return removed;
+				}
 				Destroy(DestroyMode.Vanish);
 				return removed;
 			}
@@ -2098,14 +3076,15 @@ namespace ZombieLand
 			if (hasCellBounds == false)
 				return;
 
-			var min_x = relativeCellBounds.minX - 1f;
-			var min_z = relativeCellBounds.minZ - 1f;
-			var max_x = relativeCellBounds.maxX + 1f;
-			var max_z = relativeCellBounds.maxZ + 1f;
+			var renderBounds = RenderCellBounds();
+			var min_x = renderBounds.minX - 1f;
+			var min_z = renderBounds.minZ - 1f;
+			var max_x = renderBounds.maxX + 1f;
+			var max_z = renderBounds.maxZ + 1f;
 
 			centerX = (min_x + max_x) / 2;
 			centerZ = (min_z + max_z) / 2;
-			UpdateDrawCullSize();
+			UpdateDrawCullSize(renderBounds);
 
 			var dx = max_x - min_x;
 			var dz = max_z - min_z;
@@ -2132,71 +3111,217 @@ namespace ZombieLand
 				metaballRadiusByCell[cell] = cellRadius;
 			}
 
+			BuildMetaballRenderElements();
 			UpdateMetaballTexture();
+		}
+
+		CellRect RenderCellBounds()
+		{
+			var bounds = relativeCellBounds;
+			if (hasCellBounds == false)
+				bounds = CellRect.SingleCell(IntVec3.Zero);
+			if (cellMotions == null || cellMotions.Count == 0)
+				return bounds;
+			foreach (var motion in cellMotions)
+			{
+				bounds = bounds.Encapsulate(new IntVec3(Mathf.FloorToInt(Mathf.Min(motion.from.x, motion.to.x)), 0, Mathf.FloorToInt(Mathf.Min(motion.from.y, motion.to.y))));
+				bounds = bounds.Encapsulate(new IntVec3(Mathf.CeilToInt(Mathf.Max(motion.from.x, motion.to.x)), 0, Mathf.CeilToInt(Mathf.Max(motion.from.y, motion.to.y))));
+			}
+			return bounds;
+		}
+
+		bool PruneFinishedCellMotions()
+		{
+			if (cellMotions == null || cellMotions.Count == 0)
+				return false;
+			var ticks = GenTicks.TicksGame;
+			return cellMotions.RemoveAll(motion => ticks >= motion.endTick) > 0;
+		}
+
+		bool HasActiveCellMotions()
+		{
+			if (cellMotions == null || cellMotions.Count == 0)
+				return false;
+			var ticks = GenTicks.TicksGame;
+			for (var i = 0; i < cellMotions.Count; i++)
+				if (ticks < cellMotions[i].endTick)
+					return true;
+			return false;
+		}
+
+		int CountActiveCellMotions()
+		{
+			if (cellMotions == null || cellMotions.Count == 0)
+				return 0;
+			var ticks = GenTicks.TicksGame;
+			var count = 0;
+			for (var i = 0; i < cellMotions.Count; i++)
+				if (ticks < cellMotions[i].endTick)
+					count++;
+			return count;
+		}
+
+		void UpdateAnimatedMetaballs()
+		{
+			if (cellMotions == null || cellMotions.Count == 0)
+			{
+				if (destroyWhenCellMotionsFinish)
+					Destroy(DestroyMode.Vanish);
+				return;
+			}
+			var ticks = GenTicks.TicksGame;
+			if (lastCellMotionRenderTick == ticks)
+				return;
+			lastCellMotionRenderTick = ticks;
+			var removed = PruneFinishedCellMotions();
+			if (removed && destroyWhenCellMotionsFinish && HasActiveCellMotions() == false)
+			{
+				Destroy(DestroyMode.Vanish);
+				lastCellMotionRenderTick = -1;
+				return;
+			}
+			if (removed)
+				UpdateAll();
+			else
+			{
+				BuildMetaballRenderElements();
+				UpdateMetaballTexture();
+			}
+			if (removed && (cellMotions == null || cellMotions.Count == 0))
+				lastCellMotionRenderTick = -1;
+		}
+
+		void BuildMetaballRenderElements()
+		{
+			metaballRenderElements.Clear();
+			var ticks = GenTicks.TicksGame;
+			incomingCellMotions.Clear();
+			cellMotionWeights.Clear();
+			var hasActiveMotions = false;
+			if (cellMotions != null)
+			{
+				for (var i = 0; i < cellMotions.Count; i++)
+				{
+					var motion = cellMotions[i];
+					if (ticks >= motion.endTick)
+						continue;
+					hasActiveMotions = true;
+					cellMotionWeights[motion.cell] = motion.CurrentRadiusScale(ticks);
+					if (motion.outgoing == false)
+						incomingCellMotions[motion.cell] = motion;
+				}
+			}
+
+			foreach (var pair in metaballRadiusByCell)
+			{
+				var center = CellCenter(pair.Key);
+				var radius = hasActiveMotions ? CellRenderRadius(pair.Key) : pair.Value;
+				var radiusScale = 1f;
+				if (incomingCellMotions.TryGetValue(pair.Key, out var motion))
+				{
+					center = motion.CurrentCenter(ticks);
+					radiusScale = motion.CurrentRadiusScale(ticks);
+				}
+				AddMetaballRenderElement(center, radius, radiusScale);
+			}
+
+			if (cellMotions == null)
+				return;
+			for (var i = 0; i < cellMotions.Count; i++)
+			{
+				var motion = cellMotions[i];
+				if (ticks < motion.endTick && motion.outgoing)
+					AddMetaballRenderElement(motion.CurrentCenter(ticks), motion.radius, motion.CurrentRadiusScale(ticks));
+			}
+		}
+
+		float CellRenderRadius(IntVec3 cell)
+		{
+			return Mathf.Clamp(GetVisualSize(cell) * MetaballCellRadiusFactor, MetaballCellRadiusMin, MetaballCellRadiusMax);
+		}
+
+		float GetVisualSize(IntVec3 cell)
+		{
+			var (x, y) = (cell.x, cell.z);
+			var weightedNeighbors = 0f;
+			for (var dx = -1; dx <= 1; dx++)
+				for (var dy = -1; dy <= 1; dy++)
+				{
+					if (dx == 0 && dy == 0)
+						continue;
+					weightedNeighbors += VisualCellWeight(new IntVec3(x + dx, 0, y + dy));
+				}
+			return ElementSizeForNeighborWeight(weightedNeighbors);
+		}
+
+		float VisualCellWeight(IntVec3 cell)
+		{
+			if (cellMotionWeights.TryGetValue(cell, out var weight))
+				return Mathf.Clamp01(weight);
+			return cells.Contains(cell) ? 1f : 0f;
+		}
+
+		void AddMetaballRenderElement(Vector2 center, float radius, float radiusScale)
+		{
+			if (radius <= 0.0001f)
+				return;
+			var element = new MetaballRenderElement(center, radius, radiusScale);
+			metaballRenderElements.Add(element);
 		}
 
 		void UpdateMetaballTexture()
 		{
-			if (metaballTexture == null)
+			if (metaballTexture == null || metaballMaskMaterial == null)
 				return;
 
-			var textureWidth = metaballTexture.width;
-			var textureHeight = metaballTexture.height;
-			var pixels = new Color[textureWidth * textureHeight];
-			var influenceRadius = MetaballInfluenceRadiusCells;
-			for (var y = 0; y < textureHeight; y++)
+			UploadMetaballBuffer();
+			metaballMaskMaterial.SetInt(MetaballCountId, metaballRenderElements.Count);
+			metaballMaskMaterial.SetVector(MetaballWorldSizeId, new Vector4(renderWidth, renderHeight, renderMinX, renderMinZ));
+			var previous = RenderTexture.active;
+			try
 			{
-				var worldZ = renderMinZ + (y + 0.5f) / textureHeight * renderHeight;
-				var minCellZ = Mathf.FloorToInt(worldZ - influenceRadius);
-				var maxCellZ = Mathf.CeilToInt(worldZ + influenceRadius);
-				for (var x = 0; x < textureWidth; x++)
-				{
-					var worldX = renderMinX + (x + 0.5f) / textureWidth * renderWidth;
-					var minCellX = Mathf.FloorToInt(worldX - influenceRadius);
-					var maxCellX = Mathf.CeilToInt(worldX + influenceRadius);
-					var field = 0f;
-					var r = 0f;
-					var g = 0f;
-					var b = 0f;
-
-					for (var cellZ = minCellZ; cellZ <= maxCellZ; cellZ++)
-					{
-						for (var cellX = minCellX; cellX <= maxCellX; cellX++)
-						{
-							var cell = new IntVec3(cellX, 0, cellZ);
-							if (metaballRadiusByCell.TryGetValue(cell, out var cellRadius) == false || cellRadius <= 0.0001f)
-								continue;
-							var dx = worldX - cellX;
-							var dy = worldZ - cellZ;
-							var distanceSq = Mathf.Max(dx * dx + dy * dy, 0.0001f);
-							var contribution = cellRadius * cellRadius / distanceSq;
-							contribution *= contribution;
-							contribution *= Mathf.Max(power, 0f);
-							field += contribution;
-							r += color.r * contribution;
-							g += color.g * contribution;
-							b += color.b * contribution;
-						}
-					}
-
-					var alpha = SmoothStep(MetaballAlphaStart, MetaballAlphaFull, field) * MetaballMaxAlpha;
-					if (alpha <= 0.001f || field <= 0.0001f)
-					{
-						pixels[y * textureWidth + x] = Color.clear;
-						continue;
-					}
-
-					var edge = SmoothStep(MetaballEdgeStart, MetaballEdgeFull, field);
-					pixels[y * textureWidth + x] = new Color(
-						Mathf.Clamp01(r / field * edge),
-						Mathf.Clamp01(g / field * edge),
-						Mathf.Clamp01(b / field * edge),
-						alpha);
-				}
+				Graphics.Blit(Texture2D.blackTexture, metaballTexture, metaballMaskMaterial);
 			}
+			finally
+			{
+				RenderTexture.active = previous;
+			}
+		}
 
-			metaballTexture.SetPixels(pixels);
-			metaballTexture.Apply(false, false);
+		void UploadMetaballBuffer()
+		{
+			var count = metaballRenderElements.Count;
+			EnsureMetaballBufferCapacity(Mathf.Max(1, count));
+			if (metaballBufferData.Length < Mathf.Max(1, count))
+				metaballBufferData = new MetaballBufferData[Mathf.NextPowerOfTwo(Mathf.Max(1, count))];
+
+			for (var i = 0; i < count; i++)
+			{
+				var element = metaballRenderElements[i];
+				var centerU = Mathf.Clamp01((element.center.x - renderMinX) / Mathf.Max(0.0001f, renderWidth));
+				var centerV = Mathf.Clamp01((element.center.y - renderMinZ) / Mathf.Max(0.0001f, renderHeight));
+				metaballBufferData[i] = new MetaballBufferData
+				{
+					shape = new Vector4(element.radius, element.radiusScale, Mathf.Max(0f, power), 0f),
+					motion = new Vector4(centerU, centerV, 0f, 0f),
+					tint = new Vector4(color.r, color.g, color.b, color.a)
+				};
+			}
+			if (count == 0)
+				metaballBufferData[0] = default;
+
+			metaballBuffer.SetData(metaballBufferData, 0, 0, Mathf.Max(1, count));
+			metaballMaskMaterial.SetBuffer(MetaballBufferId, metaballBuffer);
+		}
+
+		void EnsureMetaballBufferCapacity(int required)
+		{
+			required = Mathf.Max(1, required);
+			if (metaballBuffer != null && metaballBufferCapacity >= required)
+				return;
+			metaballBuffer?.Release();
+			metaballBufferCapacity = Mathf.NextPowerOfTwo(required);
+			metaballBuffer = new ComputeBuffer(metaballBufferCapacity, MetaballBufferData.Stride);
 		}
 
 		static int DesiredMetaballTextureSize(float worldSize)
@@ -2209,17 +3334,20 @@ namespace ZombieLand
 		{
 			var textureWidth = DesiredMetaballTextureSize(worldWidth);
 			var textureHeight = DesiredMetaballTextureSize(worldHeight);
-			if (metaballTexture != null && metaballTexture.width == textureWidth && metaballTexture.height == textureHeight)
+			if (metaballTexture != null && metaballTexture.width == textureWidth && metaballTexture.height == textureHeight && metaballTexture.IsCreated())
 				return;
 
 			if (metaballTexture != null)
 				UnityEngine.Object.Destroy(metaballTexture);
-			metaballTexture = new Texture2D(textureWidth, textureHeight, TextureFormat.RGBA32, false, true)
+			metaballTexture = new RenderTexture(textureWidth, textureHeight, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
 			{
 				name = $"ZombieSymbiantMetaballs_{textureWidth}x{textureHeight}",
 				wrapMode = TextureWrapMode.Clamp,
-				filterMode = FilterMode.Bilinear
+				filterMode = FilterMode.Bilinear,
+				useMipMap = false,
+				autoGenerateMips = false
 			};
+			metaballTexture.Create();
 			if (metaballMaterial != null)
 				ConfigureMetaballMaterial();
 			renderResourceOwners.Add(this);
@@ -2234,6 +3362,7 @@ namespace ZombieLand
 		void EnsureSymbiantDefaults()
 		{
 			cells ??= [];
+			cellMotions ??= [];
 			if (cells.Count == 0)
 				cells.Add(IntVec3.Zero);
 			orderedCells ??= [];
@@ -2261,6 +3390,11 @@ namespace ZombieLand
 				power = elementPower;
 			if (nextExpansionTick <= 0)
 				ResetExpansionClock();
+			if (nextMovementTick <= 0)
+				ResetMovementClock();
+			if (nextAutoHealTick <= 0)
+				nextAutoHealTick = GenTicks.TicksGame + AutoHealIntervalTicks;
+			EnsureBenefitDefaults();
 			if (uprootedSinceTick < -1)
 				uprootedSinceTick = -1;
 			relocationCellDebt = Mathf.Clamp(relocationCellDebt, 0, Mathf.Max(0, MaxCells - CellCount));
@@ -2270,19 +3404,36 @@ namespace ZombieLand
 
 		void EnsureRenderResources()
 		{
-			EnsureSymbiantDefaults();
-			if (metaballTexture == null)
+			if (destroyWhenCellMotionsFinish)
 			{
-				metaballTexture = new Texture2D(MetaballTextureMinSize, MetaballTextureMinSize, TextureFormat.RGBA32, false, true)
+				cells ??= [];
+				cellMotions ??= [];
+				orderedCells ??= [];
+			}
+			else
+				EnsureSymbiantDefaults();
+			if (metaballTexture == null)
+				EnsureMetaballTextureResolution(1f, 1f);
+			EnsureMetaballMaskMaterial();
+			EnsureMetaballMaterial();
+			if (metaballTexture != null || metaballMaterial != null || metaballMaskMaterial != null || mesh != null)
+				renderResourceOwners.Add(this);
+		}
+
+		void EnsureMetaballMaskMaterial()
+		{
+			var shader = Assets.MetaballShader;
+			if (shader == null)
+				return;
+			if (metaballMaskMaterial == null || metaballMaskMaterial.shader != shader)
+			{
+				if (metaballMaskMaterial != null)
+					UnityEngine.Object.Destroy(metaballMaskMaterial);
+				metaballMaskMaterial = new Material(shader)
 				{
-					name = $"ZombieSymbiantMetaballs_{MetaballTextureMinSize}x{MetaballTextureMinSize}",
-					wrapMode = TextureWrapMode.Clamp,
-					filterMode = FilterMode.Bilinear
+					name = "ZombieSymbiantMetaballMask"
 				};
 			}
-			EnsureMetaballMaterial();
-			if (metaballTexture != null || metaballMaterial != null || mesh != null)
-				renderResourceOwners.Add(this);
 		}
 
 		void EnsureMetaballMaterial()
@@ -2338,10 +3489,18 @@ namespace ZombieLand
 				{
 					if (dx == 0 && dy == 0)
 						continue;
-					if (cells.Contains(new IntVec3(x + dx, 0, y + dy)))
-						count++;
-				}
-			return elementSizes[count];
+				if (cells.Contains(new IntVec3(x + dx, 0, y + dy)))
+					count++;
+			}
+			return ElementSizeForNeighborWeight(count);
+		}
+
+		static float ElementSizeForNeighborWeight(float weightedNeighbors)
+		{
+			var clamped = Mathf.Clamp(weightedNeighbors, 0f, elementSizes.Length - 1f);
+			var lower = Mathf.FloorToInt(clamped);
+			var upper = Mathf.CeilToInt(clamped);
+			return Mathf.Lerp(elementSizes[lower], elementSizes[upper], clamped - lower);
 		}
 
 		public override void DynamicDrawPhaseAt(DrawPhase phase, Vector3 drawLoc, bool flip = false)
@@ -2349,7 +3508,10 @@ namespace ZombieLand
 			if (DebugDisableRendering)
 				return;
 			if (phase == DrawPhase.Draw)
+			{
+				UpdateAnimatedMetaballs();
 				DrawAt(drawLoc, flip);
+			}
 		}
 
 		public override void DrawAt(Vector3 drawLoc, bool flip = false)
@@ -2368,65 +3530,58 @@ namespace ZombieLand
 			Graphics.DrawMesh(mesh, position, Quaternion.identity, metaballMaterial, 0);
 		}
 
-		string MaturityInspectLabel()
-		{
-			if (HasMaturedForSeverance)
-				return "SymbiantMaturityReady".Translate();
-			return "SymbiantMaturityProgress".Translate(Mathf.FloorToInt(PeakIntegratedVisibleCells), SeveranceMaturityCells);
-		}
-
-		string SeveranceInspectLabel()
-		{
-			if (LinkedHost == null)
-				return "SymbiantSeveranceNoHost".Translate();
-			if (HasMaturedForSeverance == false)
-				return "SymbiantSeveranceNeedsMaturity".Translate();
-			if (decouplingReserve < DecouplingReserveMax - 0.01f)
-				return "SymbiantSeveranceNeedsReserve".Translate();
-			if (CellCount > 3)
-				return "SymbiantSeveranceNeedsShrink".Translate();
-			return "SymbiantSeveranceReady".Translate();
-		}
-
-		string GrowthInspectLabel()
-		{
-			return GrowthState switch
-			{
-				"inactive" => "SymbiantGrowthInactive".Translate(),
-				"capped" => "SymbiantGrowthCapped".Translate(),
-				"pausedAfterFeeding" => "SymbiantGrowthPaused".Translate(),
-				"waiting" => "SymbiantGrowthWaiting".Translate(),
-				"growing" => "SymbiantGrowthGrowing".Translate(),
-				"uprooted" => "SymbiantGrowthUprooted".Translate(),
-				"relocating" => "SymbiantGrowthRelocating".Translate(),
-				"dormantNoRoom" => "SymbiantGrowthDormantNoRoom".Translate(),
-				_ => "SymbiantGrowthContained".Translate()
-			};
-		}
-
 		public override string GetInspectString()
 		{
 			var linkedHost = LinkedHost;
 			var hostLabel = linkedHost == null ? "none" : linkedHost.LabelShortCap;
-			var benefitPercent = Mathf.RoundToInt(BenefitFactor * 100f);
-			return "ZombieSymbiantInspect".Translate(
-				CellCount,
-				MaxCells,
-				hostLabel,
-				benefitPercent,
-				GrowthInspectLabel(),
-				MaturityInspectLabel(),
-				Mathf.FloorToInt(decouplingReserve),
-				DecouplingReserveMax,
-				SafeVisibleMinimum,
-				FeedPulsesRemaining,
-				SeveranceInspectLabel(),
-				"SymbiantWeaponInspect".Translate(),
-				DamageAbsorptionBuffer,
-				DamageAbsorptionBufferMax);
+			return "ZombieSymbiantInspect".Translate(hostLabel, CellCount, SharedHealthSummary, NextBenefitCellSize);
 		}
 
-		public override IEnumerable<InspectTabBase> GetInspectTabs()
+			public override string DescriptionDetailed
+			{
+				get
+				{
+					return DescriptionFlavor;
+				}
+			}
+
+			public override string DescriptionFlavor
+			{
+				get
+				{
+					return AppendInfoCardDetails(base.DescriptionFlavor);
+				}
+			}
+
+			string InfoCardDetails
+			{
+				get
+				{
+					var linkedHost = LinkedHost;
+					var hostLabel = linkedHost == null ? "SymbiantHostUnknown".Translate().ToString() : linkedHost.LabelShortCap;
+					return "ZombieSymbiantInfoCardDetails".Translate(CellCount, NextBenefitCellSize, DownsideSummary, BenefitSummary, SharedHealthSummary, SharedDamageLeakPercentDisplay, hostLabel);
+				}
+			}
+
+			string AppendInfoCardDetails(string baseDescription)
+			{
+				return (baseDescription ?? def?.description ?? "") + "\n\n" + InfoCardDetails;
+			}
+
+			public override IEnumerable<StatDrawEntry> SpecialDisplayStats()
+			{
+				foreach (var entry in base.SpecialDisplayStats())
+					yield return entry;
+				yield return new StatDrawEntry(
+					StatCategoryDefOf.BasicsImportant,
+					"SymbiantDetailsInfoCard".Translate(),
+					"SymbiantDetailsInfoCardValue".Translate(CellCount),
+					InfoCardDetails,
+					99998
+				);
+			}
+
+			public override IEnumerable<InspectTabBase> GetInspectTabs()
 		{
 			return Enumerable.Empty<InspectTabBase>();
 		}
@@ -2435,14 +3590,6 @@ namespace ZombieLand
 		{
 			foreach (var gizmo in base.GetGizmos())
 				yield return gizmo;
-
-			yield return new Command_Action
-			{
-				defaultLabel = (feedRequested ? "CancelFeedZombieSymbiant" : "FeedZombieSymbiant").Translate(),
-				defaultDesc = "FeedZombieSymbiantDesc".Translate(),
-				icon = TexCommand.DesirePower,
-				action = () => feedRequested = !feedRequested
-			};
 		}
 
 		public override void ExposeData()
@@ -2453,6 +3600,10 @@ namespace ZombieLand
 			Scribe_Values.Look(ref radius, "radius", elementRadius * 9f);
 			Scribe_Values.Look(ref power, "power", elementPower);
 			Scribe_Values.Look(ref nextExpansionTick, "nextExpansionTick");
+			Scribe_Values.Look(ref nextMovementTick, "nextMovementTick");
+			Scribe_Values.Look(ref nextAutoHealTick, "nextAutoHealTick");
+			Scribe_Values.Look(ref nextBenefitCellThreshold, "nextBenefitCellThreshold");
+			Scribe_Values.Look(ref benefitStepCells, "benefitStepCells");
 			Scribe_Values.Look(ref feedPausedUntilTick, "feedPausedUntilTick");
 			Scribe_Values.Look(ref lastRecessionPulseCells, "lastRecessionPulseCells");
 			Scribe_Values.Look(ref relocationCellDebt, "relocationCellDebt");
@@ -2460,25 +3611,22 @@ namespace ZombieLand
 			Scribe_Values.Look(ref uprootedSinceTick, "uprootedSinceTick", -1);
 			Scribe_Values.Look(ref cancelNextBreach, "cancelNextBreach");
 			Scribe_Values.Look(ref feedRequested, "feedRequested");
+			Scribe_Values.Look(ref sharedHealth, "sharedHealth", -1f);
 			Scribe_References.Look(ref host, "host");
 			Scribe_Values.Look(ref hostThingId, "hostThingId");
-			Scribe_Values.Look(ref decouplingReserve, "decouplingReserve");
-			Scribe_Values.Look(ref decouplingFeedDay, "decouplingFeedDay", -1);
-			Scribe_Values.Look(ref decouplingFeedPulsesToday, "decouplingFeedPulsesToday");
-			Scribe_Values.Look(ref peakVisibleCells, "peakVisibleCells");
-			Scribe_Values.Look(ref peakIntegratedVisibleCells, "peakIntegratedVisibleCells");
-			Scribe_Values.Look(ref peakBenefitFactor, "peakBenefitFactor");
-			Scribe_Values.Look(ref maturedForSeverance, "maturedForSeverance");
-			Scribe_Values.Look(ref damageAbsorptionBuffer, "damageAbsorptionBuffer", DamageAbsorptionBufferUninitialized);
-			Scribe_Values.Look(ref lastDamageAbsorptionRegenTick, "lastDamageAbsorptionRegenTick", -1);
+			Scribe_Values.Look(ref symbiosisSevered, "symbiosisSevered");
+			Scribe_Collections.Look(ref hostBenefits, "hostBenefits", LookMode.Value);
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
 			{
 				EnsureSymbiantDefaults();
+				if (PruneDisconnectedCells() > 0)
+					RebuildCellBounds();
 				if (host != null)
 					hostThingId = host.ThingID;
 				UpdateSymbiosisState();
-				EnsureDamageAbsorptionBuffer();
+				EnsureBenefitDefaults();
 				EnsureHostHediff();
+				EnsureSharedHealth();
 			}
 		}
 
@@ -2494,6 +3642,104 @@ namespace ZombieLand
 				this.wall = wall;
 				this.score = score;
 			}
+		}
+
+		sealed class MovementTarget
+		{
+			public readonly IntVec3 cell;
+			public readonly float score;
+			public readonly float integratedWeight;
+
+			public MovementTarget(IntVec3 cell, float score, float integratedWeight)
+			{
+				this.cell = cell;
+				this.score = score;
+				this.integratedWeight = integratedWeight;
+			}
+		}
+
+		sealed class MovementSource
+		{
+			public readonly IntVec3 relative;
+			public readonly IntVec3 absolute;
+			public readonly float score;
+			public readonly float integratedWeight;
+
+			public MovementSource(IntVec3 relative, IntVec3 absolute, float score, float integratedWeight)
+			{
+				this.relative = relative;
+				this.absolute = absolute;
+				this.score = score;
+				this.integratedWeight = integratedWeight;
+			}
+		}
+
+		sealed class CellMotion
+		{
+			public readonly IntVec3 cell;
+			public readonly Vector2 from;
+			public readonly Vector2 to;
+			public readonly int startTick;
+			public readonly int endTick;
+			public readonly float radius;
+			public readonly bool outgoing;
+
+			public CellMotion(IntVec3 cell, Vector2 from, Vector2 to, int startTick, int endTick, float radius, bool outgoing)
+			{
+				this.cell = cell;
+				this.from = from;
+				this.to = to;
+				this.startTick = startTick;
+				this.endTick = endTick;
+				this.radius = radius;
+				this.outgoing = outgoing;
+			}
+
+			public Vector2 CurrentCenter(int ticks)
+			{
+				var progress = SmoothProgress(ticks);
+				return Vector2.Lerp(from, to, progress);
+			}
+
+			public float CurrentRadiusScale(int ticks)
+			{
+				var progress = LinearProgress(ticks);
+				return outgoing ? (1f - progress) * (1f - progress) : progress * progress;
+			}
+
+			float LinearProgress(int ticks)
+			{
+				return Mathf.Clamp01((ticks - startTick) / (float)Mathf.Max(1, endTick - startTick));
+			}
+
+			float SmoothProgress(int ticks)
+			{
+				var progress = LinearProgress(ticks);
+				return progress * progress * (3f - 2f * progress);
+			}
+		}
+
+		struct MetaballRenderElement
+		{
+			public readonly Vector2 center;
+			public readonly float radius;
+			public readonly float radiusScale;
+
+			public MetaballRenderElement(Vector2 center, float radius, float radiusScale)
+			{
+				this.center = center;
+				this.radius = radius;
+				this.radiusScale = Mathf.Clamp01(radiusScale);
+			}
+		}
+
+		[StructLayout(LayoutKind.Sequential)]
+		struct MetaballBufferData
+		{
+			public const int Stride = sizeof(float) * 12;
+			public Vector4 shape;
+			public Vector4 motion;
+			public Vector4 tint;
 		}
 	}
 }

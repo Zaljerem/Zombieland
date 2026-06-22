@@ -21,6 +21,7 @@ namespace ZombieLand
 			var feed = Feed;
 			return symbiant != null
 				&& feed != null
+				&& symbiant.CanAcceptFeed(feed)
 				&& pawn.Reserve(feed, job, 1, 1, null, errorOnFailed);
 		}
 
@@ -47,7 +48,7 @@ namespace ZombieLand
 			{
 				var symbiant = TargetSymbiant;
 				var carried = pawn.carryTracker?.CarriedThing;
-				if (symbiant == null || carried == null || symbiant.TryFeed(carried) == false)
+				if (symbiant == null || carried == null || symbiant.CanAcceptFeed(carried) == false || symbiant.TryFeed(carried) == false)
 				{
 					pawn.jobs.EndCurrentJob(JobCondition.Incompletable, true);
 					return;

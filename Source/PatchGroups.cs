@@ -606,6 +606,7 @@ namespace ZombieLand
 
 		static readonly HashSet<string> UIPatchTypes = new()
 		{
+			"ZombieLand.Patches+GenUI_ThingsUnderMouse_Patch",
 			"ZombieLand.Patches+SelectionDrawer_DrawSelectionOverlays_Patch",
 			"ZombieLand.Patches+MapInterface_MapInterfaceUpdate_Patch",
 			"ZombieLand.Patches+MapInterface_MapInterfaceOnGUI_AfterMainTabs_Patch",
@@ -616,6 +617,7 @@ namespace ZombieLand
 			"ZombieLand.Patches+EditWindow_DebugInspector_CurrentDebugString_Patch",
 			"ZombieLand.Patches+GenMapUI_DrawPawnLabel_Patch",
 			"ZombieLand.Patches+MainTabWindow_Inspect_CurTabs_Patch",
+			"ZombieLand.Patches+RecipeDef_PotentiallyMissingIngredients_Patch",
 			"ZombieLand.Patches+HealthCardUtility_DrawOverviewTab_Patch",
 			"ZombieLand.Patches+Selector_SelectInternal_Patch",
 			"ZombieLand.Patches+ThingSelectionUtility_SelectableByMapClick_Patch",

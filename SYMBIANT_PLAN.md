@@ -2,79 +2,65 @@
 
 ## Purpose
 
-The Zombie Symbiant is an indoor base infestation with a colonist symbiosis twist. It is not a normal enemy and not a second spitter. The interesting decision is how much visible slime the player tolerates in useful rooms to keep the linked host powerful, versus how much reserve they build before safely severing the bond.
+The Zombie Symbiant is an indoor colony-room infestation with a linked-host reward. It is not a normal enemy and not a second spitter. The player decision is simple: tolerate disruptive slime in useful rooms to gain host benefits, or spend medical resources to sever the bond and let the remaining slime retreat.
 
-The feature should feel legible and unfair only in a RimWorld sense: it disrupts rooms, pathing, work, and medical logistics, but it does not randomly kill pawns, destroy storage, spread disease, or demand immediate violence.
+The feature should be legible and annoying in a RimWorld way. It disrupts movement, work, tending, corpse logistics, and host management, but it should not randomly destroy storage, spread disease, or require ordinary combat cleanup.
 
 ## Player Loop
 
 - A green side letter announces a Zombie Symbiant in a used indoor room and points to the slime and linked host.
-- The Symbiant spreads through used rooms one cell at a time.
-- Slime lowers room quality, slows most pawns, and reduces work/tend speed for non-host colonists standing on it.
-- The linked host gains visible benefits from integrated, visible slime: skill bonus, pain reduction, capacity stabilization, need/mental protection at stronger bond levels, and zombie targeting protection at medium benefit or better.
-- Weapons do not remove the Symbiant or make surgery safer. Attacks drain a visible damage guard; guard rupture violently collapses a linked bond and kills the host.
-- Feeding with humanlike non-Zombieland corpses or `SymbiantCoagulantPack` restores the damage guard, builds surgery reserve, can shrink excess cells, pauses growth, and can cancel the next breach.
-- Clean removal is host surgery through `SeverSymbiantSymbiosis`, gated by maturity, full reserve, and visible size of 3 cells or fewer.
-- Host death collapses the Symbiant and gives no reward. This is an emergency cost, not a clever cleanup route.
+- The Symbiant spreads through used indoor rooms one cell at a time.
+- Slime slows pawns crossing it and reduces work/tend speed for affected pawns standing on it.
+- The linked host gains benefits as the Symbiant grows: zombie infection immunity from the bond plus random benefits awarded at fixed cell intervals determined when the Symbiant starts.
+- Feeding with corpses grows the Symbiant faster. Humanlike and fresh corpses give larger growth pulses.
+- Clean removal is host surgery through `SeverSymbiantSymbiosis`. The operation uses difficulty-scaled zombie extract and industrial medicine through RimWorld's normal bill ingredient path.
+- After severance, or after host death, the Symbiant retreats quickly and then disappears.
 
 ## Core Invariants
 
 - One active Symbiant per map.
 - The authoritative host link lives on `ZombieSymbiant`; `SymbiantSymbiosis` is display/sync state and is recreated when missing.
-- Host benefits, zombie targeting protection, and safe severance are same-map effects only.
+- Host benefits, zombie infection immunity, zombie targeting protection, and surgery are same-map effects only.
 - Host selection is independent from spawn room selection.
-- Natural spawn requires an eligible host and enough used indoor room capacity for the Symbiant to reach the maturity floor.
-- Hostless slime is for debug/test or fallback tools. It has no host benefits, no host trauma, and can be fed away.
-- Direct damage drains the Symbiant damage guard before RimWorld applies pawn health damage. Thumper `SeismicWave` damage has no effect on the Symbiant.
+- Natural spawn requires an eligible host and a used indoor room plan.
+- Hostless slime is for debug/test or fallback cleanup. It has no host benefits and no host trauma.
+- Direct player damage does not remove the Symbiant or make surgery safer.
 - Non-gameplay cleanup paths detach the link without host trauma.
-- The explicit player-facing size setting is `symbiantMaxCells`, equivalent in spirit to max zombies. `symbiantDamageAbsorptionFeedback` is a feedback-only toggle for guard messages.
+- Old saves may contain removed legacy defs such as `SymbiantCoagulantPack`; load errors for those removed defs are expected to be non-fatal.
 
 ## Settings
 
-- `symbiantEnabled = true`
-- `symbiantPostFeedPauseHours = 16`
-- `symbiantMaxCells = 400`
-- `symbiantFullBenefitRoomCoverage = 0.20`
-- `symbiantSeveranceMaturityCoverage = 0.50`
-- `symbiantSeveranceMaturityMinCells = 10`
-- `symbiantSeveranceMaturityMaxCells = 80`
-- `symbiantSeveranceReserveCoverage = 0.25`
-- `symbiantSeveranceReserveMin = 12`
-- `symbiantSeveranceReserveMax = 60`
-- `symbiantDecouplingFeedPulsesPerDay = 2`
-- `symbiantMaxSkillBonus = 6`
-- `symbiantZombieIgnoreMinBenefit = 0.50`
-- `symbiantPathCost = 220`
-- `symbiantCanBreakConstructedWalls = true`
-- `symbiantCoagulantPotency = Normal`
-- `symbiantDamageAbsorptionFeedback = true`
+The simplified player-facing settings are:
 
-Visible settings stay compact: enable Zombie Symbiants, max cells, coagulant pack strength, and guard-message feedback. Event timing, growth cadence, maturity, reserve, damage guard size, and benefit formulas are automatic balancing controls.
+- `symbiantEnabled = true`
+- `symbiantMaxCells = 400`
+
+The maximum-size slider allows up to `ZombieSymbiant.MAX_METABALLS = 4000`. Event timing, growth cadence, difficulty scaling, benefit intervals, extract cost, and visual behavior are internal balancing controls.
 
 ## Spawn And Room Selection
 
-- Scheduling is event-style and derived from difficulty, zombie threat, colony points, and used indoor room pressure.
+- Scheduling is event-style and derived from difficulty, zombie threat, colony pressure, and used indoor room pressure.
 - Candidate rooms are enclosed, non-huge, non-fogged, proper indoor rooms.
 - Home area is a strong signal, but not the only signal. Rooms with recent movement pheromones or valuable colony-use objects also qualify so home-area editing cannot trivially suppress the feature.
 - Spawn-room scoring prefers recent traffic and useful objects such as owned beds, worktables, storage, nutrient-paste utility, batteries, coolers, heaters, and similar colony infrastructure.
-- Natural spawn is skipped when the map has too little used indoor capacity to reach `symbiantSeveranceMaturityMinCells`. This avoids tiny one-room colonies receiving a linked Symbiant that cannot mature for surgery.
+- If the pheromone grid cannot answer, room and colony-center signals are acceptable fallbacks; randomness is the last resort.
 
 ## Host Eligibility
 
 Eligible hosts are spawned, living, free player colonists that are humanlike flesh pawns, adult/non-child by RimWorld category, and suitable for normal colony surgery. The selection rejects prisoners, slaves, guests, temporary joiners, quest lodgers, caravan pawns, shuttle occupants, Save Our Ship holograms, non-flesh optional-mod pawns, existing Symbiant hosts, Zombieland pawns, and late/active zombie infection cases.
 
-If the host is temporarily unavailable through despawn-like containment, the bond can persist but active benefits and surgery turn off. If the host is spawned on another map, the bond is released, the host hediff is removed, and the remaining hostless slime can be fed away.
+If the host is temporarily unavailable through despawn-like containment, the bond can persist but active benefits and surgery turn off. If the host is spawned on another map, the bond is released, the host hediff is removed, and the remaining hostless slime can be fed or allowed to retreat.
 
-## Spread And Relocation
+## Spread, Relocation, And Retreat
 
-- One growth pulse adds one room/door cell, destroys one selected constructed wall and occupies that cell, or does nothing.
+- One growth pulse adds one room or door cell, or does nothing if no valid target exists.
 - Spread prefers open cells before wall targets.
 - Spread never continues outdoors.
-- Closed doors are valid spread cells and remain door objects.
+- Closed and open doors are valid spread cells and remain door objects.
 - Natural rock and non-constructed blockers are not breached.
-- A constructed wall is breached only when the cell directly beyond that wall is a valid indoor room or door target.
-- Feeding can set `cancelNextBreach`, so a fed caged Symbiant does not immediately answer the feed with a wall break.
+- Constructed-wall breach behavior is intentionally conservative and must only target valid indoor continuation.
 - At `symbiantMaxCells`, expansion stops but the Symbiant remains active.
+- When a cell is removed, contamination on that cell is cleared once.
 
 Relocation handles deconstruction, battle damage, and messy rebuilding:
 
@@ -85,48 +71,50 @@ Relocation handles deconstruction, battle damage, and messy rebuilding:
 - Relocation debt is repaid one cell at a time at double the current adaptive growth speed.
 - If no used indoor rooms exist, the Symbiant remains dormant and does not grow outdoors.
 - If all valid indoor targets are exhausted or blocked, inspect text reports the contained state.
+- Severed, dead-host, or hostless cleanup retreat removes one cell per hour until the Symbiant disappears.
 
 ## Benefits And Disruption
 
-Benefits scale from integrated visible cells:
+The current bond factor and host aura scale from integrated visible cells:
 
-- full credit for cells in home-area, roofed, proper colony rooms with recent traffic or valuable colony use,
-- partial credit for cells with only one of those signals,
-- low credit for remote, unused, or intentionally abandoned containment rooms,
-- no credit for unroofed, outdoor, fogged, huge, or improper rooms.
+- full credit for cells in roofed, proper colony rooms with recent traffic or valuable colony use,
+- partial credit for door cells or lower-confidence useful cells,
+- no credit for unroofed, outdoor, fogged, huge, improper, or invalid cells.
 
-The current low-credit value for unused containment is `0.10`. This keeps containment valid without making a remote slime warehouse an efficient permanent super-host farm.
-
-`fullBenefitCells = clamp(ceil(eligibleColonyRoomCells * symbiantFullBenefitRoomCoverage), 20, symbiantMaxCells)`.
+`fullBenefitCells = clamp(ceil(eligibleColonyRoomCells * 0.20), 20, symbiantMaxCells)`.
 
 `benefitFactor = clamp01(integratedVisibleCells / fullBenefitCells)`.
 
-Room disruption remains non-lethal:
+The host starts with zombie infection immunity from the bond. Additional random benefits are awarded in acquisition order at fixed total-cell intervals determined when the Symbiant starts. Current benefit types are:
 
-- Symbiant-occupied rooms cannot score as impressive.
-- Symbiant cells reduce room beauty.
-- Pawns standing on slime have reduced medical tend speed and work speed unless they are the linked same-map host.
-- Non-Zombieland pawns crossing slime pay `symbiantPathCost`; the same-map host is exempt.
+- mood fixed at 50%,
+- no food or rest need,
+- all skills +1, stackable,
+- move speed +25%, stackable,
+- zombie targeting protection,
+- automatic healing, stackable.
+
+The acquired benefit list should be visible on the host hediff tooltip and on the Symbiant info/inspect surface.
+
+Pawn disruption remains non-lethal:
+
+- Pawns standing on slime have reduced medical tend speed and work speed unless exempt.
+- Pawns crossing slime pay difficulty-scaled movement slowdown; current scaling is 10% at difficulty 1 to 50% at difficulty 5.
+- The same-map host is exempt from the negative slime effects.
 - Footstep splash feedback is movement-entry feedback, not a tick effect.
 
-## Feeding, Reserve, And Surgery
+## Feeding And Surgery
 
-- One feed item creates one reserve pulse, not one guaranteed removed cell.
-- Humanlike corpses start at 1 reserve; fresh or large corpses give more.
-- Coagulant packs give 2/3/5 reserve for Cheap/Normal/Expensive potency.
-- Large Symbiants add recession strength: +1 at 100 cells, +2 at 200 cells, +3 at 300 cells.
-- Feeding restores part of the visible damage guard, with larger reserve pulses giving stronger recovery.
-- Feeding is capped by `symbiantDecouplingFeedPulsesPerDay`.
-- Feeding before maturity can store reserve, but effective reserve for shrink floors and surgery is limited by historical integration.
-- Feeding cannot shrink a linked Symbiant below `safeVisibleMinimum`.
-- Full reserve, maturity, and visible size of 3 cells or fewer enable `SeverSymbiantSymbiosis`.
-- Surgery consumes one `SymbiantCoagulantPack` plus medicine.
-- Successful surgery removes the link and Symbiant without host trauma.
-- Failed surgery consumes part of the reserve, injures the host through normal surgery-failure behavior, and keeps the link active.
+- Feeding consumes one valid non-Zombieland corpse and adds growth pulses.
+- Humanlike corpses add 2 cells, non-humanlike corpses add 1 cell, and fresh corpses add 1 more cell.
+- Surgery is always available on the linked host while the host is spawned on the same map.
+- Surgery consumes difficulty-scaled zombie extract plus industrial medicine through RimWorld's normal ingredient availability path.
+- Successful surgery removes the link without host trauma; the unbound Symbiant retreats cell by cell.
+- The recipe worker must not manually consume extra extract outside RimWorld's bill ingredient system.
 
 ## Runtime Shape
 
-`ZombieSymbiant : Pawn` is an implementation shell. Semantically it is room-scale slime with a custom renderer, cell set, host link, feed interaction, room disruption, and path cost.
+`ZombieSymbiant : Pawn` is an implementation shell. Semantically it is room-scale slime with a custom renderer, cell set, host link, feed interaction, positional disruption, and path cost.
 
 The pawn shell is deliberately isolated from normal pawn/combat systems:
 
@@ -134,8 +122,10 @@ The pawn shell is deliberately isolated from normal pawn/combat systems:
 - zero combat power,
 - hidden from `map.mapPawns`,
 - discovered through `ZombieSymbiant.ActiveSymbiant(map)` and `listerThings`,
+- selectable by clicking anywhere inside its custom selector rect,
 - skipped by ordinary attack targeting, story danger, fleeing, predation, auto-attack, and explicit attack jobs,
 - no normal pawn inspect tabs while selected, so Mood, Gear, Health, Combat Log, and similar pawn-tab surfaces do not treat it as an ordinary pawn,
+- no selected status/dashboard gizmo in the simplified design,
 - restricted to the Symbiant job plus inert fallback jobs.
 
 The long-term cleaner type would be a custom `Thing`/`ThingWithComps`, but that migration is separate from the v1 gameplay surface.
@@ -144,44 +134,42 @@ The long-term cleaner type would be a custom `Thing`/`ThingWithComps`, but that 
 
 - Gameplay default cap is 400 cells.
 - Technical stress ceiling is `ZombieSymbiant.MAX_METABALLS = 4000`.
-- Rendering uses a CPU-generated transparent metaball mask texture drawn on a bounds mesh with the bundled non-compute `Custom/ZombieSymbiant` shader.
-- The runtime renderer must not depend on Unity compute shaders.
-- Texture rebuilds happen when the cell set changes, not every tick or frame.
-- Runtime motion is shader-parameter-only through `_SymbiantNoiseTime`, `_SymbiantFlowSpeed`, opacity, wave shade, and edge contrast.
-- The Symbiant mesh draws below walls, doors, buildings, items, pawns, and overlays.
+- The CPU feeds cell coordinates, centers, radius, and radius-scale data to GPU resources.
+- Metaballs are rendered by the GPU shader path; do not move blob rasterization to CPU code.
+- Cell in/out animation changes center and radius scale over roughly one second at 1x speed.
+- Growth radius eases in; shrink radius eases out.
+- Texture/material/buffer resources are transient and must be released on despawn, destroy, map removal, load, shutdown, and main-menu transitions.
 - Hot paths must reject unrelated calls before active-Symbiant lookup. Do not scan `map.mapPawns.AllPawns` from Symbiant hot paths.
-- Active-Symbiant caches are map-object keyed and transient. They are cleared on game load, shutdown, and game finalization.
+- Active-Symbiant caches are map-object keyed and transient. They are cleared on load, shutdown, main-menu transitions, and map removal.
 
-Performance evidence from the implementation pass showed default 400-cell and diagnostic 4000-cell Symbiants close to same-session no-Symbiant baselines after cache, rendering, and hot-path fixes. Rerun those stress checks only when touching rendering, path cost, cell stat effects, Symbiant ticking, host hediff sync, or active-cache behavior.
+Performance evidence from the implementation pass showed default 400-cell and diagnostic 4000-cell Symbiants close to same-session no-Symbiant baselines after cache, rendering, and hot-path fixes. Rerun those stress checks when touching rendering, path cost, cell stat effects, Symbiant ticking, host hediff sync, or active-cache behavior.
 
-## Validation Evidence
+## Current Validation Evidence
 
-Core live contracts passed on 2026-06-15:
+Latest live checks on 2026-06-22 used `SYMBIANT-TEST-MAP` after a clean deploy build:
 
-- `zombieland/symbiant_settings_contract`: enabled/disabled spawn behavior and max-cell cap edges.
-- `zombieland/symbiant_feeding_contract`: pulse tiers, daily cap, growth pause, breach cancellation, recession behavior, coagulant potency, and one-cell exploit blocking.
-- `zombieland/symbiant_unsafe_damage_contract`: clean debug detachment and host-death collapse have live evidence; damage-guard drain, guard rupture, and thumper no-effect checks need a fresh runtime pass.
-- `zombieland/symbiant_combat_isolation_contract`: pawn/combat isolation with feed-job discoverability.
-- `zombieland/symbiant_severance_contract`: surgery gating, successful cleanup, and failed-surgery reserve loss.
-- `zombieland/symbiant_benefit_contract`: low/high benefit scaling, hediff repair, zombie-targeting protection, and skill bonus.
-- `zombieland/symbiant_natural_spawn_contract`: natural spawn plan and reversible fixture spawn.
-- `zombieland/symbiant_discovery_letter_contract`: green discovery letter, look targets, sounds, and cleanup.
-- `zombieland/symbiant_expansion_contract`: room-cell spread, closed-door spread, and constructed-wall breach into an adjacent indoor room.
-- `zombieland/symbiant_map_cache_contract`: empty-map cache, spawn invalidation, cleanup invalidation, explicit cache reset, and same-process save switching.
-- `zombieland/symbiant_host_availability_contract`: off-map/despawn and cryptosleep containment/resume behavior.
+- `zombieland/symbiant_settings_contract`: enable/disable behavior and max-cell cap edges passed.
+- `zombieland/symbiant_severance_contract`: surgery visibility, dynamic extract ingredient count, and bond removal passed.
+- `zombieland/symbiant_door_path_cost_contract`: covered door-cell movement slowdown passed.
+- `zombieland/symbiant_map_cache_contract`: active/empty cache invalidation and cleanup passed.
+- `zombieland/symbiant_infestation_state createEvent/expand`: default max 400, technical max 4000, effect/benefit text, surgery state, and GPU render metadata passed.
+- `rimworld/click_cell` on a non-origin blob cell selected the Symbiant, proving click-anywhere selection.
+- `rimworld/get_selection_semantics` showed inspect text with no empty lines, effects and benefits listed, no inspect tabs, and no selected gizmos.
+- `rimworld/load_game_ready` after restart loaded `SYMBIANT-TEST-MAP` successfully.
+- The only expected warning-or-higher item during that save load was the non-fatal missing removed legacy def `SymbiantCoagulantPack`.
 
-Focused save/load smoke passed with a linked Symbiant, reserve, feed pause, breach cancellation, missing host display hediff, active renderer, cache recovery, hediff repair, and cleanup.
-
-Detailed historical operation ids and fixture notes live in `TEST_COVERAGE.md` under the Zombie Symbiant evidence entries. Treat that file as the evidence ledger and this file as the design handoff.
+Historical operation ids and broader fixture notes live in `TEST_COVERAGE.md` under the Zombie Symbiant evidence entries. Treat that file as the evidence ledger and this file as the current design handoff.
 
 ## Release Gate
 
 For a release candidate touching Symbiant behavior:
 
 - `scripts/build-quiet.sh`
-- XML validation for `Defs`, `1.6/Defs`, `Languages`, and `1.6/Languages`
+- XML validation for `1.6/Defs`, `1.6/Patches`, and `1.6/Languages`
+- translation placeholder/key parity if language files changed
+- stale-key scan for removed Symbiant settings and old benefit names
 - one loaded-game smoke that spawns or observes a Symbiant
-- clean warning-or-higher logs for that session
+- clean warning-or-higher logs except documented old-save missing-def compatibility errors
 - asset bundle rebuild only if shader/material assets changed
 - tracked DLLs restored before a normal source-only commit
 
@@ -189,8 +177,9 @@ For a release candidate touching Symbiant behavior:
 
 These are not active blockers for moving to another mod area:
 
-- Add or run a focused live relocation contract for sustained room opening, grace-window pause, reseed, relocation debt, no-room dormancy, and direct-indoor breach behavior.
-- Run the refreshed unsafe-damage contract for damage-guard drain, guard rupture, thumper no-effect behavior, and selection without normal pawn inspect tabs.
-- Recheck natural spawn with manipulated home areas to prove actual used rooms still qualify through traffic/object signals.
-- Broaden save/load and multi-map coverage for feed request persistence, room-integrated maturity/benefit persistence, true multi-map host selection, host deletion, real caravan edges, and gravship/transport containment.
-- Rerun render/performance stress only when rendering, pathing, cell-stat, active-cache, or host-sync code changes.
+- Full save-load matrix for feed request persistence, ordered cells, host benefits, active motions, retreat state, and renderer resources.
+- True multi-map host selection and one-active-Symbiant-per-map behavior.
+- Real caravan, gravship, host deletion, and optional-mod host-unavailability edges.
+- Full host eligibility matrix.
+- Corpse freshness/body-size feeding variants beyond the current broad corpse-only checks.
+- Long-run 400-cell and bridge-only 4000-cell stress after any future rendering/path/stat/cache changes.

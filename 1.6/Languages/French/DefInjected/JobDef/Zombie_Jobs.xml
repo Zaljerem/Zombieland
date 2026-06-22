@@ -6,7 +6,7 @@
 	<ExtractZombieSerum.reportString>récolte de l'extrait de zombie sur TargetA.</ExtractZombieSerum.reportString>
 	<DoubleTap.reportString>achève TargetA.</DoubleTap.reportString>
 	<Symbiant.reportString>se répand.</Symbiant.reportString>
-	<FeedZombieSymbiant.reportString>donne TargetB à TargetA.</FeedZombieSymbiant.reportString>
+	<FeedZombieSymbiant.reportString>nourrit TargetA avec TargetB.</FeedZombieSymbiant.reportString>
 	<RopeZombie.reportString>attache TargetA.</RopeZombie.reportString>
 	<ZapZombies.reportString>active le neutraliseur de zombies.</ZapZombies.reportString>
 

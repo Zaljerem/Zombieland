@@ -207,7 +207,7 @@ namespace ZombieLand
 					list.Gap(24f);
 				}
 
-				if (DialogExtensions.Section<SymbiantCoagulantPotency>(":ZombieSymbiantTitle", ":SymbiantEnabled", ":SymbiantMaxCells", ":SymbiantCoagulantPotency", ":SymbiantDamageAbsorptionFeedback"))
+				if (DialogExtensions.Section<string>(":ZombieSymbiantTitle", ":SymbiantEnabled", ":SymbiantMaxCells"))
 				{
 					list.Dialog_Label("ZombieSymbiantTitle", headerColor);
 					list.Dialog_Checkbox("SymbiantEnabled", ref settings.symbiantEnabled);
@@ -215,8 +215,6 @@ namespace ZombieLand
 					{
 						list.Gap(8f);
 						list.Dialog_IntSlider("SymbiantMaxCells", value => value.ToString(), ref settings.symbiantMaxCells, 10, ZombieSymbiant.MAX_METABALLS);
-						list.Dialog_EnumSlider("SymbiantCoagulantPotency", ref settings.symbiantCoagulantPotency);
-						list.Dialog_Checkbox("SymbiantDamageAbsorptionFeedback", ref settings.symbiantDamageAbsorptionFeedback);
 					}
 					list.Gap(24f);
 				}

@@ -14,6 +14,6 @@
 	<ZombieSpitter.label>Zombiespucker</ZombieSpitter.label>
 	<ZombieSpitter.description>Ein Unwesen das Zombies spuckt um dich aus der Luft anzugreifen.</ZombieSpitter.description>
 	<ZombieSymbiant.label>Zombie-Symbiant</ZombieSymbiant.label>
-	<ZombieSymbiant.description>Eine Innenraum-Infektion durch einen Zombie-Symbiant. Er breitet sich als sichtbarer Schleim durch genutzte Räume aus, verlangsamt Figuren, die ihn überqueren, senkt die Raumqualität und verbindet sich mit einem Kolonisten. Er stört eher, als sofort zu töten, und der verbundene Wirt wird stärker, wenn der Symbiant wächst. Einen Raum um eine verbundene Wurzel offen zu lassen, lässt sie in einen anderen genutzten Raum wandern. Angriffe zehren seinen Schadensschutz auf und können die Verbindung gewaltsam kollabieren lassen; Füttern und Operation sind der kontrollierte Weg, ihn zu beenden.</ZombieSymbiant.description>
+	<ZombieSymbiant.description>Eine Innenraum-Infektion durch einen Zombie-Symbiant. Er breitet sich als sichtbarer Schleim durch belebte Innenräume aus, verlangsamt Figuren, die ihn überqueren, und verbindet sich mit einem Kolonisten. Der Wirt ist immun gegen Zombieinfektionen durch Bisse und erhält zufällige Vorteile, wenn der Symbiant wächst. Das Füttern mit Leichen lässt ihn schneller wachsen. Eine Operation entfernt die Verbindung; der wirtslose Symbiant zieht sich danach zurück.</ZombieSymbiant.description>
 
 </LanguageData>

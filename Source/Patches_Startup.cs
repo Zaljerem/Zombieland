@@ -99,5 +99,16 @@ namespace ZombieLand
 				ZombieSymbiant.ResetTransientStaticState();
 			}
 		}
+
+		[HarmonyPatch(typeof(Current))]
+		[HarmonyPatch(nameof(Current.Notify_LoadedSceneChanged))]
+		static class Current_Notify_LoadedSceneChanged_Patch
+		{
+			static void Prefix()
+			{
+				if (GenScene.InEntryScene)
+					ZombieSymbiant.ResetTransientStaticState();
+			}
+		}
 	}
 }

@@ -320,6 +320,7 @@ namespace ZombieLand
 	public class TickManager : MapComponent
 	{
 		public const int InitializationReady = 3;
+		const int MinimumTicksBetweenZombieSymbiants = GenDate.TicksPerDay * 4;
 
 		public int isInitialized = 0;
 		bool initializationProblemLogged;
@@ -392,6 +393,8 @@ namespace ZombieLand
 		public int lastZombieSymbiant = 0;
 		public int nextZombieSymbiant = 0;
 		public bool zombieSymbiantInited = false;
+		public int lastZombieSymbiantGone = -1;
+		public bool zombieSymbiantWasActive = false;
 
 		public TickManager(Map map) : base(map)
 		{
@@ -661,6 +664,8 @@ namespace ZombieLand
 		{
 			base.MapRemoved();
 			Cleanup();
+			ZombieSymbiant.ReleaseRenderResourcesForMap(map);
+			ZombieSymbiant.ForgetMap(map);
 		}
 
 		public void Cleanup()
@@ -686,6 +691,8 @@ namespace ZombieLand
 			Scribe_Values.Look(ref lastZombieSymbiant, "lastZombieSymbiant");
 			Scribe_Values.Look(ref nextZombieSymbiant, "nextZombieSymbiant");
 			Scribe_Values.Look(ref zombieSymbiantInited, "zombieSymbiantInited");
+			Scribe_Values.Look(ref lastZombieSymbiantGone, "lastZombieSymbiantGone", -1);
+			Scribe_Values.Look(ref zombieSymbiantWasActive, "zombieSymbiantWasActive");
 
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
 			{
@@ -710,6 +717,7 @@ namespace ZombieLand
 					InitializeZombieSymbiantSchedule(GenTicks.TicksGame);
 				else if (nextZombieSymbiant <= 0)
 					nextZombieSymbiant = Mathf.Max(GenTicks.TicksGame + GenDate.TicksPerHour, lastZombieSymbiant + ZombieSymbiantDelayTicks(true));
+				zombieSymbiantWasActive = ZombieSymbiant.ActiveSymbiant(map) != null;
 			}
 
 		}
@@ -1327,6 +1335,33 @@ namespace ZombieLand
 			nextZombieSymbiant = ticks + ZombieSymbiantDelayTicks(afterSuccess);
 		}
 
+		void UpdateZombieSymbiantPresence(int ticks, ZombieSymbiant activeSymbiant)
+		{
+			if (activeSymbiant != null)
+			{
+				zombieSymbiantWasActive = true;
+				return;
+			}
+
+			if (zombieSymbiantWasActive == false)
+				return;
+
+			zombieSymbiantWasActive = false;
+			lastZombieSymbiantGone = ticks;
+			nextZombieSymbiant = Mathf.Max(nextZombieSymbiant, ticks + MinimumTicksBetweenZombieSymbiants);
+		}
+
+		bool ZombieSymbiantMinimumPauseActive(int ticks)
+		{
+			if (lastZombieSymbiantGone <= 0)
+				return false;
+			var pauseUntil = lastZombieSymbiantGone + MinimumTicksBetweenZombieSymbiants;
+			if (ticks >= pauseUntil)
+				return false;
+			nextZombieSymbiant = Mathf.Max(nextZombieSymbiant, pauseUntil);
+			return true;
+		}
+
 		int ZombieSymbiantDelayTicks(bool afterSuccess)
 		{
 			var difficulty = Mathf.Clamp(Tools.Difficulty(), 0f, 5f);
@@ -1352,17 +1387,21 @@ namespace ZombieLand
 			var ticks = GenTicks.TicksGame;
 			if (zombieSymbiantInited == false)
 				InitializeZombieSymbiantSchedule(ticks);
+			var activeSymbiant = ZombieSymbiant.ActiveSymbiant(map);
+			UpdateZombieSymbiantPresence(ticks, activeSymbiant);
 			if (ZombieSettings.Values.symbiantEnabled == false)
 				return;
 			if (nextZombieSymbiant <= 0)
 				ScheduleNextZombieSymbiant(ticks, false);
 			if (ticks < nextZombieSymbiant)
 				return;
-			if (ZombieSymbiant.ActiveSymbiant(map) != null)
+			if (activeSymbiant != null)
 			{
 				ScheduleNextZombieSymbiant(ticks, false);
 				return;
 			}
+			if (ZombieSymbiantMinimumPauseActive(ticks))
+				return;
 			if (map.IsBlacklisted() || GenDate.DaysPassedFloat < ZombieSettings.Values.daysBeforeZombiesCome || NewMapZombieDelay(ticks) || ZombieWeather.GetThreatLevel(map) <= 0f)
 			{
 				ScheduleNextZombieSymbiant(ticks, false);
@@ -1376,6 +1415,7 @@ namespace ZombieLand
 			if (ZombieSymbiant.TrySpawnInBestRoom(map))
 			{
 				lastZombieSymbiant = ticks;
+				zombieSymbiantWasActive = true;
 				ScheduleNextZombieSymbiant(ticks, true);
 				return;
 			}

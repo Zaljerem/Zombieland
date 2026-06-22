@@ -37,13 +37,6 @@ namespace ZombieLand
 		Allow
 	}
 
-	public enum SymbiantCoagulantPotency
-	{
-		Cheap,
-		Normal,
-		Expensive
-	}
-
 	public enum SmashMode
 	{
 		Nothing,
@@ -268,22 +261,7 @@ namespace ZombieLand
 		public float childChance = 0.02f;
 		public float spitterThreat = 1f;
 		public bool symbiantEnabled = true;
-		public int symbiantPostFeedPauseHours = 16;
 		public int symbiantMaxCells = 400;
-		public float symbiantFullBenefitRoomCoverage = 0.20f;
-		public float symbiantSeveranceMaturityCoverage = 0.50f;
-		public int symbiantSeveranceMaturityMinCells = 10;
-		public int symbiantSeveranceMaturityMaxCells = 80;
-		public float symbiantSeveranceReserveCoverage = 0.25f;
-		public int symbiantSeveranceReserveMin = 12;
-		public int symbiantSeveranceReserveMax = 60;
-		public float symbiantZombieIgnoreMinBenefit = 0.50f;
-		public int symbiantDecouplingFeedPulsesPerDay = 2;
-		public int symbiantMaxSkillBonus = 6;
-		public int symbiantPathCost = 220;
-		public bool symbiantCanBreakConstructedWalls = true;
-		public SymbiantCoagulantPotency symbiantCoagulantPotency = SymbiantCoagulantPotency.Normal;
-		public bool symbiantDamageAbsorptionFeedback = true;
 		public int minimumZombiesForWallPushing = 18;
 		public List<string> blacklistedApparel = new();
 		public float contaminationBaseFactor = 1f;
@@ -354,14 +332,6 @@ namespace ZombieLand
 				}
 				return true;
 			});
-
-			if (Scribe.mode == LoadSaveMode.LoadingVars)
-			{
-				var savedPotency = symbiantCoagulantPotency.ToString();
-				Scribe_Values.Look(ref savedPotency, "symbiantCoagulantRecipeCost", symbiantCoagulantPotency.ToString());
-				if (Enum.TryParse<SymbiantCoagulantPotency>(savedPotency, true, out var potency))
-					symbiantCoagulantPotency = potency;
-			}
 
 			if (Scribe.mode == LoadSaveMode.PostLoadInit)
 				Tools.UpdateBiomeBlacklist(biomesWithoutZombies);

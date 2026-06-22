@@ -18,7 +18,7 @@ namespace ZombieLand
 
 		public override void ApplyOnPawn(Pawn pawn, BodyPartRecord part, Pawn billDoer, List<Thing> ingredients, Bill bill)
 		{
-			if (pawn.DestroyedOrNull() || pawn.Dead || pawn.Map != billDoer.Map || pawn.IsInAnyStorage())
+			if (pawn.DestroyedOrNull() || pawn.Dead || pawn.Map != billDoer?.Map || pawn.IsInAnyStorage())
 				return;
 			var symbiant = ZombieSymbiant.LinkedSymbiantFor(pawn);
 			if (symbiant == null)
@@ -30,15 +30,18 @@ namespace ZombieLand
 				_ = TaleRecorder.RecordTale(TaleDefOf.DidSurgery, new object[] { billDoer, pawn });
 				return;
 			}
-
-			HealthUtility.GiveRandomSurgeryInjuries(pawn, 45, part);
-			pawn.needs?.mood?.thoughts?.memories?.TryGainMemory(ThoughtDefOf.BotchedMySurgery, billDoer);
-			Messages.Message("MessageMedicalOperationFailureMinor".Translate(billDoer.LabelShort, pawn.LabelShort, billDoer.Named("SURGEON"), pawn.Named("PATIENT"), recipe.Named("RECIPE")), pawn, MessageTypeDefOf.NegativeHealthEvent, true);
 		}
 
 		public override string GetLabelWhenUsedOn(Pawn pawn, BodyPartRecord part)
 		{
-			return "SeverSymbiantSymbiosis".Translate();
+			return "SeverSymbiantSymbiosisWithCost".Translate(ZombieSymbiant.SeveranceExtractCost());
+		}
+
+		public override float GetIngredientCount(IngredientCount ing, Bill bill)
+		{
+			if (ing?.filter != null && CustomDefs.ZombieExtract != null && ing.filter.Allows(CustomDefs.ZombieExtract))
+				return ZombieSymbiant.SeveranceExtractCost();
+			return base.GetIngredientCount(ing, bill);
 		}
 	}
 }

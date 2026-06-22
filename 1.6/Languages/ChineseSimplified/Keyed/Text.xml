@@ -37,46 +37,48 @@
 	<ZombiesSpitter>僵尸喷吐者进入地图并将围攻你</ZombiesSpitter>
 	<LetterLabelZombieSymbiant>僵尸共生体连接到 {0}</LetterLabelZombieSymbiant>
 	<LetterLabelZombieSymbiantNoHost>僵尸共生体出现</LetterLabelZombieSymbiantNoHost>
-	<ZombieSymbiant>一个僵尸共生体在 {0} 中出现，并连接到 {1}。它会扰乱殖民地，但不是立刻致命的威胁：它会在使用中的房间里蔓延，减慢穿过黏液的角色，降低房间质量，并随着成长强化宿主。攻击会先消耗它的伤害护盾；护盾猛烈破裂会杀死宿主。让它的房间保持开放只会使已连接的根部移动到另一个使用中的房间。用人形生物尸体或凝结剂包喂养它，以恢复护盾、积累手术储备并缩小它；当检查面板显示手术已准备好时，对 {1} 进行手术。手术失败可能伤害宿主；杀死宿主会以殖民者的生命为代价结束连接。</ZombieSymbiant>
-	<ZombieSymbiantNoHost>一个僵尸共生体在 {0} 中出现。它会扰乱殖民地，但不是立刻致命的威胁：它会在使用中的房间里蔓延，减慢穿过黏液的角色，并降低房间质量。攻击会先消耗它的伤害护盾。用人形生物尸体或凝结剂包喂养它，以恢复护盾、积累手术储备并缩小它。</ZombieSymbiantNoHost>
+	<ZombieSymbiant>一个僵尸共生体出现在 {0}，并与 {1} 建立了连接。它会在繁忙的室内房间中蔓延。穿过它的角色会变慢，宿主除外。宿主免疫僵尸咬伤造成的感染，并会在共生体成长时获得随机收益。用尸体喂养它可以加快成长。对 {1} 做手术可以移除连接；失去宿主的共生体之后会逐渐缩回。</ZombieSymbiant>
+	<ZombieSymbiantNoHost>一个僵尸共生体出现在 {0}。它会在繁忙的室内房间中蔓延。用尸体喂养它可以加快成长。</ZombieSymbiantNoHost>
 	<ZombieSymbiantUnknownRoom>你的一个房间</ZombieSymbiantUnknownRoom>
-	<ZombieSymbiantInspect>共生体大小：{0}/{1} 格\n连接宿主：{2}\n宿主增益：{3}%\n伤害护盾：{12}/{13}\n攻击：{11}\n生长：{4}\n连接成熟度：{5}\n手术储备：{6}/{7}\n安全手术大小：{8} 格\n今日剩余喂养：{9}\n手术：{10}</ZombieSymbiantInspect>
-	<SymbiantGrowthInactive>不活跃</SymbiantGrowthInactive>
-	<SymbiantGrowthCapped>达到大小上限</SymbiantGrowthCapped>
-	<SymbiantGrowthPaused>喂养后暂停</SymbiantGrowthPaused>
-	<SymbiantGrowthWaiting>等待中</SymbiantGrowthWaiting>
-	<SymbiantGrowthGrowing>正在使用中的房间蔓延</SymbiantGrowthGrowing>
-	<SymbiantGrowthUprooted>已脱离根部；等待稳定房间</SymbiantGrowthUprooted>
-	<SymbiantGrowthRelocating>正在把旧黏液移入使用中的房间</SymbiantGrowthRelocating>
-	<SymbiantGrowthDormantNoRoom>休眠；等待使用中的室内房间</SymbiantGrowthDormantNoRoom>
-	<SymbiantGrowthContained>被困住；无法到达使用中的室内房间</SymbiantGrowthContained>
-	<SymbiantMaturityReady>成熟</SymbiantMaturityReady>
-	<SymbiantMaturityProgress>{0}/{1} 房间格</SymbiantMaturityProgress>
-	<SymbiantSeveranceNoHost>无连接宿主</SymbiantSeveranceNoHost>
-	<SymbiantSeveranceNeedsMaturity>需要在使用中的房间里停留更久</SymbiantSeveranceNeedsMaturity>
-	<SymbiantSeveranceNeedsReserve>喂养它以填满手术储备</SymbiantSeveranceNeedsReserve>
-	<SymbiantSeveranceNeedsShrink>喂养到 3 格或更少</SymbiantSeveranceNeedsShrink>
-	<SymbiantSeveranceReady>已准备；对宿主手术</SymbiantSeveranceReady>
-	<SymbiantWeaponInspect>消耗护盾；喂养以准备手术</SymbiantWeaponInspect>
-	<SymbiantWeaponRejectedMessage>共生体伤害护盾吸收了这一击。护盾：{0}/{1}。喂养会恢复护盾、积累手术储备并缩小可见体量。</SymbiantWeaponRejectedMessage>
-	<SymbiantWeaponRejectedMote>护盾吸收</SymbiantWeaponRejectedMote>
-	<SymbiantDamageGuardBrokenMessage>共生体伤害护盾破裂。{0} 的连接猛烈崩溃。</SymbiantDamageGuardBrokenMessage>
+	<ZombieSymbiantInspect>连接宿主：{0}，大小：{1} 格，共享生命值：{2}，下一项收益在 {3} 格</ZombieSymbiantInspect>
+	<SymbiantWeaponInspect>殖民者无法伤害它</SymbiantWeaponInspect>
+	<SymbiantWeaponRejectedMessage>共生体会无视殖民者造成的伤害。</SymbiantWeaponRejectedMessage>
+	<SymbiantWeaponRejectedMote>无效</SymbiantWeaponRejectedMote>
+	<SymbiantDamageAbsorbedMote>吸收 {0}%</SymbiantDamageAbsorbedMote>
 	<SymbiantHostUnknown>宿主</SymbiantHostUnknown>
+	<SymbiantSharedHealthSummary>{0} / {1}</SymbiantSharedHealthSummary>
 	<FeedZombieSymbiant>喂养共生体</FeedZombieSymbiant>
 	<CancelFeedZombieSymbiant>取消共生体喂养</CancelFeedZombieSymbiant>
-	<FeedZombieSymbiantDesc>标记共生体进行喂养。殖民者会搬来人形生物尸体或共生体凝结剂包。喂养会恢复伤害护盾、积累手术储备、可能缩小可见体量、暂停生长，并且不能移除最后的格子。当手术准备好时，对连接的宿主进行手术。</FeedZombieSymbiantDesc>
+	<FeedZombieSymbiantDesc>用一具尸体喂养共生体。</FeedZombieSymbiantDesc>
 	<FeedingZombieSymbiant>正在喂养共生体</FeedingZombieSymbiant>
-	<NoSymbiantFeed>没有可用的人形生物尸体或共生体凝结剂包</NoSymbiantFeed>
-	<SymbiantFeedLimitReached>今天已达到共生体喂养上限</SymbiantFeedLimitReached>
-	<SymbiantFedMote>储备 +{0}，格子 -{1}</SymbiantFedMote>
-	<SeverSymbiantSymbiosis>切断共生体连接</SeverSymbiantSymbiosis>
-	<SymbiantSeveredMessage>{0} 的共生体连接已被切断。</SymbiantSeveredMessage>
-	<SymbiantHostBondDescription>连接：{0}/{1} 格，{2}% 宿主增益，手术储备 {3}/{4}。{5}</SymbiantHostBondDescription>
-	<SymbiantHostBondReady>手术已准备好。</SymbiantHostBondReady>
-	<SymbiantHostBondNotReady>危险手术：喂养共生体直到储备填满且可见大小为 {0} 格或更少。</SymbiantHostBondNotReady>
+	<NoSymbiantFeed>没有可用的尸体</NoSymbiantFeed>
+	<SymbiantFedMote>格子 +{1}</SymbiantFedMote>
+	<FeedZombieSymbiantFloatMenu>把 {0} {1} 喂给共生体（+{2} 格）</FeedZombieSymbiantFloatMenu>
+	<SeverSymbiantSymbiosis>移除共生体连接</SeverSymbiantSymbiosis>
+	<SeverSymbiantSymbiosisWithCost>移除共生体连接（{0} 僵尸提取物）</SeverSymbiantSymbiosisWithCost>
+	<SymbiantSeveredMessage>{0} 的共生体连接已被移除。</SymbiantSeveredMessage>
+	<SymbiantHostBondDescription>共生体：{0}/{1} 格。下一项收益在 {2} 格。共享生命值：{3}。共生体会吸收大部分共享伤害；当前大小下只有 &lt;color=#ffb35c&gt;{4}%&lt;/color&gt; 会传到宿主。\n\n收益：\n{5}</SymbiantHostBondDescription>
 	<SymbiantHostBondMissing>没有活跃共生体连接到此宿主。</SymbiantHostBondMissing>
-	<SymbiantHostRelocatedMessage>{0} 离开地图后，共生体连接进入休眠。剩余的无宿主黏液可以被喂掉。</SymbiantHostRelocatedMessage>
-	<SymbiantReseededMessage>{0} 的共生体房间保持开放后，根部移动到了另一个使用中的房间。旧黏液正在移回新的根部；喂养和手术仍是结束连接的可靠方法。</SymbiantReseededMessage>
+		<SymbiantHostRelocatedMessage>{0} 离开地图后，共生体连接进入休眠。</SymbiantHostRelocatedMessage>
+		<SymbiantReseededMessage>{0} 的共生体移动到了另一个室内房间。</SymbiantReseededMessage>
+		<ZombieSymbiantInfoCardDetails>&lt;color=#72d672&gt;当前状态&lt;/color&gt;：&lt;color=#72d672&gt;{0} 格&lt;/color&gt;。下一项收益在 &lt;color=#72d672&gt;{1} 格&lt;/color&gt;。\n\n&lt;color=#72d672&gt;共享生命值&lt;/color&gt;：{4}。击中宿主或共生体的伤害会消耗这个储备。当前大小下只有 &lt;color=#ffb35c&gt;{5}%&lt;/color&gt; 会传到 {6}。如果这个储备用尽，{6} 会死亡。\n\n&lt;color=#ffb35c&gt;当前效果&lt;/color&gt;：\n{2}\n\n&lt;color=#72d672&gt;当前收益&lt;/color&gt;：\n{3}\n\n它还会以微妙方式&lt;color=#72d672&gt;移除污染&lt;/color&gt;。</ZombieSymbiantInfoCardDetails>
+		<SymbiantDetailsInfoCard>共生体详情</SymbiantDetailsInfoCard>
+		<SymbiantDetailsInfoCardValue>{0} 格</SymbiantDetailsInfoCardValue>
+		<LetterLabelSymbiantBenefitGained>共生体获得收益</LetterLabelSymbiantBenefitGained>
+		<SymbiantBenefitGainedLetter>连接到 {0} 的共生体获得了一项新收益：{1}。\n\n当前收益：\n{2}</SymbiantBenefitGainedLetter>
+		<LetterLabelSymbiantBondRemoved>共生体连接已移除</LetterLabelSymbiantBondRemoved>
+		<SymbiantBondRemovedLetter>{0} 与共生体之间的连接已被移除。失去宿主的共生体会缩回并消失。</SymbiantBondRemovedLetter>
+		<SymbiantEffectCells>{0}/{1} 格活跃</SymbiantEffectCells>
+	<SymbiantEffectPathCost>穿过共生体格子：移动速度降低 {0}%</SymbiantEffectPathCost>
+	<SymbiantEffectWorkSpeed>在共生体格子上工作、照料、清洁和烹饪：速度降低 {0}%</SymbiantEffectWorkSpeed>
+	<SymbiantBenefitGainedMessage>{0} 的共生体获得：{1}。</SymbiantBenefitGainedMessage>
+	<SymbiantBenefitZombieInfectionImmunity>僵尸感染免疫</SymbiantBenefitZombieInfectionImmunity>
+	<SymbiantBenefitMoodFixed>心情固定为 50%</SymbiantBenefitMoodFixed>
+	<SymbiantBenefitNoFoodOrRest>不需要食物或休息</SymbiantBenefitNoFoodOrRest>
+	<SymbiantBenefitSkillBonus>所有技能 +1</SymbiantBenefitSkillBonus>
+	<SymbiantBenefitMoveSpeed>移动 +25%</SymbiantBenefitMoveSpeed>
+	<SymbiantBenefitZombieIgnore>僵尸忽略宿主</SymbiantBenefitZombieIgnore>
+	<SymbiantBenefitAutoHeal>自动治疗</SymbiantBenefitAutoHeal>
 
 	<LetterLabelXDaysUntilZombies>{0} 后丧尸出现</LetterLabelXDaysUntilZombies>
 	<XDaysUntilZombies>丧尸会出现在有土地、泥地、沙地、沙砾的地方，建造地板可以防止丧尸从这些地方出现。</XDaysUntilZombies>
@@ -230,25 +232,7 @@
 	<WallPushing>将僵尸推到墙上的僵尸数量</WallPushing>
 	<ZombieSymbiantTitle>僵尸共生体</ZombieSymbiantTitle>
 	<SymbiantEnabled>启用僵尸共生体</SymbiantEnabled>
-	<SymbiantPostFeedPauseHours>喂养后的生长暂停</SymbiantPostFeedPauseHours>
 	<SymbiantMaxCells>共生体最大大小</SymbiantMaxCells>
-	<SymbiantFullBenefitRoomCoverage>完整共生体连接的房间覆盖</SymbiantFullBenefitRoomCoverage>
-	<SymbiantSeveranceMaturityCoverage>手术成熟覆盖</SymbiantSeveranceMaturityCoverage>
-	<SymbiantSeveranceMaturityMinCells>手术成熟最少格数</SymbiantSeveranceMaturityMinCells>
-	<SymbiantSeveranceMaturityMaxCells>手术成熟最多格数</SymbiantSeveranceMaturityMaxCells>
-	<SymbiantSeveranceReserveCoverage>手术储备覆盖</SymbiantSeveranceReserveCoverage>
-	<SymbiantSeveranceReserveMin>手术储备最少脉冲</SymbiantSeveranceReserveMin>
-	<SymbiantSeveranceReserveMax>手术储备最多脉冲</SymbiantSeveranceReserveMax>
-	<SymbiantZombieIgnoreMinBenefit>宿主僵尸保护阈值</SymbiantZombieIgnoreMinBenefit>
-	<SymbiantDecouplingFeedPulsesPerDay>每日共生体喂养次数</SymbiantDecouplingFeedPulsesPerDay>
-	<SymbiantMaxSkillBonus>最大共生体技能加成</SymbiantMaxSkillBonus>
-	<SymbiantPathCost>共生体黏液移动消耗</SymbiantPathCost>
-	<SymbiantCanBreakConstructedWalls>共生体可破坏建造墙</SymbiantCanBreakConstructedWalls>
-	<SymbiantCoagulantPotency>凝结剂包强度</SymbiantCoagulantPotency>
-	<SymbiantDamageAbsorptionFeedback>显示共生体护盾消息</SymbiantDamageAbsorptionFeedback>
-	<SymbiantCoagulantPotency_Cheap>低</SymbiantCoagulantPotency_Cheap>
-	<SymbiantCoagulantPotency_Normal>普通</SymbiantCoagulantPotency_Normal>
-	<SymbiantCoagulantPotency_Expensive>高</SymbiantCoagulantPotency_Expensive>
 
 	<ZombieMiscTitle>其他</ZombieMiscTitle>
 	<UseCustomTextures>使用自定义纹理</UseCustomTextures>

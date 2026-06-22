@@ -37,46 +37,48 @@
 	<ZombiesSpitter>Un zombie cracheur est entré sur la carte et va vous assiéger</ZombiesSpitter>
 	<LetterLabelZombieSymbiant>Symbiant zombie lié à {0}</LetterLabelZombieSymbiant>
 	<LetterLabelZombieSymbiantNoHost>Symbiant zombie apparu</LetterLabelZombieSymbiantNoHost>
-	<ZombieSymbiant>Un Symbiant zombie a émergé dans {0} et s'est lié à {1}. Il perturbe la colonie, sans représenter une menace mortelle immédiate : il se répand dans les pièces utilisées, ralentit les pions qui traversent sa vase, réduit la qualité de la pièce et renforce l'hôte à mesure qu'il grandit. Les attaques drainent d'abord sa protection ; une rupture violente de cette protection tue l'hôte. Laisser sa pièce ouverte ne fait que déplacer une racine liée vers une autre pièce utilisée. Nourrissez-le avec un cadavre humanoïde ou un pack coagulant pour restaurer la protection, remplir la réserve chirurgicale et le réduire ; lorsque le panneau d'inspection indique que l'opération est prête, opérez {1}. Une opération ratée peut blesser l'hôte ; tuer l'hôte met fin au lien au prix de la vie du colon.</ZombieSymbiant>
-	<ZombieSymbiantNoHost>Un Symbiant zombie a émergé dans {0}. Il perturbe la colonie, sans représenter une menace mortelle immédiate : il se répand dans les pièces utilisées, ralentit les pions qui traversent sa vase et réduit la qualité de la pièce. Les attaques drainent d'abord sa protection. Nourrissez-le avec un cadavre humanoïde ou un pack coagulant pour restaurer la protection, remplir la réserve chirurgicale et le réduire.</ZombieSymbiantNoHost>
+	<ZombieSymbiant>Un Symbiant zombie est apparu dans {0} et s'est lié à {1}. Il se répand dans les pièces intérieures fréquentées. Les pions qui le traversent sont ralentis, sauf l'hôte. L'hôte est immunisé contre l'infection zombie par morsure et gagne des avantages aléatoires quand le Symbiant grandit. Nourrissez-le avec des cadavres pour accélérer sa croissance. Opérez {1} pour retirer le lien ; le Symbiant sans hôte se résorbera ensuite.</ZombieSymbiant>
+	<ZombieSymbiantNoHost>Un Symbiant zombie est apparu dans {0}. Il se répand dans les pièces intérieures fréquentées. Nourrissez-le avec des cadavres pour accélérer sa croissance.</ZombieSymbiantNoHost>
 	<ZombieSymbiantUnknownRoom>une de vos pièces</ZombieSymbiantUnknownRoom>
-	<ZombieSymbiantInspect>Taille du Symbiant : {0}/{1} cases\nHôte lié : {2}\nAvantage de l'hôte : {3}%\nProtection : {12}/{13}\nAttaque : {11}\nCroissance : {4}\nMaturité du lien : {5}\nRéserve chirurgicale : {6}/{7}\nTaille sûre pour l'opération : {8} cases\nNourrissages restants aujourd'hui : {9}\nOpération : {10}</ZombieSymbiantInspect>
-	<SymbiantGrowthInactive>inactif</SymbiantGrowthInactive>
-	<SymbiantGrowthCapped>à la limite de taille</SymbiantGrowthCapped>
-	<SymbiantGrowthPaused>en pause après nourrissage</SymbiantGrowthPaused>
-	<SymbiantGrowthWaiting>en attente</SymbiantGrowthWaiting>
-	<SymbiantGrowthGrowing>se répand dans les pièces utilisées</SymbiantGrowthGrowing>
-	<SymbiantGrowthUprooted>déraciné ; attend une pièce stable</SymbiantGrowthUprooted>
-	<SymbiantGrowthRelocating>déplace l'ancienne vase vers les pièces utilisées</SymbiantGrowthRelocating>
-	<SymbiantGrowthDormantNoRoom>dormant ; attend une pièce intérieure utilisée</SymbiantGrowthDormantNoRoom>
-	<SymbiantGrowthContained>contenu ; aucune pièce intérieure utilisée accessible</SymbiantGrowthContained>
-	<SymbiantMaturityReady>mature</SymbiantMaturityReady>
-	<SymbiantMaturityProgress>{0}/{1} cases de pièce</SymbiantMaturityProgress>
-	<SymbiantSeveranceNoHost>aucun hôte lié</SymbiantSeveranceNoHost>
-	<SymbiantSeveranceNeedsMaturity>doit rester plus longtemps dans des pièces utilisées</SymbiantSeveranceNeedsMaturity>
-	<SymbiantSeveranceNeedsReserve>nourrissez-le pour remplir la réserve chirurgicale</SymbiantSeveranceNeedsReserve>
-	<SymbiantSeveranceNeedsShrink>nourrissez-le jusqu'à 3 cases ou moins</SymbiantSeveranceNeedsShrink>
-	<SymbiantSeveranceReady>prêt ; opérez l'hôte</SymbiantSeveranceReady>
-	<SymbiantWeaponInspect>draine la protection ; nourrir pour l'opération</SymbiantWeaponInspect>
-	<SymbiantWeaponRejectedMessage>La protection du Symbiant a absorbé le coup. Protection : {0}/{1}. Le nourrir restaure la protection, remplit la réserve chirurgicale et réduit la masse visible.</SymbiantWeaponRejectedMessage>
-	<SymbiantWeaponRejectedMote>protection</SymbiantWeaponRejectedMote>
-	<SymbiantDamageGuardBrokenMessage>La protection du Symbiant s'est rompue. Le lien de {0} s'est effondré violemment.</SymbiantDamageGuardBrokenMessage>
+	<ZombieSymbiantInspect>Hôte lié : {0}, taille : {1} cases, santé partagée : {2}, prochain avantage à {3} cases</ZombieSymbiantInspect>
+	<SymbiantWeaponInspect>les colons ne peuvent pas l'endommager</SymbiantWeaponInspect>
+	<SymbiantWeaponRejectedMessage>Le Symbiant ignore les dégâts des colons.</SymbiantWeaponRejectedMessage>
+	<SymbiantWeaponRejectedMote>sans effet</SymbiantWeaponRejectedMote>
+	<SymbiantDamageAbsorbedMote>{0}% absorbé</SymbiantDamageAbsorbedMote>
 	<SymbiantHostUnknown>l'hôte</SymbiantHostUnknown>
+	<SymbiantSharedHealthSummary>{0} sur {1}</SymbiantSharedHealthSummary>
 	<FeedZombieSymbiant>Nourrir le Symbiant</FeedZombieSymbiant>
 	<CancelFeedZombieSymbiant>Annuler le nourrissage du Symbiant</CancelFeedZombieSymbiant>
-	<FeedZombieSymbiantDesc>Marque le Symbiant pour le nourrissage. Les colons apporteront un cadavre humanoïde ou un pack coagulant de Symbiant. Le nourrissage restaure la protection, remplit la réserve chirurgicale, peut réduire la masse visible, met la croissance en pause et ne peut pas retirer les dernières cases. Quand l'opération est prête, opérez l'hôte lié.</FeedZombieSymbiantDesc>
-	<FeedingZombieSymbiant>nourrit un Symbiant</FeedingZombieSymbiant>
-	<NoSymbiantFeed>Aucun cadavre humanoïde ni pack coagulant de Symbiant disponible</NoSymbiantFeed>
-	<SymbiantFeedLimitReached>Limite quotidienne de nourrissage du Symbiant atteinte</SymbiantFeedLimitReached>
-	<SymbiantFedMote>réserve +{0}, cases -{1}</SymbiantFedMote>
-	<SeverSymbiantSymbiosis>rompre le lien du Symbiant</SeverSymbiantSymbiosis>
-	<SymbiantSeveredMessage>Le lien de Symbiant de {0} a été rompu.</SymbiantSeveredMessage>
-	<SymbiantHostBondDescription>Lien : {0}/{1} cases, {2}% d'avantage pour l'hôte, réserve chirurgicale {3}/{4}. {5}</SymbiantHostBondDescription>
-	<SymbiantHostBondReady>L'opération est prête.</SymbiantHostBondReady>
-	<SymbiantHostBondNotReady>Opération dangereuse : nourrissez le Symbiant jusqu'à remplir la réserve et réduire la taille visible à {0} cases ou moins.</SymbiantHostBondNotReady>
+	<FeedZombieSymbiantDesc>Nourrir le Symbiant avec un cadavre.</FeedZombieSymbiantDesc>
+	<FeedingZombieSymbiant>nourrit le Symbiant</FeedingZombieSymbiant>
+	<NoSymbiantFeed>Aucun cadavre utilisable disponible</NoSymbiantFeed>
+	<SymbiantFedMote>cases +{1}</SymbiantFedMote>
+	<FeedZombieSymbiantFloatMenu>Nourrir le Symbiant avec {0} {1} (+{2} cases)</FeedZombieSymbiantFloatMenu>
+	<SeverSymbiantSymbiosis>retirer le lien du Symbiant</SeverSymbiantSymbiosis>
+	<SeverSymbiantSymbiosisWithCost>retirer le lien du Symbiant ({0} extrait zombie)</SeverSymbiantSymbiosisWithCost>
+	<SymbiantSeveredMessage>Le lien de Symbiant de {0} a été retiré.</SymbiantSeveredMessage>
+	<SymbiantHostBondDescription>Symbiant : {0}/{1} cases. Prochain avantage à {2} cases. Santé partagée : {3}. Le Symbiant absorbe la majeure partie des dégâts partagés ; &lt;color=#ffb35c&gt;{4}%&lt;/color&gt; atteint l'hôte à cette taille.\n\nAvantages :\n{5}</SymbiantHostBondDescription>
 	<SymbiantHostBondMissing>Aucun Symbiant actif n'est lié à cet hôte.</SymbiantHostBondMissing>
-	<SymbiantHostRelocatedMessage>Le lien de Symbiant de {0} est devenu dormant après avoir quitté la carte. La vase restante sans hôte peut être éliminée en la nourrissant.</SymbiantHostRelocatedMessage>
-	<SymbiantReseededMessage>La racine du Symbiant de {0} s'est déplacée vers une autre pièce utilisée après que sa chambre est restée ouverte. L'ancienne vase revient vers la nouvelle racine ; nourrissage et opération restent le moyen fiable de mettre fin au lien.</SymbiantReseededMessage>
+		<SymbiantHostRelocatedMessage>Le lien de Symbiant de {0} est devenu dormant après avoir quitté la carte.</SymbiantHostRelocatedMessage>
+		<SymbiantReseededMessage>Le Symbiant de {0} s'est déplacé dans une autre pièce intérieure.</SymbiantReseededMessage>
+		<ZombieSymbiantInfoCardDetails>&lt;color=#72d672&gt;État actuel&lt;/color&gt; : &lt;color=#72d672&gt;{0} cases&lt;/color&gt;. Prochain avantage à &lt;color=#72d672&gt;{1} cases&lt;/color&gt;.\n\n&lt;color=#72d672&gt;Santé partagée&lt;/color&gt; : {4}. Les dégâts sur l'hôte ou le Symbiant vident cette réserve. À cette taille, seulement &lt;color=#ffb35c&gt;{5}%&lt;/color&gt; atteint {6}. Si cette réserve est épuisée, {6} meurt.\n\n&lt;color=#ffb35c&gt;Effets actuels&lt;/color&gt; :\n{2}\n\n&lt;color=#72d672&gt;Avantages actuels&lt;/color&gt; :\n{3}\n\nIl &lt;color=#72d672&gt;retire aussi la contamination&lt;/color&gt; de manière subtile.</ZombieSymbiantInfoCardDetails>
+		<SymbiantDetailsInfoCard>Détails du Symbiant</SymbiantDetailsInfoCard>
+		<SymbiantDetailsInfoCardValue>{0} cases</SymbiantDetailsInfoCardValue>
+		<LetterLabelSymbiantBenefitGained>Avantage du Symbiant obtenu</LetterLabelSymbiantBenefitGained>
+		<SymbiantBenefitGainedLetter>Le Symbiant lié à {0} a gagné un nouvel avantage : {1}.\n\nAvantages actuels :\n{2}</SymbiantBenefitGainedLetter>
+		<LetterLabelSymbiantBondRemoved>Lien du Symbiant retiré</LetterLabelSymbiantBondRemoved>
+		<SymbiantBondRemovedLetter>Le lien entre {0} et le Symbiant a été retiré. Le Symbiant sans hôte va se retirer et disparaître.</SymbiantBondRemovedLetter>
+		<SymbiantEffectCells>{0}/{1} cases actives</SymbiantEffectCells>
+	<SymbiantEffectPathCost>déplacement sur les cases du Symbiant : {0}% plus lent</SymbiantEffectPathCost>
+	<SymbiantEffectWorkSpeed>travail, soins, nettoyage et cuisine sur les cases du Symbiant : {0}% plus lents</SymbiantEffectWorkSpeed>
+	<SymbiantBenefitGainedMessage>Le Symbiant de {0} a gagné : {1}.</SymbiantBenefitGainedMessage>
+	<SymbiantBenefitZombieInfectionImmunity>immunité à l'infection zombie</SymbiantBenefitZombieInfectionImmunity>
+	<SymbiantBenefitMoodFixed>humeur fixée à 50 %</SymbiantBenefitMoodFixed>
+	<SymbiantBenefitNoFoodOrRest>aucun besoin de nourriture ou de repos</SymbiantBenefitNoFoodOrRest>
+	<SymbiantBenefitSkillBonus>toutes les compétences +1</SymbiantBenefitSkillBonus>
+	<SymbiantBenefitMoveSpeed>déplacement +25 %</SymbiantBenefitMoveSpeed>
+	<SymbiantBenefitZombieIgnore>les zombies ignorent l'hôte</SymbiantBenefitZombieIgnore>
+	<SymbiantBenefitAutoHeal>guérison automatique</SymbiantBenefitAutoHeal>
 
 	<LetterLabelXDaysUntilZombies>{0} avant que les zombies arrivent</LetterLabelXDaysUntilZombies>
 	<XDaysUntilZombies>Les zombies vont apparaitre là où il y a du sol meuble, de poussière, de sable ou de pierre. La construction de plancher empêche les zombies d’apparaitre</XDaysUntilZombies>
@@ -230,25 +232,7 @@
 	<WallPushing>Quantité de zombies qui poussent les zombies par-dessus les murs</WallPushing>
 	<ZombieSymbiantTitle>Symbiant zombie</ZombieSymbiantTitle>
 	<SymbiantEnabled>Activer les Symbiants zombies</SymbiantEnabled>
-	<SymbiantPostFeedPauseHours>Pause de croissance après nourrissage</SymbiantPostFeedPauseHours>
 	<SymbiantMaxCells>Taille maximale du Symbiant</SymbiantMaxCells>
-	<SymbiantFullBenefitRoomCoverage>Couverture de pièce pour le lien complet du Symbiant</SymbiantFullBenefitRoomCoverage>
-	<SymbiantSeveranceMaturityCoverage>Couverture de maturité pour l'opération</SymbiantSeveranceMaturityCoverage>
-	<SymbiantSeveranceMaturityMinCells>Cases min. de maturité pour l'opération</SymbiantSeveranceMaturityMinCells>
-	<SymbiantSeveranceMaturityMaxCells>Cases max. de maturité pour l'opération</SymbiantSeveranceMaturityMaxCells>
-	<SymbiantSeveranceReserveCoverage>Couverture de réserve chirurgicale</SymbiantSeveranceReserveCoverage>
-	<SymbiantSeveranceReserveMin>Impulsions min. de réserve chirurgicale</SymbiantSeveranceReserveMin>
-	<SymbiantSeveranceReserveMax>Impulsions max. de réserve chirurgicale</SymbiantSeveranceReserveMax>
-	<SymbiantZombieIgnoreMinBenefit>Seuil de protection zombie de l'hôte</SymbiantZombieIgnoreMinBenefit>
-	<SymbiantDecouplingFeedPulsesPerDay>Nourrissages du Symbiant par jour</SymbiantDecouplingFeedPulsesPerDay>
-	<SymbiantMaxSkillBonus>Bonus de compétence max. du Symbiant</SymbiantMaxSkillBonus>
-	<SymbiantPathCost>Coût de déplacement dans la vase du Symbiant</SymbiantPathCost>
-	<SymbiantCanBreakConstructedWalls>Le Symbiant peut briser les murs construits</SymbiantCanBreakConstructedWalls>
-	<SymbiantCoagulantPotency>Puissance du pack coagulant</SymbiantCoagulantPotency>
-	<SymbiantDamageAbsorptionFeedback>Afficher les messages de protection du Symbiant</SymbiantDamageAbsorptionFeedback>
-	<SymbiantCoagulantPotency_Cheap>Faible</SymbiantCoagulantPotency_Cheap>
-	<SymbiantCoagulantPotency_Normal>Normale</SymbiantCoagulantPotency_Normal>
-	<SymbiantCoagulantPotency_Expensive>Forte</SymbiantCoagulantPotency_Expensive>
 
 	<ZombieMiscTitle>Divers</ZombieMiscTitle>
 	<UseCustomTextures>Utiliser des textures personnalisées </UseCustomTextures>
@@ -290,13 +274,13 @@
 	<WrongPlacementZombieShocker>L'appareil ne peut pas être placé ici.</WrongPlacementZombieShocker>
 
 	<ColonistsBittenByZombie>Colon mordu par un zombie</ColonistsBittenByZombie>
-	<ColonistsBittenByZombieDesc>Ce colon a été mordu par un zombie. A ce stade, on ne sait pas s’il va développer l’infection. Surveillez les blessures car les infections prennent du temps à se développer</ColonistsBittenByZombieDesc>
+	<ColonistsBittenByZombieDesc>Ces colons ont été mordus par un zombie. A ce stade, on ne sait pas s’ils vont développer l’infection:\n\n{0}\nSurveillez les blessures car les infections prennent du temps à se développer.</ColonistsBittenByZombieDesc>
 
 	<ImminentZombiInfection>Zombification imminente</ImminentZombiInfection>
 	<ImminentZombiInfectionDesc>Ce colon est sur le point d’être infecté par une morsure de zombie:\n\n{0}\nVous pouvez encore le sauver en lui donnant immédiatement un traitement optimal dans les meilleurs conditions. Mais il est nécessaire d’avoir un bon docteur, un lit médical et une salle stérile avec un moniteur vital.</ImminentZombiInfectionDesc>
 
 	<ZombieInfection>Zombification</ZombieInfection>
-	<ZombieInfectionDesc>Ce colon est infecté et va devenir un Zombie. Il n’y a plus moyen de le sauver. Pendant l’infection il est indifférent aux pensés, aux sentiments, à la douleur et à la faim. A la fin, il meurt et devient un Zombie.</ZombieInfectionDesc>
+	<ZombieInfectionDesc>Ces colons sont infectés et vont devenir des zombies. Il n’y a plus moyen de les sauver:\n\n{0}\nPendant l’infection ils sont indifférents aux pensées, aux sentiments, à la douleur et à la faim. A la fin, ils meurent et deviennent des zombies.</ZombieInfectionDesc>
 
 	<NoInfectionRisk>Pas de risque d’infection</NoInfectionRisk>
 	<HoursBeforeBecomingInfected>{0} avant l’infection</HoursBeforeBecomingInfected>

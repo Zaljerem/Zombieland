@@ -19,16 +19,13 @@ namespace ZombieLand
 				var symbiant = ZombieSymbiant.LinkedSymbiantFor(pawn);
 				if (symbiant == null)
 					return description + "\n\n" + "SymbiantHostBondMissing".Translate();
-				var readiness = symbiant.CanSafelySever
-					? "SymbiantHostBondReady".Translate()
-					: "SymbiantHostBondNotReady".Translate(symbiant.SafeVisibleMinimum);
 				return description + "\n\n" + "SymbiantHostBondDescription".Translate(
 					symbiant.CellCount,
 					ZombieSymbiant.MaxCells,
-					Mathf.FloorToInt(ZombieSymbiant.SymbiantBenefitFactor(pawn) * 100f),
-					Mathf.FloorToInt(symbiant.DecouplingReserve),
-					symbiant.DecouplingReserveMax,
-					readiness
+					symbiant.NextBenefitCellSize,
+					symbiant.SharedHealthSummary,
+					symbiant.SharedDamageLeakPercentDisplay,
+					symbiant.BenefitSummary
 				);
 			}
 		}

@@ -69,7 +69,6 @@ namespace ZombieLand
 		public static RecipeDef SeverSymbiantSymbiosis;
 		public static ThingDef Zombie;
 		public static ThingDef ZombieExtract;
-		public static ThingDef SymbiantCoagulantPack;
 		public static ThingDef Corpse_Zombie;
 		public static ThingDef TarSlime;
 		public static ThingDef TarSmoke;
@@ -87,10 +86,11 @@ namespace ZombieLand
 		public static HediffDef ZombieInfection;
 		public static HediffDef SymbiantSymbiosis;
 		public static LetterDef ColonistTurnedZombie;
-		public static LetterDef OtherTurnedZombie;
-		public static LetterDef DangerousSituation;
-		public static LetterDef SymbiantConnection;
-		public static EffecterDef ZombieShockerRoom;
+			public static LetterDef OtherTurnedZombie;
+			public static LetterDef DangerousSituation;
+			public static LetterDef SymbiantConnection;
+			public static LetterDef SymbiantEvent;
+			public static EffecterDef ZombieShockerRoom;
 		public static ThingDef BumpLarge;
 		public static ThingDef BumpMedium;
 		public static ThingDef BumpSmall;

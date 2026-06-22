@@ -496,7 +496,7 @@ public class CreateAssetBundles
 	SubShader
 	{
 		Tags { ""Queue""=""Transparent"" ""RenderType""=""Transparent"" }
-		Blend SrcAlpha OneMinusSrcAlpha
+		Blend One Zero
 		ZWrite Off
 		Cull Off
 
@@ -518,6 +518,7 @@ public class CreateAssetBundles
 
 				StructuredBuffer<Metaball> _MetaballBuffer;
 				int _MetaballCount;
+				float4 _MetaballWorldSize;
 
 			float4 frag(v2f_img input) : SV_Target
 			{
@@ -526,23 +527,23 @@ public class CreateAssetBundles
 					for (int i = 0; i < _MetaballCount; i++)
 					{
 						Metaball ball = _MetaballBuffer[i];
-						float radius = ball.shape.x;
+						float radius = ball.shape.x * saturate(ball.shape.y);
 						if (radius <= 0.0001)
 							continue;
 
-						float2 delta = input.uv - ball.motion.xy;
-						float effectiveRadius = radius * max(ball.shape.y, 0.05);
-						float contribution = (effectiveRadius * effectiveRadius) / max(dot(delta, delta), 0.00001);
+						float2 delta = (input.uv - ball.motion.xy) * max(_MetaballWorldSize.xy, float2(0.0001, 0.0001));
+						float contribution = (radius * radius) / max(dot(delta, delta), 0.0001);
+						contribution *= contribution;
 					contribution *= max(ball.shape.z, 0.0);
 					field += contribution;
 					color += ball.tint.rgb * contribution;
 				}
 
-				float alpha = smoothstep(0.45, 0.75, field);
-				float edge = smoothstep(0.75, 1.15, field);
+				float alpha = smoothstep(0.45, 1.20, field) * 0.40;
+				float edge = smoothstep(0.45, 1.80, field);
 				float3 body = field > 0.0001 ? color / field : float3(0.0, 0.8, 0.0);
 				body = lerp(float3(0.0, 0.0, 0.0), body, edge);
-				return float4(body, alpha * 0.85);
+				return float4(body, alpha);
 			}
 			ENDCG
 		}

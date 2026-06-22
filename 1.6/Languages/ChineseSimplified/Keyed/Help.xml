@@ -115,24 +115,9 @@
 	<ChildZombieChance_Help>僵尸中儿童的百分比。注意：杀死儿童僵尸会造成轻微负面心情（持续 2 小时）。</ChildZombieChance_Help>
 	<SpitterThreat_Help>僵尸喷吐者是一种攻城怪物，会把僵尸发射进你的基地。此设置同时调整喷吐者行动的强度和频率。设为 0% 会禁用喷吐者。</SpitterThreat_Help>
 	<WallPushing_Help>当一群僵尸过于密集时，此项定义会把其他僵尸推过相邻墙壁的僵尸数量。如果墙的另一侧属于有屋顶房间，该屋顶会被僵尸损坏。</WallPushing_Help>
-	<ZombieSymbiantTitle_Help>僵尸共生体是室内感染，不是普通敌人。它会扰乱殖民地，但不是立刻致命的威胁。它会在使用中的房间出现，连接一个殖民者，扩散出会减慢角色并降低房间质量的黏液，并随着体量增长强化宿主。攻击会消耗可见的伤害护盾；如果护盾破裂，连接会猛烈崩溃并杀死宿主。让已连接根部周围的房间保持开放，会使它移动到另一个使用中的房间，并随时间把旧黏液移回去。用尸体或凝结剂包喂养共生体，以恢复护盾、积累手术储备并缩小它；当检查面板显示已准备好时，对宿主进行手术以切断连接。手术失败可能伤害宿主；杀死宿主会以殖民者的生命为代价结束连接。</ZombieSymbiantTitle_Help>
-	<SymbiantEnabled_Help>启用自然僵尸共生体事件。时间由难度、僵尸威胁、殖民地规模和有用室内房间自动决定。</SymbiantEnabled_Help>
-	<SymbiantPostFeedPauseHours_Help>被喂养的共生体会暂停生长的时间。</SymbiantPostFeedPauseHours_Help>
-	<SymbiantMaxCells_Help>共生体可以占据的地图格数上限。这是主要的显式大小上限，类似最大僵尸数量。降低此值不会删除已有格子；更大的共生体会停止扩张，直到被喂养到上限以下。</SymbiantMaxCells_Help>
-	<SymbiantFullBenefitRoomCoverage_Help>共生体必须占据多少使用中的室内房间格，连接宿主才会获得完整收益。这基于有用房间的存在，不基于污垢或地板质量。</SymbiantFullBenefitRoomCoverage_Help>
-	<SymbiantSeveranceMaturityCoverage_Help>喂养需要多少使用中房间的生长，才能准备干净的手术。偏僻无人房间中的生长只会少量计入。</SymbiantSeveranceMaturityCoverage_Help>
-	<SymbiantSeveranceMaturityMinCells_Help>准备干净手术所需的最少使用中房间格数。</SymbiantSeveranceMaturityMinCells_Help>
-	<SymbiantSeveranceMaturityMaxCells_Help>准备干净手术所需的最多使用中房间格数。</SymbiantSeveranceMaturityMaxCells_Help>
-	<SymbiantSeveranceReserveCoverage_Help>控制成熟共生体可能需要多少手术储备。储备与完整大小分开封顶，因此大型共生体不需要数百次喂养。</SymbiantSeveranceReserveCoverage_Help>
-	<SymbiantSeveranceReserveMin_Help>共生体成熟后所需的最少手术储备。</SymbiantSeveranceReserveMin_Help>
-	<SymbiantSeveranceReserveMax_Help>共生体成熟后所需的最多手术储备。</SymbiantSeveranceReserveMax_Help>
-	<SymbiantZombieIgnoreMinBenefit_Help>僵尸忽略宿主并提供更强精神状态保护所需的宿主收益等级。新生的小共生体不会保护宿主。</SymbiantZombieIgnoreMinBenefit_Help>
-	<SymbiantDecouplingFeedPulsesPerDay_Help>每天可用于积累手术储备的最大喂养脉冲数。囤积尸体或凝结剂不能立刻解决新生共生体。</SymbiantDecouplingFeedPulsesPerDay_Help>
-	<SymbiantMaxSkillBonus_Help>连接宿主在完整共生体收益下获得的最大有效技能加成。较小的共生体只提供一部分。</SymbiantMaxSkillBonus_Help>
-	<SymbiantPathCost_Help>非 Zombieland 角色穿过共生体黏液时的移动消耗。它会减慢殖民者和其他角色，但不会直接伤害他们。</SymbiantPathCost_Help>
-	<SymbiantCanBreakConstructedWalls_Help>启用后，被困住的共生体在生长时可以破坏一面建造墙，前提是墙外的格子直接通向使用中的室内房间或门。天然岩壁和通向室外的外墙永远不会被破坏。</SymbiantCanBreakConstructedWalls_Help>
-	<SymbiantCoagulantPotency_Help>控制凝结剂包喂给共生体时提供多少手术储备和缩小效果。更高强度能更快恢复，但不会绕过每日喂养上限或手术需求。</SymbiantCoagulantPotency_Help>
-	<SymbiantDamageAbsorptionFeedback_Help>当共生体伤害护盾吸收攻击时显示短消息。禁用可减少战斗消息；选中的共生体检查面板仍会显示当前护盾强度。</SymbiantDamageAbsorptionFeedback_Help>
+	<ZombieSymbiantTitle_Help>僵尸共生体是在繁忙室内房间中蔓延的感染。一个殖民者会成为宿主。宿主免疫僵尸咬伤造成的感染，并会在共生体成长时获得随机收益。穿过共生体格子的角色会变慢，宿主除外。用尸体喂养会让它成长更快。手术会移除连接，失去宿主的共生体之后会逐渐缩回。</ZombieSymbiantTitle_Help>
+	<SymbiantEnabled_Help>启用自然僵尸共生体事件。</SymbiantEnabled_Help>
+	<SymbiantMaxCells_Help>共生体可以占据的地图格数上限。</SymbiantMaxCells_Help>
 
 	<ZombieMiscTitle_Help>此部分包含对玩法影响不大的杂项设置。有些是外观设置，有些能在较慢电脑上加快游戏速度。</ZombieMiscTitle_Help>
 	<UseCustomTextures_Help>每个僵尸都会有带伤痕和其他僵尸相关标记的自定义身体纹理。这会让 Zombieland 消耗大量内存，如果遇到问题请关闭（尤其是 32 位版本）。</UseCustomTextures_Help>

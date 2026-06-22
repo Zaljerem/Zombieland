@@ -237,7 +237,6 @@ namespace ZombieLand
 	public class WorkGiver_FeedZombieSymbiant : WorkGiver_Scanner
 	{
 		static readonly string NoSymbiantFeedTrans = "NoSymbiantFeed".Translate();
-		static readonly string SymbiantFeedLimitReachedTrans = "SymbiantFeedLimitReached".Translate();
 
 		public override ThingRequest PotentialWorkThingRequest => ThingRequest.ForDef(CustomDefs.ZombieSymbiant);
 		public override PathEndMode PathEndMode => PathEndMode.Touch;
@@ -249,7 +248,7 @@ namespace ZombieLand
 			if (pawn?.Map == null || pawn.IsColonist == false)
 				return Enumerable.Empty<Thing>();
 			var symbiant = ZombieSymbiant.ActiveSymbiant(pawn.Map);
-			if (symbiant.DestroyedOrNull() || symbiant.Spawned == false || symbiant.FeedRequested == false || symbiant.FeedPulsesRemaining <= 0)
+			if (symbiant.DestroyedOrNull() || symbiant.Spawned == false || symbiant.FeedRequested == false)
 				return Enumerable.Empty<Thing>();
 			return new Thing[] { symbiant };
 		}
@@ -260,11 +259,6 @@ namespace ZombieLand
 				return false;
 			if (symbiant.FeedRequested == false)
 				return false;
-			if (symbiant.FeedPulsesRemaining <= 0)
-			{
-				JobFailReason.Is(SymbiantFeedLimitReachedTrans, null);
-				return false;
-			}
 			if (pawn.CanReach(symbiant, PathEndMode.Touch, forced ? Danger.Deadly : pawn.NormalMaxDanger()) == false)
 				return false;
 			var feed = FindClosestFeed(pawn, symbiant);
@@ -290,7 +284,7 @@ namespace ZombieLand
 
 		public static Thing FindClosestFeed(Pawn pawn, ZombieSymbiant symbiant)
 		{
-			if (pawn?.Map == null)
+			if (pawn?.Map == null || symbiant?.Spawned != true || symbiant.Map != pawn.Map)
 				return null;
 
 			bool Valid(Thing thing)
@@ -298,14 +292,13 @@ namespace ZombieLand
 				return thing.DestroyedOrNull() == false
 					&& thing.Spawned
 					&& thing.IsForbidden(pawn) == false
-					&& ZombieSymbiant.IsValidFeed(thing)
+					&& symbiant.CanAcceptFeed(thing)
 					&& pawn.CanReserve(thing)
 					&& pawn.CanReach(thing, PathEndMode.Touch, pawn.NormalMaxDanger());
 			}
 
 			var map = pawn.Map;
 			var candidates = map.listerThings.ThingsInGroup(ThingRequestGroup.Corpse)
-				.Concat(map.listerThings.ThingsOfDef(CustomDefs.SymbiantCoagulantPack))
 				.Where(Valid)
 				.OrderBy(thing => thing.Position.DistanceToSquared(pawn.Position) + thing.Position.DistanceToSquared(symbiant.Position));
 			return candidates.FirstOrDefault();

@@ -52,13 +52,13 @@
 
 	<RecipeDef ParentName="SurgeryFlesh">
 		<defName>SeverSymbiantSymbiosis</defName>
-		<label>sever Symbiant bond</label>
-		<description>Separates a colonist from a prepared Zombie Symbiant. The Symbiant must be mature, have full surgery reserve, and be reduced to three visible cells or fewer. Failed surgery consumes reserve and injures the host.</description>
+		<label>remove the Symbiant bond</label>
+		<description>Remove the bond between a colonist and the Symbiant. The unbound Symbiant will shrink away after the operation.</description>
 		<workerClass>ZombieLand.Recipe_SeverSymbiantSymbiosis</workerClass>
-		<jobString>Severing Symbiant bond.</jobString>
+		<jobString>Removing the Symbiant bond.</jobString>
 		<targetsBodyPart>true</targetsBodyPart>
 		<anesthetize>true</anesthetize>
-		<workAmount>2600</workAmount>
+		<workAmount>1300</workAmount>
 		<effectWorking>Surgery</effectWorking>
 		<soundWorking>Recipe_Surgery</soundWorking>
 		<workSpeedStat>MedicalOperationSpeed</workSpeedStat>
@@ -69,27 +69,25 @@
 			<li>
 				<filter>
 					<thingDefs>
-						<li>SymbiantCoagulantPack</li>
+						<li>ZombieExtract</li>
 					</thingDefs>
 				</filter>
-				<count>1</count>
+				<count>10</count>
 			</li>
 			<li>
 				<filter>
-					<categories>
-						<li>Medicine</li>
-					</categories>
+					<thingDefs>
+						<li>MedicineIndustrial</li>
+					</thingDefs>
 				</filter>
 				<count>1</count>
 			</li>
 		</ingredients>
 		<fixedIngredientFilter>
 			<thingDefs>
-				<li>SymbiantCoagulantPack</li>
+				<li>ZombieExtract</li>
+				<li>MedicineIndustrial</li>
 			</thingDefs>
-			<categories>
-				<li>Medicine</li>
-			</categories>
 		</fixedIngredientFilter>
 	</RecipeDef>
 
@@ -147,44 +145,6 @@
 		</recipeUsers>
 		<products>
 			<ZombieSerumSimple>1</ZombieSerumSimple>
-		</products>
-	</RecipeDef>
-
-	<RecipeDef>
-		<defName>MakeSymbiantCoagulantPack</defName>
-		<label>make Symbiant coagulant pack</label>
-		<description>Craft one Symbiant coagulant pack from zombie extract and chemfuel. Feed it to a Symbiant to restore its damage guard, build surgery reserve, shrink the visible mass, and prepare the linked host for severance surgery.</description>
-		<jobString>Making Symbiant coagulant pack.</jobString>
-		<workAmount>900</workAmount>
-		<ingredients>
-			<li>
-				<filter>
-					<thingDefs>
-						<li>ZombieExtract</li>
-					</thingDefs>
-				</filter>
-				<count>5</count>
-			</li>
-			<li>
-				<filter>
-					<thingDefs>
-						<li>Chemfuel</li>
-					</thingDefs>
-				</filter>
-				<count>10</count>
-			</li>
-		</ingredients>
-		<fixedIngredientFilter>
-			<thingDefs>
-				<li>ZombieExtract</li>
-				<li>Chemfuel</li>
-			</thingDefs>
-		</fixedIngredientFilter>
-		<recipeUsers>
-			<li>CraftingSpot</li>
-		</recipeUsers>
-		<products>
-			<SymbiantCoagulantPack>1</SymbiantCoagulantPack>
 		</products>
 	</RecipeDef>
 

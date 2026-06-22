@@ -5,6 +5,6 @@
 	<ZombieBite.injuryProps.destroyedLabel>arraché par une morsure de zombie</ZombieBite.injuryProps.destroyedLabel>
 	<ZombieBite.injuryProps.destroyedOutLabel>arraché par une morsure de zombie</ZombieBite.injuryProps.destroyedOutLabel>
 	<SymbiantSymbiosis.label>lien de symbiant</SymbiantSymbiosis.label>
-	<SymbiantSymbiosis.description>Ce colon est lié à un Symbiant zombie. L'hôte gagne protection et compétence lorsque le Symbiant se répand dans les pièces utilisées. Le lien est un risque maîtrisable : les attaques drainent la protection du Symbiant et une rupture violente tue l'hôte. Ne le rompez qu'après avoir nourri le Symbiant pour restaurer la protection, remplir la réserve chirurgicale et le réduire. Une opération ratée peut blesser l'hôte ; tuer l'hôte met fin au lien au prix de la vie du colon.</SymbiantSymbiosis.description>
+	<SymbiantSymbiosis.description>Ce colon est lié à un Symbiant zombie. L'hôte est immunisé contre l'infection zombie par morsure et gagne des avantages aléatoires quand le Symbiant grandit. Les pions qui traversent les cases du Symbiant sont ralentis, sauf l'hôte. Le nourrir avec des cadavres accélère sa croissance. Une opération peut retirer le lien ; le Symbiant sans hôte se résorbera ensuite.</SymbiantSymbiosis.description>
 
 </LanguageData>

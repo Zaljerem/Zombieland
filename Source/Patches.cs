@@ -107,6 +107,28 @@ namespace ZombieLand
 				CustomDefs.TarSmokePop.PlayOneShot(SoundInfo.InMap(new TargetInfo(center, map)));
 		}
 
+		[HarmonyPatch(typeof(GenUI))]
+		[HarmonyPatch(nameof(GenUI.ThingsUnderMouse))]
+		static class GenUI_ThingsUnderMouse_Patch
+		{
+			static void Postfix(ref List<Thing> __result)
+			{
+				if (__result == null)
+					return;
+				HashSet<ZombieSymbiant> seen = null;
+				for (var i = 0; i < __result.Count; i++)
+				{
+					if (__result[i] is not ZombieSymbiant symbiant)
+						continue;
+					seen ??= [];
+					if (seen.Add(symbiant))
+						continue;
+					__result.RemoveAt(i);
+					i--;
+				}
+			}
+		}
+
 		// patch for debugging: show pheromone grid as overlay
 		//
 		[HarmonyPatch(typeof(SelectionDrawer))]
@@ -625,6 +647,8 @@ namespace ZombieLand
 		{
 			static void Postfix(Pawn ___pawn, IntVec3 ___nextCell)
 			{
+				ZombieSymbiant.TryReduceContaminationOnLeavingSymbiantCell(___pawn);
+
 				if (___pawn.equipment?.Primary is not Chainsaw chainsaw || chainsaw.swinging)
 					return;
 				var delta = ___nextCell - ___pawn.Position;
@@ -1183,7 +1207,12 @@ namespace ZombieLand
 
 			static bool Prefix(Job newJob, Pawn ___pawn, ref int ___jobsGivenThisTick, ref string ___jobsGivenThisTickTextual, ref bool ___startingNewJob)
 			{
-				if (newJob != null && newJob.targetA.Thing is ZombieSymbiant && (newJob.def == JobDefOf.AttackMelee || newJob.def == JobDefOf.AttackStatic))
+				if (newJob == null || ___pawn == null)
+					return true;
+				if (newJob != null
+					&& newJob.targetA.Thing is ZombieSymbiant
+					&& (newJob.def == JobDefOf.AttackMelee || newJob.def == JobDefOf.AttackStatic)
+					&& ___pawn.Faction?.HostileTo(Faction.OfPlayer) != true)
 				{
 					___jobsGivenThisTick = 0;
 					___jobsGivenThisTickTextual = "";
@@ -2235,25 +2264,10 @@ namespace ZombieLand
 		[HarmonyPatch(typeof(Pawn_PathFollower), "TryEnterNextPathCell")]
 		static class Pawn_PathFollower_TryEnterNextPathCell_SymbiantDoor_Patch
 		{
-			static AccessTools.FieldRef<Building_Door, int> doorTicksUntilCloseRef;
-
-			static bool Prepare()
-			{
-				var field = typeof(Building_Door).Field("ticksUntilClose");
-				if (field == null)
-				{
-					Error("Cannot find Building_Door.ticksUntilClose for symbiant doorway slowdown patch");
-					return false;
-				}
-				doorTicksUntilCloseRef = AccessTools.FieldRefAccess<Building_Door, int>(field);
-				return true;
-			}
-
 			static void Prefix(Pawn_PathFollower __instance, Pawn ___pawn, out IntVec3 __state)
 			{
 				__state = IntVec3.Invalid;
-				var symbiantPathCost = ZombieSettings.Values.symbiantPathCost;
-				if (ZombieSymbiant.DebugDisablePathCost || symbiantPathCost <= 1 || symbiantPathCost <= __instance.nextCellCostTotal)
+				if (ZombieSymbiant.DebugDisablePathCost)
 					return;
 				var pawn = ___pawn;
 				if (pawn == null || pawn.Spawned == false || pawn.Map == null || pawn.Flying)
@@ -2261,9 +2275,12 @@ namespace ZombieLand
 				var nextCell = __instance.nextCell;
 				if (nextCell.IsValid == false || nextCell == pawn.Position)
 					return;
-				if (nextCell.GetDoor(pawn.Map) == null)
+				var door = nextCell.GetDoor(pawn.Map);
+				if (door == null || door.Destroyed || door.Spawned == false)
 					return;
 				if (ZombieSymbiant.IsSymbiantCellForSlowedPawn(pawn, nextCell, out _) == false)
+					return;
+				if (ZombieSymbiant.SymbiantMoveCost(pawn, __instance.nextCellCostTotal) <= __instance.nextCellCostTotal)
 					return;
 				if (__instance.NextCellDoorToWaitForOrManuallyOpen() == null)
 					return;
@@ -2280,17 +2297,31 @@ namespace ZombieLand
 				if (ZombieSymbiant.IsSymbiantCellForSlowedPawn(pawn, __instance.nextCell, out _) == false)
 					return;
 				var door = __instance.nextCell.GetDoor(pawn.Map);
-				if (door == null)
+				if (door == null || door.Destroyed || door.Spawned == false)
 					return;
 
-				var cost = Mathf.Max(__instance.nextCellCostTotal, ZombieSettings.Values.symbiantPathCost);
-				__instance.nextCellCostTotal = Mathf.Max(__instance.nextCellCostTotal, cost);
+				var cost = ZombieSymbiant.SymbiantMoveCost(pawn, __instance.nextCellCostTotal);
+				if (cost <= __instance.nextCellCostTotal)
+					return;
+				__instance.nextCellCostTotal = cost;
 				__instance.nextCellCostLeft = Mathf.Max(__instance.nextCellCostLeft, cost);
-				door.Notify_PawnApproaching(pawn, cost);
+				TryHoldDoorForSymbiantSlowdown(door, pawn, cost);
+			}
 
-				ref var ticksUntilClose = ref doorTicksUntilCloseRef(door);
-				var holdTicks = Mathf.CeilToInt(cost) + Mathf.Max(door.TicksTillFullyOpened, 0) + 30;
-				ticksUntilClose = Mathf.Max(ticksUntilClose, holdTicks);
+			static void TryHoldDoorForSymbiantSlowdown(Building_Door door, Pawn pawn, float cost)
+			{
+				if (door == null || door.Destroyed || door.Spawned == false || pawn == null)
+					return;
+				try
+				{
+					door.Notify_PawnApproaching(pawn, cost);
+					var holdTicks = Mathf.CeilToInt(cost) + Mathf.Max(door.TicksTillFullyOpened, 0) + 30;
+					door.ticksUntilClose = Mathf.Max(door.ticksUntilClose, holdTicks);
+				}
+				catch (Exception ex)
+				{
+					Log.WarningOnce($"Zombieland skipped Symbiant door slowdown hold for door {door.def?.defName ?? "unknown"} because the door implementation rejected the vanilla door contract: {ex.GetType().Name}: {ex.Message}", 904231711);
+				}
 			}
 		}
 
@@ -2802,9 +2833,18 @@ namespace ZombieLand
 			// this is set periodically from Alerts.Alert_ZombieInfection
 			public static HashSet<Pawn> infectedColonists = new();
 
-			static bool ShouldBeAverageNeed(Pawn pawn)
+			static bool ShouldBeAverageNeed(Need need)
 			{
-				return infectedColonists.Contains(pawn) || ZombieSymbiant.HasZombieTargetingProtection(pawn);
+				var pawn = need?.pawn;
+				if (pawn == null)
+					return false;
+				if (infectedColonists.Contains(pawn))
+					return true;
+				if (need is Need_Mood && ZombieSymbiant.HasMoodFixedBenefit(pawn))
+					return true;
+				if (ZombieSymbiant.HasNoFoodOrRestBenefit(pawn) && (need.def == NeedDefOf.Food || need.def?.defName == "Rest"))
+					return true;
+				return false;
 			}
 
 			[HarmonyPriority(Priority.First)]
@@ -2816,7 +2856,6 @@ namespace ZombieLand
 				yield return new CodeInstruction(OpCodes.Ldarg_1);
 				yield return new CodeInstruction(OpCodes.Stloc, average);
 				yield return new CodeInstruction(OpCodes.Ldarg_0);
-				yield return new CodeInstruction(OpCodes.Ldfld, typeof(Need).Field("pawn"));
 				yield return new CodeInstruction(OpCodes.Call, SymbolExtensions.GetMethodInfo(() => ShouldBeAverageNeed(null)));
 				yield return new CodeInstruction(OpCodes.Brfalse, originalStart);
 				yield return new CodeInstruction(OpCodes.Ldc_R4, 0.5f);
@@ -2898,7 +2937,7 @@ namespace ZombieLand
 		{
 			static bool NoMentalState(Pawn pawn)
 			{
-				return Need_CurLevel_Patch.infectedColonists.Contains(pawn) || ZombieSymbiant.HasZombieTargetingProtection(pawn);
+				return Need_CurLevel_Patch.infectedColonists.Contains(pawn);
 			}
 
 			[HarmonyPriority(Priority.First)]
@@ -2948,9 +2987,6 @@ namespace ZombieLand
 
 			static void Postfix(HediffSet __instance, ref float __result)
 			{
-				var factor = ZombieSymbiant.SymbiantBenefitFactor(__instance.pawn);
-				if (factor > 0f)
-					__result *= 1f - 0.75f * factor;
 			}
 		}
 
@@ -2991,9 +3027,6 @@ namespace ZombieLand
 
 			static void Postfix(Pawn ___pawn, ref float __result)
 			{
-				var factor = ZombieSymbiant.SymbiantBenefitFactor(___pawn);
-				if (factor > 0f)
-					__result = Mathf.Lerp(__result, Mathf.Max(__result, 1f), factor);
 			}
 		}
 
@@ -3261,6 +3294,17 @@ namespace ZombieLand
 			}
 		}
 
+		[HarmonyPatch(typeof(Pawn))]
+		[HarmonyPatch(nameof(Pawn.HealthScale), MethodType.Getter)]
+		static class Pawn_HealthScale_Patch
+		{
+			static void Postfix(Pawn __instance, ref float __result)
+			{
+				if (__instance is ZombieSymbiant symbiant)
+					__result *= symbiant.HealthScaleCellMultiplier;
+			}
+		}
+
 		// patch to keep shooting even if a zombie is down (only if self-healing is on)
 		//
 		[HarmonyPatch]
@@ -3412,9 +3456,11 @@ namespace ZombieLand
 			static Vector3 rightEyeOffset = new(0.092f, 0f, -0.08f);
 
 			static Vector3 toxicAuraOffset = new(0f, 0f, 0.1f);
-			const float leanAngle = 15f;
+				const float leanAngle = 15f;
 
-			static readonly Color white50 = new(1f, 1f, 1f, 0.5f);
+				static readonly Color white50 = new(1f, 1f, 1f, 0.5f);
+				static readonly HashSet<int> symbiantAuraDrawnPawns = [];
+				static int symbiantAuraDrawnFrame = -1;
 
 			static readonly Mesh bodyMesh = MeshPool.GridPlane(new Vector2(1.5f, 1.5f));
 			static readonly Mesh bodyMesh_flipped = MeshPool.GridPlaneFlip(new Vector2(1.5f, 1.5f));
@@ -3868,26 +3914,38 @@ namespace ZombieLand
 					GraphicToolbox.DrawScaledMesh(MeshPool.plane20, Constants.RAGE_AURAS[Find.CameraDriver.CurrentZoom], quickHeadCenter, Quaternion.identity, 1f, 1f);
 			}
 
-			static void DrawSymbiantHostAura(Pawn pawn, PawnRenderer renderer, Vector3 drawLoc)
-			{
-				if (pawn == null || renderer == null || pawn.GetPosture() != PawnPosture.Standing)
-					return;
-				if (ZombieSymbiant.TryGetHostAuraFactor(pawn, out var factor) == false)
-					return;
+				static void DrawSymbiantHostAura(Pawn pawn, PawnRenderer renderer, Vector3 drawLoc)
+				{
+					if (pawn == null || renderer == null || pawn.GetPosture() != PawnPosture.Standing)
+						return;
+					if (ZombieSymbiant.TryGetHostAuraFactor(pawn, out var factor) == false)
+						return;
+					if (TryMarkSymbiantAuraDrawn(pawn) == false)
+						return;
 
-				var angle = renderer.BodyAngle(PawnRenderFlags.None);
-				if (pawn.Rotation == Rot4.West)
+					var angle = renderer.BodyAngle(PawnRenderFlags.None);
+					if (pawn.Rotation == Rot4.West)
 					angle -= leanAngle;
 				if (pawn.Rotation == Rot4.East)
 					angle += leanAngle;
 
-				var loc = drawLoc + toxicAuraOffset;
-				loc.y += PawnRenderUtility.AltitudeForLayer(-8f);
-				var scale = Mathf.Lerp(0.85f, 1.15f, Mathf.Clamp01(factor));
-				GraphicToolbox.DrawScaledMesh(MeshPool.plane20, Constants.SYMBIANT_HOST_AURAS[Find.CameraDriver.CurrentZoom], loc, Quaternion.AngleAxis(angle, Vector3.up), scale, scale);
-			}
+					var loc = drawLoc + toxicAuraOffset;
+					loc.y = moteAltitute;
+					var scale = Mathf.Lerp(0.95f, 1.25f, Mathf.Clamp01(factor));
+					GraphicToolbox.DrawScaledMesh(MeshPool.plane20, Constants.SYMBIANT_HOST_AURAS[Find.CameraDriver.CurrentZoom], loc, Quaternion.AngleAxis(angle, Vector3.up), scale, scale);
+				}
 
-			static void DrawToxicAura(Zombie zombie, Vector3 drawLoc, bool behindBody)
+				static bool TryMarkSymbiantAuraDrawn(Pawn pawn)
+				{
+					if (Time.frameCount != symbiantAuraDrawnFrame)
+					{
+						symbiantAuraDrawnFrame = Time.frameCount;
+						symbiantAuraDrawnPawns.Clear();
+					}
+					return symbiantAuraDrawnPawns.Add(pawn.thingIDNumber);
+				}
+
+				static void DrawToxicAura(Zombie zombie, Vector3 drawLoc, bool behindBody)
 			{
 				float angle = zombie.drawer.renderer.BodyAngle(PawnRenderFlags.None);
 				if (zombie.Rotation == Rot4.West)
@@ -4309,49 +4367,25 @@ namespace ZombieLand
 
 			static void Postfix(Thing thing, StatDef stat, ref float __result)
 			{
+				if (thing is not Pawn pawn)
+					return;
+				if (stat == StatDefOf.MoveSpeed)
+				{
+					var moveBonusCount = ZombieSymbiant.MoveSpeedBenefitCount(pawn);
+					if (moveBonusCount > 0)
+						__result *= 1f + moveBonusCount * 0.25f;
+					return;
+				}
 				if (stat != StatDefOf.MedicalTendSpeed
 					&& stat != StatDefOf.WorkSpeedGlobal
 					&& stat != StatDefOf.GeneralLaborSpeed
 					&& stat != StatDefOf.CleaningSpeed
 					&& stat != cookingSpeed)
 					return;
-				if (ZombieSymbiant.DebugDisableCellStatEffects)
+				var efficiency = ZombieSymbiant.SymbiantCellEfficiencyFactor(pawn);
+				if (efficiency >= 0.999f)
 					return;
-				if (thing is not Pawn pawn)
-					return;
-				if (ZombieSymbiant.IsSymbiantCellForAffectedPawn(pawn, pawn.Position, out _) == false)
-					return;
-				if (stat == StatDefOf.MedicalTendSpeed)
-					__result *= 0.65f;
-				else if (stat == StatDefOf.WorkSpeedGlobal || stat == StatDefOf.GeneralLaborSpeed || stat == StatDefOf.CleaningSpeed || stat == cookingSpeed)
-					__result *= 0.80f;
-			}
-		}
-
-		// patch so symbiant-infested rooms feel disrupted without direct pawn damage
-		//
-		[HarmonyPatch(typeof(RoomStatWorker_Beauty))]
-		[HarmonyPatch(nameof(RoomStatWorker_Beauty.GetScore))]
-		static class RoomStatWorker_Beauty_GetScore_Patch
-		{
-			static void Postfix(Room room, ref float __result)
-			{
-				var symbiantCells = ZombieSymbiant.CountCellsInRoom(room);
-				if (symbiantCells <= 0)
-					return;
-				__result -= Mathf.Min(40f, 4f + symbiantCells * 2f);
-			}
-		}
-
-		[HarmonyPatch(typeof(RoomStatWorker_Impressiveness))]
-		[HarmonyPatch(nameof(RoomStatWorker_Impressiveness.GetScore))]
-		static class RoomStatWorker_Impressiveness_GetScore_Patch
-		{
-			static void Postfix(Room room, ref float __result)
-			{
-				if (ZombieSymbiant.CountCellsInRoom(room) <= 0)
-					return;
-				__result = Mathf.Min(__result, 0f);
+				__result *= efficiency;
 			}
 		}
 
@@ -5955,6 +5989,21 @@ namespace ZombieLand
 			}
 		}
 
+		[HarmonyPatch(typeof(RecipeDef))]
+		[HarmonyPatch(nameof(RecipeDef.PotentiallyMissingIngredients))]
+		static class RecipeDef_PotentiallyMissingIngredients_Patch
+		{
+			static void Postfix(RecipeDef __instance, ref IEnumerable<ThingDef> __result)
+			{
+				if (__instance?.defName != "SeverSymbiantSymbiosis" || __result == null)
+					return;
+
+				// The health float menu disables surgeries with missing recipe ingredients,
+				// but the resulting medical bill can wait for them through the normal bill path.
+				__result = Enumerable.Empty<ThingDef>();
+			}
+		}
+
 		// show infection on dead pawns
 		//
 		[HarmonyPatch(typeof(HealthCardUtility))]
@@ -6321,11 +6370,13 @@ namespace ZombieLand
 					else
 						__result = GenMath.LerpDouble(0, 5, 14, 400, Tools.Difficulty());
 				}
-				var symbiantPathCost = ZombieSettings.Values.symbiantPathCost;
 				if (ZombieSymbiant.DebugDisablePathCost == false
-					&& symbiantPathCost > __result
 					&& ZombieSymbiant.IsSymbiantCellForSlowedPawn(pawn, c, out _))
-					__result = symbiantPathCost;
+				{
+					var symbiantMoveCost = ZombieSymbiant.SymbiantMoveCost(pawn, __result);
+					if (symbiantMoveCost > __result)
+						__result = symbiantMoveCost;
+				}
 			}
 		}
 
@@ -6436,9 +6487,12 @@ namespace ZombieLand
 		{
 			static bool Prefix(Pawn __instance, ref DamageInfo dinfo, ref bool absorbed)
 			{
-				if (__instance is not ZombieSymbiant symbiant)
-					return true;
-				symbiant.PreApplyLinkedDamage(ref dinfo, ref absorbed);
+				if (__instance is ZombieSymbiant symbiant)
+				{
+					symbiant.PreApplyLinkedDamage(ref dinfo, ref absorbed);
+					return absorbed == false;
+				}
+				ZombieSymbiant.PreApplyHostLinkedDamage(__instance, ref dinfo, ref absorbed);
 				return absorbed == false;
 			}
 		}
@@ -6683,6 +6737,78 @@ namespace ZombieLand
 					;
 					opts.Add(new FloatMenuOption(ropeZombieLabel, job));
 				}
+
+				AddSymbiantFeedOptions(IntVec3.FromVector3(clickPos), pawn, opts);
+			}
+
+			static void AddSymbiantFeedOptions(IntVec3 clickCell, Pawn pawn, List<FloatMenuOption> opts)
+			{
+				if (pawn?.Map == null || clickCell.InBounds(pawn.Map) == false)
+					return;
+				if (ZombieSymbiant.IsSymbiantCell(pawn.Map, clickCell, out var symbiant) == false || symbiant == null)
+					return;
+				if (pawn.CanReach(symbiant, PathEndMode.Touch, pawn.NormalMaxDanger()) == false || pawn.CanReserve(symbiant) == false)
+					return;
+
+				var feedOptions = SymbiantFeedOptions(pawn, symbiant).ToArray();
+				if (feedOptions.Length == 0)
+				{
+					opts.Add(new FloatMenuOption("NoSymbiantFeed".Translate(), null));
+					return;
+				}
+				foreach (var feed in feedOptions)
+				{
+					var label = SymbiantFeedLabel(feed);
+					opts.Add(new FloatMenuOption(label, () =>
+					{
+						var job = JobMaker.MakeJob(CustomDefs.FeedZombieSymbiant, symbiant, feed);
+						job.count = 1;
+						_ = pawn.jobs.TryTakeOrderedJob(job, new JobTag?(JobTag.Misc), false);
+					}));
+				}
+			}
+
+			static IEnumerable<Thing> SymbiantFeedOptions(Pawn pawn, ZombieSymbiant symbiant)
+			{
+				bool Valid(Thing thing)
+				{
+					return thing is Corpse
+						&& thing.DestroyedOrNull() == false
+						&& thing.Spawned
+						&& thing.IsForbidden(pawn) == false
+						&& symbiant.CanAcceptFeed(thing)
+						&& pawn.CanReserve(thing)
+						&& pawn.CanReach(thing, PathEndMode.Touch, pawn.NormalMaxDanger());
+				}
+
+				var seen = new HashSet<string>();
+				foreach (var feed in pawn.Map.listerThings.ThingsInGroup(ThingRequestGroup.Corpse)
+					.Where(Valid)
+					.OrderBy(thing => thing.Position.DistanceToSquared(pawn.Position) + thing.Position.DistanceToSquared(symbiant.Position)))
+				{
+					var category = SymbiantFeedCategory(feed);
+					if (seen.Add(category))
+						yield return feed;
+					if (seen.Count >= 4)
+						yield break;
+				}
+			}
+
+			static string SymbiantFeedCategory(Thing feed)
+			{
+				var corpse = feed as Corpse;
+				var humanlike = corpse?.InnerPawn?.RaceProps?.Humanlike == true;
+				var fresh = corpse?.GetRotStage() == RotStage.Fresh;
+				return $"{(humanlike ? "human" : "animal")}_{(fresh ? "fresh" : "old")}";
+			}
+
+			static string SymbiantFeedLabel(Thing feed)
+			{
+				var corpse = feed as Corpse;
+				var freshness = corpse?.GetRotStage() == RotStage.Fresh ? "fresh" : "rotten";
+				var name = corpse?.InnerPawn?.LabelShortCap ?? feed.LabelShortCap;
+				var cells = ZombieSymbiant.FeedGrowthCellCount(feed);
+				return "FeedZombieSymbiantFloatMenu".Translate(freshness, name, cells);
 			}
 		}
 

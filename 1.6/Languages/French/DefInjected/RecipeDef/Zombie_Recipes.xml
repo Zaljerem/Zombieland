@@ -1,17 +1,16 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <LanguageData>
 
 	<CureZombieInfection.label>soigner l'infection zombie</CureZombieInfection.label>
-	<CureZombieInfection.description>Retire une infection zombie à un stade précoce d'une partie du corps. Nécessite un sérum zombie ; un meilleur pourcentage réduit le risque d'échec.</CureZombieInfection.description>
-	<CureZombieInfection.jobString>Soigne l'infection zombie.</CureZombieInfection.jobString>
+	<CureZombieInfection.description>Retire une infection zombie à un stade précoce d'une partie du corps. Nécessite un sérum zombie ; un pourcentage plus élevé réduit le risque d'échec.</CureZombieInfection.description>
+	<CureZombieInfection.jobString>Soigne une infection zombie.</CureZombieInfection.jobString>
 
-	<MakeZombieSerum.label>fabriquer du sérum avec de l'extrait de zombie</MakeZombieSerum.label>
-	<MakeZombieSerum.description>Fabrique un sérum zombie à partir d'extrait de zombie. Le sérum zombie soigne les infections zombies pendant les opérations.</MakeZombieSerum.description>
-	<SeverSymbiantSymbiosis.label>rompre le lien du Symbiant</SeverSymbiantSymbiosis.label>
-	<SeverSymbiantSymbiosis.description>Sépare un colon d'un Symbiant zombie préparé. Le Symbiant doit être mature, avoir une réserve chirurgicale pleine et être réduit à trois cases visibles ou moins. Une opération ratée consomme la réserve et blesse l'hôte.</SeverSymbiantSymbiosis.description>
-	<SeverSymbiantSymbiosis.jobString>Rupture du lien du Symbiant.</SeverSymbiantSymbiosis.jobString>
-	<MakeSymbiantCoagulantPack.label>fabriquer un pack coagulant de Symbiant</MakeSymbiantCoagulantPack.label>
-	<MakeSymbiantCoagulantPack.description>Fabrique un pack coagulant de Symbiant à partir d'extrait de zombie et de chemfuel. Donnez-le à un Symbiant pour restaurer sa protection, remplir la réserve chirurgicale, réduire la masse visible et préparer l'opération de rupture du lien de l'hôte.</MakeSymbiantCoagulantPack.description>
-	<MakeSymbiantCoagulantPack.jobString>Fabrication d'un pack coagulant de Symbiant.</MakeSymbiantCoagulantPack.jobString>
+	<SeverSymbiantSymbiosis.label>retirer le lien du Symbiant</SeverSymbiantSymbiosis.label>
+	<SeverSymbiantSymbiosis.description>Retire le lien entre un colon et le Symbiant. Le Symbiant sans hôte se résorbera après l'opération.</SeverSymbiantSymbiosis.description>
+	<SeverSymbiantSymbiosis.jobString>Retire le lien du Symbiant.</SeverSymbiantSymbiosis.jobString>
+
+	<MakeZombieSerum.label>fabriquer du sérum zombie avec de l'extrait zombie</MakeZombieSerum.label>
+	<MakeZombieSerum.description>Fabrique un sérum zombie avec de l'extrait zombie. Le sérum zombie soigne les infections zombies pendant les opérations.</MakeZombieSerum.description>
+	<MakeZombieSerum.jobString>Fabrication de sérum zombie.</MakeZombieSerum.jobString>
 
 </LanguageData>

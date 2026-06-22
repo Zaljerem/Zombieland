@@ -4,11 +4,12 @@
 	<Operation Class="PatchOperationSequence">
 		<operations>
 			<li Class="PatchOperationAdd">
-				<xpath>Defs/ThingDef[defName="Human"]/recipes</xpath>
-				<value>
-					<li>CureZombieInfection</li>
-				</value>
-			</li>
+					<xpath>Defs/ThingDef[defName="Human"]/recipes</xpath>
+					<value>
+						<li>CureZombieInfection</li>
+						<li>SeverSymbiantSymbiosis</li>
+					</value>
+				</li>
 		</operations>
 	</Operation>
 

@@ -1,65 +1,57 @@
 # Symbiant Release Checks
 
-Scope: player-facing Symbiant behavior added or materially changed for the `5.1.0.0` release slice.
+Scope: player-facing Symbiant behavior added or materially changed for the simplified Symbiant release slice.
 
 Baseline:
-- Release baseline: `v5.0.4.2` / `40d9d37`.
-- Current source checkpoint: `26e0657 Add Symbiant translations`.
-- Runtime target: local RimWorld app-bundle mod path reported by RimWorld as `.../RimWorldMac.app/Mods/ZombieLand`.
-- Working save fixture: `SYMBIANT-TEST` for the current minimal-mod loadout; it is an empty visibility-friendly map with sterile tiles.
-- Current stance: broad empirical checks are release gates; narrow matrix gaps are follow-up work unless they expose a broad player-facing regression.
+- Current commit: `f39484d Implement simplified Symbiant feature`.
+- Runtime target: local RimWorld app-bundle mod path managed by `RIMWORLD_MOD_DIR`.
+- Working save fixture: `SYMBIANT-TEST-MAP`.
+- Current stance: broad empirical checks are release gates; narrow edge matrices are follow-up work unless they expose a broad player-facing regression.
 
 ## Claims
 
 | Area | Main player-facing claim | Evidence target | Status |
 | --- | --- | --- | --- |
-| Deployment/startup | Current Symbiant build loads from the mod path GABS starts, with no warning-or-higher logs. | Mod configuration + log read | PASS |
-| Spawn/discovery | A Zombie Symbiant appears in a used indoor room, links to a host when available, and presents clear letter/look-target feedback. | `symbiant_discovery_letter_contract`, `symbiant_natural_spawn_contract` | PASS |
-| Settings | Enabling/disabling events and lowering max cells behave like a cap, not deletion. Player-facing settings stay compact. | `symbiant_settings_contract`, settings read | PASS |
-| Growth/rooms | It spreads through room/door cells, handles constructed-wall escape only into valid indoor targets, and does not grow outdoors. | `symbiant_expansion_contract`; relocation-specific pass if needed | PASS |
-| Relocation/dormancy | Deconstructed/open rooms, old outdoor cells, reseeding, no-room dormancy, and double-speed relocation converge without trivial deconstruction exploits. | Existing relocation docs plus live targeted pass | PASS |
-| Feeding | Feeding with corpses/coagulant restores guard, builds reserve, shrinks only safely, pauses growth, respects daily caps, and blocks one-cell early removal. | `symbiant_feeding_contract` | PASS |
-| Benefits/disruption | Host benefit scales with integrated useful-room slime; remote containment has reduced value; slime disrupts rooms/work/pathing without direct injury. | `symbiant_benefit_contract` plus room/work evidence | PASS |
-| Surgery | Safe severance requires maturity, full reserve, and <=3 visible cells; success cleans up; failure costs reserve and injures normally. | `symbiant_severance_contract` | PASS |
-| Combat/damage | Ordinary hits drain visible guard, guard rupture kills linked host, thumper damage is ignored, and normal destruction/debug cleanup is not a shortcut. | `symbiant_unsafe_damage_contract` | PASS |
-| Selection/UI | Selecting a Symbiant shows useful inspect text and does not expose normal pawn tabs such as Mood, Gear, Health, or Combat Log. | `symbiant_unsafe_damage_contract`, optional UI read | PASS |
-| Combat isolation | Zombies and other systems do not treat the Symbiant like an ordinary hostile pawn, while feed jobs still find it. | `symbiant_combat_isolation_contract` | PASS |
-| Host availability | Temporary host unavailability keeps the bond marker but disables active effects until the same host returns. | `symbiant_host_availability_contract` | PASS |
-| Save/cache | Active Symbiant state survives save/load and same-process save switching without stale active-cache behavior. | `symbiant_infestation_state` smoke, `symbiant_map_cache_contract` | PASS |
-| Stress/performance | Default cap remains stable enough for release; technical cap remains guarded. | `symbiant_infestation_state` stress or existing evidence | PASS |
+| Deployment/startup | Current Symbiant build loads from the local deployed mod path. | `scripts/build-quiet.sh`, GABS start/load | PASS |
+| Settings | Player-facing settings are compact: enable/disable and max cells. Lowering max cells caps future growth without deleting an active Symbiant. | `symbiant_settings_contract`, source/UI read | PASS |
+| Spawn/discovery | A Zombie Symbiant can be created in a used indoor room, links to a host when available, and reports the expected state. | `symbiant_infestation_state createEvent` | PASS |
+| Growth/rendering | Add/expand paths update cell count, selector rect, GPU render metadata, and effect text. | `symbiant_infestation_state expand` | PASS |
+| Door slowdown | A Symbiant-covered door cell applies difficulty-scaled movement slowdown through the real path follower. | `symbiant_door_path_cost_contract` | PASS |
+| Surgery | Host surgery is visible while linked and uses RimWorld's normal dynamic ingredient-count path for zombie extract plus medicine. | `symbiant_severance_contract` | PASS |
+| Selection/UI | Clicking any covered blob cell selects the Symbiant, inspect text is valid, benefits/effects are visible, normal pawn tabs are hidden, and the removed status gizmo is absent. | `click_cell`, `get_selection_semantics`, `list_selected_gizmos` | PASS |
+| Save/load/cache | Active/empty Symbiant caches invalidate correctly and repeated load after restart remains playable. | `symbiant_map_cache_contract`, `load_game_ready` | PASS |
+| Old-save compatibility | Removed legacy defs are not hidden. Old saves may log missing-def errors but should load non-fatally. | `load_game_ready` on `SYMBIANT-TEST-MAP` | PASS with expected error |
+| Cleanup/interruption | Load, restart, map removal, and main-menu/load boundaries do not leave obvious stale active-cache state. | GABS load/restart smoke, cache contract | PASS |
 
 ## Evidence
 
 | Result | Area | Operation / evidence | Notes |
 | --- | --- | --- | --- |
-| PASS | Deployment/startup | `get_mod_configuration_status`: Zombieland loaded from app-bundle `Mods/ZombieLand`; `list_logs minimumLevel=warning`: empty. | GABS launch path and deploy path match. |
-| PASS | Build/deploy | `RIMWORLD_MOD_DIR=... ./scripts/build-quiet.sh`: build succeeded with 0 warnings and 0 errors after bridge changes. | The script stops RimWorld before deploying; GABS was restarted afterward. |
-| PASS | UI/text visual pass | RegionShot screenshots: `/tmp/zombieland-settings-symbiant-filtered-window.png`, `/tmp/zombieland-settings-symbiant-help-enable-down1.png`, `/tmp/zombieland-settings-symbiant-help-max-size.png`, `/tmp/zombieland-settings-symbiant-help-coagulant-2.png`, `/tmp/zombieland-settings-symbiant-help-guard.png`, `/tmp/zombieland-symbiant-letter.png`, `/tmp/zombieland-symbiant-selected-post-inspect-order-2.png`, `/tmp/zombieland-symbiant-host-selected.png`. | Settings filter reduces the list to the four visible Symbiant settings; help text fits in the right pane; the letter wraps cleanly; Symbiant selection shows damage guard and weapon behavior above the initial inspect fold; host selection keeps normal pawn tabs and shows the soft host effect. |
-| PASS | Spawn/discovery | `op_8924af8c1534456b9a16c0362446be30`: discovery letter; `op_f78384d891a14618ab5b662f1ea4c978`: natural spawn positive path; `op_9ca7426e65a24234a0a7a09ab56fcb8a`: empty map refuses natural spawn. | Letter label/look-targets are clear; host-linked letter names the room and host; no-room map has no eligible plan. |
-| PASS | Settings | `op_1dc187b7f29f47b1a608d71f0cc231c8`: settings contract. | Disabled events block natural spawn; disabling does not delete an existing active Symbiant; lowered max acts as a cap. |
-| PASS | Growth/rooms | `op_b72101903fc74262abdc37cf6e030c21`: expansion contract. | Open room cell, door cell, and constructed wall breach into the adjacent indoor room passed; door was occupied without destruction. |
-| PASS | Relocation/dormancy | `op_47812747ea6248f3b5ca10b36d2a3e11`: relocation contract. | Deconstructed source room respects grace, then reseeds into the remaining used room with relocation debt; old outdoor cell is moved into the indoor room; no-room state stays dormant and does not grow outdoors. |
-| PASS | Feeding | `op_fbe88c74e6df47658620684e50804ecf`: feeding contract. | Guard/recovery reserve, shrink pulses, growth pause, breach cancellation, daily cap, coagulant potency, and one-cell exploit guard passed. |
-| PASS | Benefits/disruption | `op_b97ee70df14347ad88e7caef42ebcde8`: benefit contract; static checks in `Patches.cs` for path cost, work-speed stat factor, and room beauty/impressiveness. | Live check covered host hediff repair, benefit scaling, zombie targeting threshold, and skill bonus. Room/work/path disruption was not walked through in UI; source patch points are present and tied to Symbiant cell checks. |
-| PASS | Surgery | `op_31728ce59c6c471ba81afc13c4122309`: severance contract. | Recipe ingredients and body-part availability gate on maturity/reserve/size; forced success destroys Symbiant safely; forced failure keeps bond and spends reserve. |
-| PASS | Combat/damage + selection | `op_28bf4f3c4ca945e8865b5f905d1de68c`: unsafe damage contract. | Ordinary damage drains guard, overkill ruptures guard and kills host, host death collapses Symbiant, thumper damage has no effect, uncontrolled destroy detaches, selected Symbiant has no normal pawn tabs and inspect text includes guard. |
-| PASS | Combat isolation | `op_78880bc5f9c944f3a04a8a0b354d5a1c`: combat isolation contract. | Player/enemy/animal/predator targeting excludes Symbiant; forced attack jobs are rejected; manhunter/prey/story-danger paths ignore it; feed job finds valid feed. |
-| PASS | Host availability | `op_32a1f41c9d3441e691e10ba89fd567b5`: host availability contract. | Cryptosleep/off-map host keeps the bond marker but benefits/surgery are inactive until the same host returns. |
-| PASS | Save/cache | `op_1ff0e7f436ce43b9aef17c082b97fb7c`: map cache contract; `op_f736a8b377a44140b3355d57571acc33`, `op_5b90385de84042a1a220c386a8b34b8e`, `op_b944797fb0bf4b889a4cfcfcbb86adea`, `op_26e377b2f8f049feb22d2eba7da1c428`: temporary save/load smoke. | Active/empty caches invalidate correctly; a one-cell Symbiant survived save/load in `SYMBIANT-TEST-AUTO-SYMBIANT`, was cleaned afterward, and the temporary save file was removed. |
-| PASS | Stress/performance | `op_c7eee7105c834d84a5ae668c504989f7`: 400-cell stress; `op_686d89dc374a4754b92b833159eb72c4`: cleanup. | Default max reached 400/400, render shader metadata reported `Custom/ZombieSymbiant`, pawn-system isolation stayed false for hostile/threat registration, and cleanup removed the active Symbiant. |
-| PASS | Final log state | `op_ef08692dd3244a5bbdd2677856d6a1cf`: warning-or-higher log read after visual UI pass and fixture reload. | Clean after all current-pass contracts; live session was restored to `SYMBIANT-TEST`. |
+| PASS | Build/deploy | `./scripts/build-quiet.sh` | Build succeeded with 0 warnings and 0 errors. The script deployed to the configured local RimWorld Mods folder. |
+| PASS | XML/translation/static | `xmllint --noout`; translation key/placeholder parity script; stale Symbiant key scan; `git diff --check` | XML clean, all supported language keyed files matched, placeholders matched, and removed legacy keys/settings were absent. |
+| PASS | Settings | `op_b71ff072d53740beaa65492c17d6c68b` | Disabled events blocked natural spawn; disabling did not delete an active Symbiant; lowered max acted as a cap. |
+| PASS | Surgery | `op_62f6304761dd4856ab7b238e7f5249dc` | Recipe worker class matched; torso operation visible; dynamic extract count was 10 at current difficulty; bond removal succeeded; no extra map extract was manually consumed by the worker. |
+| PASS | Door slowdown | `op_ad90e439d0144a768e06a3c51c14b606` | Covered door cell inflated path follower cost to expected difficulty-scaled value. |
+| PASS | Map cache | `op_cd933d6f1a0344c195cf85f0a2ca31c3` | Empty-map cache, spawn invalidation, cleanup invalidation, explicit cache reset, and map-pawn exclusion passed. |
+| PASS | Event creation | `op_dcf73c3cdec44689b76436c9e2d85531` | Created active linked Symbiant. Reported `maxCells=400`, `technicalMaxCells=4000`, GPU metaball mask active, surgery visible, and current effect/benefit text. |
+| PASS | Expansion/render state | `op_4ec9a17a81904fdd9cb510286ddc9440` | Expanded from 1 to 5 cells, maintained selector coverage, effect text, render metadata, and active cell motions. |
+| PASS | Click-anywhere selection | `op_f89e3bf86b504f9eb4d011ab4926f4a6` | Clicking non-origin cell `(120,135)` selected the Symbiant rooted at `(119,134)`. |
+| PASS | Inspect text and no gizmo | `op_66b3469fc8a84ff4aa5b342638c09143`; `op_13ffd847c5a140439ea61c69bf3caf2e` | Inspect string contained no empty lines and listed size, host, growth, effects, and benefits. `gizmoCount=0`. |
+| PASS with expected error | Old-save missing def | GABS attention `attn_17` / `attn_20` | Loading `SYMBIANT-TEST-MAP` logged `Could not load reference to Verse.ThingDef named SymbiantCoagulantPack`. The save loaded playable afterward. This is expected because the legacy def was intentionally removed. |
+| PASS | Repeated load after restart | `op_bd8b228709b74079881bc1416edc5c7b`; earlier `op_c550cf129ef64706bf750cee8f97281f` | `SYMBIANT-TEST-MAP` loaded playable and paused after restart. |
 
 ## Current Assessment
 
-No release-blocking Symbiant issue was found in the broad player-facing pass on `SYMBIANT-TEST`.
+No release-blocking Symbiant issue was found in the current simplified broad pass on `SYMBIANT-TEST-MAP`.
 
-Remaining non-blockers:
-- The pass used the current minimal mod loadout, not the DLC-heavy `EMPTY` fixture.
-- Screenshot/UI visual pass covered settings filtering/help, discovery letter layout, Symbiant selection, and host selection on `SYMBIANT-TEST`.
-- No full pawn/raid stress fixture was run; the default 400-cell Symbiant stress path was clean.
-- `SYMBIANT-TEST-AUTO-SYMBIANT.rws` was created for the persistence smoke and removed afterward.
+Known non-blockers:
+- The old-save missing `SymbiantCoagulantPack` red error is expected and non-fatal for the tested save.
+- The pass used the current Symbiant test map, not a full DLC-heavy matrix.
+- No fresh full 4000-cell endurance run was performed after the doc cleanup; rerun stress only after rendering/path/stat/cache changes.
+- `go_to_main_menu` caused the test RimWorld process to stop during one smoke attempt; restarting and reloading the test map succeeded. No current Player.log was found at the usual paths to classify the process exit.
 
 ## Release Notes
 
-- Do not require every known edge gap to be closed before release. Promote only broad player-facing regressions or obvious exploits to blockers.
-- `1.6/Assemblies/ZombieLand.dll` may be dirty during live validation. Restore tracked DLLs before the next normal source-only commit.
+- Normal source-only commits should not include tracked `1.6/Assemblies/ZombieLand.dll` rebuilds.
+- Rebuild asset bundles only when shader/material assets change.
+- Treat `SYMBIANT_PLAN.md` as the current design handoff and `TEST_COVERAGE.md` as the longer historical evidence ledger.
